@@ -176,7 +176,7 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (BACKGROUND) --- */}
+      {/* --- SCROLLYTELLING CANVAS (BACKGROUND 100% VISIBLE) --- */}
       {!loading && (
         <canvas 
           ref={canvasRef} 
@@ -189,7 +189,7 @@ export default function App() {
         />
       )}
 
-      {/* --- GALAXY VIDEO BACKGROUND (AT VERY END) --- */}
+      {/* --- GALAXY VIDEO BACKGROUND (FADES IN STRICTLY AT THE VERY END) --- */}
       {!loading && (
         <video
           src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
@@ -200,7 +200,7 @@ export default function App() {
           className="fixed inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000"
           style={{ 
             zIndex: 0,
-            opacity: scrollFraction > 0.94 ? 0.75 : 0
+            opacity: scrollFraction > 0.94 ? 0.85 : 0
           }}
         />
       )}
@@ -230,7 +230,7 @@ export default function App() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
-                className="text-8xl font-bold tracking-tight text-flowing-purple font-display"
+                className="text-8xl font-black tracking-tight text-flowing-purple font-display"
               >
                 AURA
               </motion.div>
@@ -248,7 +248,7 @@ export default function App() {
                 initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 1, delay: 0.7 }}
-                className="text-xl font-bold tracking-[0.4em] text-flowing-purple border border-[#9333EA]/50 px-6 py-2 rounded-lg font-display bg-black/40 backdrop-blur-md"
+                className="text-xl font-bold tracking-[0.4em] text-flowing-purple border border-[#9333EA]/50 px-6 py-2 rounded-lg font-display"
               >
                 SYSTEM ONLINE
               </motion.div>
@@ -266,12 +266,12 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- FIXED FLOATING CAPSULE NAVBAR WITH DIRECT REPO LINK --- */}
+      {/* --- FIXED FLOATING CAPSULE NAVBAR --- */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="fixed top-5 left-6 right-6 z-50 h-14 max-w-7xl mx-auto px-4 flex items-center justify-between backdrop-blur-xl bg-black/60 border border-white/20 rounded-full shadow-2xl"
+        className="fixed top-5 left-6 right-6 z-50 h-14 max-w-7xl mx-auto px-4 flex items-center justify-between bg-transparent backdrop-blur-none"
       >
         <div className="flex items-center gap-3">
           <motion.div
@@ -280,10 +280,10 @@ export default function App() {
             className="cursor-pointer flex items-center"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            <AuraLogo className="w-8 h-8 object-cover rounded-full border border-[#C084FC]/60 shadow-[0_0_12px_rgba(147,51,234,0.5)]" />
+            <AuraLogo className="w-8 h-8 object-cover rounded-full shadow-[0_0_12px_rgba(147,51,234,0.5)]" />
           </motion.div>
 
-          <div className="hidden md:flex items-center gap-6 px-5 py-1 border-l border-white/20 text-[11px] uppercase font-semibold tracking-widest text-white font-display">
+          <div className="hidden md:flex items-center gap-6 px-5 py-1 text-[11px] uppercase font-bold tracking-widest text-white font-display">
             <button onClick={() => heroRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Hero" /></button>
             <button onClick={() => problemRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Problem" /></button>
             <button onClick={() => missionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Mission" /></button>
@@ -297,17 +297,17 @@ export default function App() {
             href="https://github.com/jafferrilwaan-png/A.U.R.A-System"
             target="_blank"
             rel="noreferrer"
-            whileHover={{ scale: 1.05, backgroundColor: "#C084FC", color: "#000" }}
+            whileHover={{ scale: 1.05, color: "#C084FC" }}
             whileTap={{ scale: 0.95 }}
-            className="h-9 px-5 bg-white/15 backdrop-blur-md rounded-full flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider border border-white/30 text-white transition-all font-display shadow-md"
+            className="h-9 px-5 bg-transparent rounded-full flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white transition-all font-display"
           >
-            <i className="bi bi-github text-sm" />
+            <i className="bi bi-github text-base" />
             <ScrambleText text="Repository" />
           </motion.a>
         </div>
       </motion.nav>
 
-      {/* --- OVERLAYS WITH HIGH-CONTRAST FROSTED CARDS --- */}
+      {/* --- CONTENT OVERLAYS (100% FULLY TRANSPARENT, NO BOXES, NO SOLID PADDING) --- */}
       <div className="relative z-10 w-full bg-transparent">
         
         {/* --- SECTION 1: HERO --- */}
@@ -320,14 +320,14 @@ export default function App() {
 
           <motion.div 
             style={heroScroll}
-            className="max-w-4xl flex flex-col gap-6 text-left p-8 sm:p-10 rounded-3xl bg-black/45 backdrop-blur-md border border-white/15 shadow-2xl"
+            className="max-w-4xl flex flex-col gap-6 text-left bg-transparent"
           >
-            <h1 className="font-bold leading-[0.98] tracking-tight text-[clamp(34px,5.8vw,72px)] uppercase text-flowing-purple font-display">
+            <h1 className="font-extrabold leading-[0.98] tracking-tight text-[clamp(34px,5.8vw,72px)] uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
               Sub-Surface Cavity & <br />
               Life Detection System
             </h1>
 
-            <p className="max-w-2xl text-base sm:text-lg text-white font-normal leading-relaxed drop-shadow-md">
+            <p className="max-w-2xl text-base sm:text-lg text-white font-normal leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
               A.U.R.A. maps active void spaces, acoustic signatures, and structural collapse zones into a single real-time tactical intelligence layer.
             </p>
           </motion.div>
@@ -335,25 +335,25 @@ export default function App() {
 
         {/* --- SECTION 2: PROBLEM / CRISIS SECTION --- */}
         <section ref={problemRef} className="min-h-screen w-full flex flex-col justify-center px-6 sm:px-12 py-24 bg-transparent">
-          <motion.div style={problemScroll} className="max-w-5xl mx-auto w-full p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-md border border-white/15 shadow-2xl">
+          <motion.div style={problemScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-12 border-b border-white/20 pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display">CRITICAL VECTOR</span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-flowing-purple font-display">Subterranean Blindspots</h2>
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">CRITICAL VECTOR</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Subterranean Blindspots</h2>
             </div>
 
             <div className="grid md:grid-cols-2 gap-10 text-left">
-              <div className="p-6 rounded-2xl bg-black/40 border border-white/10">
-                <span className="text-[#C084FC] text-xs font-bold block mb-2 tracking-wider font-display">CRITICAL WINDOW</span>
+              <div className="bg-transparent">
+                <span className="text-[#C084FC] text-xs font-bold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
                 <h4 className="text-2xl font-bold text-flowing-purple mb-3 font-display">The Golden 72-Hour Window</h4>
-                <p className="text-base text-white/95 leading-relaxed font-normal">
+                <p className="text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                   First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-black/40 border border-white/10">
-                <span className="text-[#C084FC] text-xs font-bold block mb-2 tracking-wider font-display">TECHNOLOGY FAILURE</span>
+              <div className="bg-transparent">
+                <span className="text-[#C084FC] text-xs font-bold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
                 <h4 className="text-2xl font-bold text-flowing-purple mb-3 font-display">Structural Blindspots</h4>
-                <p className="text-base text-white/95 leading-relaxed font-normal">
+                <p className="text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                   Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
                 </p>
               </div>
@@ -363,28 +363,28 @@ export default function App() {
 
         {/* --- SECTION 2.5: MISSION & HUMAN COST TRAGEDY --- */}
         <section ref={missionRef} className="min-h-screen w-full flex flex-col justify-center px-6 sm:px-12 py-24 bg-transparent">
-          <motion.div style={missionScroll} className="max-w-5xl mx-auto w-full p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-md border border-white/15 shadow-2xl">
+          <motion.div style={missionScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-12 border-b border-white/20 pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display">THE HUMAN COST & OUR MISSION</span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-flowing-purple font-display">Buried in Silence</h2>
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">THE HUMAN COST & OUR MISSION</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Buried in Silence</h2>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 items-center text-left">
-              <div className="border-l-4 border-[#9333EA] pl-6 py-2 bg-black/30 rounded-r-xl">
-                <span className="text-5xl font-bold text-flowing-purple block mb-2 font-display">80,000+</span>
-                <p className="text-xs text-white/80 uppercase tracking-widest font-extrabold font-display">Lives Lost Annually</p>
-                <p className="text-sm text-white mt-2 font-normal">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
+              <div className="border-l-4 border-[#9333EA] pl-6 py-2 bg-transparent">
+                <span className="text-5xl font-extrabold text-flowing-purple block mb-2 font-display">80,000+</span>
+                <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
+                <p className="text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
               </div>
 
-              <div className="border-l-4 border-[#9333EA] pl-6 py-2 bg-black/30 rounded-r-xl">
-                <span className="text-5xl font-bold text-flowing-purple block mb-2 font-display">80%</span>
-                <p className="text-xs text-white/80 uppercase tracking-widest font-extrabold font-display">Preventable Deaths</p>
-                <p className="text-sm text-white mt-2 font-normal">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
+              <div className="border-l-4 border-[#9333EA] pl-6 py-2 bg-transparent">
+                <span className="text-5xl font-extrabold text-flowing-purple block mb-2 font-display">80%</span>
+                <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
+                <p className="text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
               </div>
 
               <div className="md:col-span-1 border-t md:border-t-0 md:border-l border-white/20 md:pl-8 pt-6 md:pt-0">
-                <span className="text-[#C084FC] text-xs font-bold uppercase tracking-widest block mb-2 font-display">MISSION STATEMENT</span>
-                <p className="text-base text-white leading-relaxed font-light italic drop-shadow-sm">
+                <span className="text-[#C084FC] text-xs font-bold uppercase tracking-widest block mb-2 font-display drop-shadow-sm">MISSION STATEMENT</span>
+                <p className="text-base text-white leading-relaxed font-light italic drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
                   "Our mission is absolute: Zero unmapped survivors. By translating seismic acoustics into immediate locational coordinates, A.U.R.A. ensures that no life remains buried in silence."
                 </p>
               </div>
@@ -394,10 +394,10 @@ export default function App() {
 
         {/* --- SECTION 3: TECH ARCHITECTURE --- */}
         <section ref={techRef} className="min-h-screen w-full flex flex-col justify-center px-6 sm:px-12 py-24 bg-transparent">
-          <motion.div style={techScroll} className="max-w-7xl mx-auto w-full p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-md border border-white/15 shadow-2xl">
+          <motion.div style={techScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-16 border-b border-white/20 pb-8">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display">SYSTEM FLOW</span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-flowing-purple font-display">Tech Architecture</h2>
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">SYSTEM FLOW</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Tech Architecture</h2>
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -407,12 +407,12 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="p-6 rounded-2xl bg-black/40 border border-white/10 flex flex-col justify-between min-h-[200px] text-left">
+                <div key={idx} className="p-4 bg-transparent flex flex-col justify-between min-h-[180px] text-left">
                   <div>
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-4 font-display">MODULE_0{idx + 1}</span>
+                    <span className="text-[#C084FC] text-xs font-extrabold block mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
                     <h4 className="text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
                   </div>
-                  <p className="text-sm text-white/90 leading-relaxed font-normal">{item.desc}</p>
+                  <p className="text-sm text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -421,22 +421,22 @@ export default function App() {
 
         {/* --- SECTION 4: TELEMETRY & MODELS SECTION --- */}
         <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-6 sm:px-12 py-24 bg-transparent">
-          <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-md border border-white/15 shadow-2xl">
+          <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-16 border-b border-white/20 pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display">VISUAL DATA</span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-flowing-purple font-display">Telemetry & Models</h2>
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">VISUAL DATA</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Telemetry & Models</h2>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-12 items-start">
-              {/* Left Column: Browser Mockup with CRISP HIGH-CONTRAST CODE */}
-              <div className="lg:col-span-2 rounded-xl overflow-hidden border border-white/20 bg-[#05070A]/95 shadow-2xl">
+              {/* Left Column: Browser Mockup */}
+              <div className="lg:col-span-2 rounded-xl overflow-hidden border border-white/20 bg-black/60 shadow-2xl">
                 <div className="h-10 bg-white/10 border-b border-white/10 px-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-3 h-3 rounded-full bg-[#FF5F56]" />
                     <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
                     <span className="w-3 h-3 rounded-full bg-[#27C93F]" />
                   </div>
-                  <span className="text-xs text-white/70 font-mono select-none">telemetry_feed.py</span>
+                  <span className="text-xs text-white/80 font-mono select-none">telemetry_feed.py</span>
                   <div className="w-12" />
                 </div>
                 <pre className="p-6 md:p-8 overflow-x-auto text-[12px] md:text-sm text-white font-mono leading-relaxed select-text font-medium">
@@ -465,35 +465,35 @@ while True:
 
               {/* Right Column: Model Images */}
               <div className="flex flex-col gap-8">
-                <div className="overflow-hidden border border-white/15 rounded-xl p-4 bg-black/40 group">
+                <div className="overflow-hidden border-b border-white/20 pb-4 bg-transparent group">
                   <img 
                     src="high_res_frames/frame-100.jpg" 
                     alt="Subsurface model scan phase 1" 
-                    className="w-full h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300"
+                    className="w-full h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
                     onError={(e) => {
                       e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
                     }}
                   />
                   <div className="pt-4 text-left">
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display">MODEL PROFILE 01</span>
+                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm">MODEL PROFILE 01</span>
                     <h4 className="text-lg font-bold text-flowing-purple mb-1 font-display">Tunnel Cavity Scan</h4>
-                    <p className="text-xs text-white/90 leading-relaxed font-normal">Maps structural cavities and returns safety margins.</p>
+                    <p className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">Maps structural cavities and returns safety margins.</p>
                   </div>
                 </div>
 
-                <div className="overflow-hidden border border-white/15 rounded-xl p-4 bg-black/40 group">
+                <div className="overflow-hidden border-b border-white/20 pb-4 bg-transparent group">
                   <img 
                     src="high_res_frames/frame-260.jpg" 
                     alt="Subsurface model scan phase 2" 
-                    className="w-full h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300"
+                    className="w-full h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
                     onError={(e) => {
                       e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
                     }}
                   />
                   <div className="pt-4 text-left">
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display">MODEL PROFILE 02</span>
+                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm">MODEL PROFILE 02</span>
                     <h4 className="text-lg font-bold text-flowing-purple mb-1 font-display">Void Isolation Map</h4>
-                    <p className="text-xs text-white/90 leading-relaxed font-normal">Highlights internal structures to locate survivors.</p>
+                    <p className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">Highlights internal structures to locate survivors.</p>
                   </div>
                 </div>
               </div>
@@ -503,11 +503,11 @@ while True:
 
         {/* --- SECTION 5: TEAM GRID --- */}
         <section ref={teamRef} className="min-h-screen w-full flex flex-col justify-center px-6 sm:px-12 py-24 bg-transparent">
-          <motion.div style={teamScroll} className="max-w-7xl mx-auto w-full p-8 sm:p-12 rounded-3xl bg-black/50 backdrop-blur-md border border-white/15 shadow-2xl">
+          <motion.div style={teamScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-16">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase mb-3 block font-display">COLLABORATIVE ARCHITECTURE</span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-flowing-purple font-display">Core Architecture Team</h2>
-              <p className="text-white/80 text-sm mt-3 max-w-md mx-auto leading-relaxed font-normal">
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase mb-3 block font-display drop-shadow-md">COLLABORATIVE ARCHITECTURE</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Core Architecture Team</h2>
+              <p className="text-white text-sm mt-3 max-w-md mx-auto leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                 The core minds behind the A.U.R.A. sub-surface cavity & life detection system architecture.
               </p>
             </div>
@@ -542,9 +542,9 @@ while True:
               ].map((member, idx) => (
                 <div 
                   key={idx} 
-                  className="flex flex-col items-start text-left p-4 rounded-2xl bg-black/40 border border-white/10 group cursor-pointer hover:border-[#C084FC] transition-all"
+                  className="flex flex-col items-start text-left bg-transparent group cursor-pointer"
                 >
-                  <div className="w-full h-[220px] rounded-lg overflow-hidden border border-white/15 group-hover:border-[#C084FC] transition-all mb-4 relative shadow-lg">
+                  <div className="w-full h-[220px] rounded-lg overflow-hidden border border-white/20 group-hover:border-[#C084FC] transition-all mb-4 relative shadow-2xl">
                     <img 
                       src={member.img} 
                       alt={member.name} 
@@ -556,8 +556,8 @@ while True:
                     <div className="absolute inset-0 bg-[#C084FC]/15 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   </div>
                   
-                  <h3 className="text-base font-bold text-flowing-purple mb-1 tracking-tight uppercase font-display"><ScrambleText text={member.name} /></h3>
-                  <div className="text-xs text-white/70 tracking-wider uppercase font-semibold">{member.role}</div>
+                  <h3 className="text-base font-bold text-flowing-purple mb-1 tracking-tight uppercase font-display drop-shadow-md"><ScrambleText text={member.name} /></h3>
+                  <div className="text-xs text-white tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
                 </div>
               ))}
             </div>
@@ -566,7 +566,7 @@ while True:
 
         {/* --- FOOTER --- */}
         <footer className="relative bg-transparent border-t border-white/10 flex flex-col items-center justify-between min-h-[450px] py-16 px-6 sm:px-12">
-          <div className="flex flex-col items-center justify-center text-center my-12 p-8 rounded-3xl bg-black/40 backdrop-blur-md border border-white/10 max-w-2xl mx-auto">
+          <div className="flex flex-col items-center justify-center text-center my-12 bg-transparent max-w-2xl mx-auto">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               whileInView={{ scale: 1, opacity: 1 }}
@@ -575,17 +575,17 @@ while True:
             >
               <AuraLogo className="w-24 h-24 object-cover rounded-full border-2 border-[#C084FC]/60 group-hover:border-[#C084FC] transition-colors shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
               
-              <span className="text-7xl font-bold tracking-tighter text-flowing-purple font-display">
+              <span className="text-7xl font-black tracking-tighter text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
                 AURA
               </span>
             </motion.div>
-            <p className="text-white text-sm leading-relaxed max-w-md mt-6 font-normal drop-shadow-sm">
+            <p className="text-white text-sm leading-relaxed max-w-md mt-6 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
               Bridging the gap between first responders and life trapped beneath disaster rubble. Zero unmapped survivors.
             </p>
           </div>
           
           <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-center items-center border-t border-white/10 pt-8">
-            <div className="text-[11px] text-white/60 tracking-widest font-semibold">
+            <div className="text-[11px] text-white tracking-widest font-semibold drop-shadow-sm">
               © 2026 A.U.R.A. ALL RIGHTS RESERVED.
             </div>
           </div>
