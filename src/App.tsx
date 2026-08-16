@@ -741,14 +741,14 @@ export default function App() {
                 {
                   name: "Hannah Blessy J",
                   role: "Hardware & Sensor Lead",
-                  img: "/hannah_blessy.jpg",
+                  img: "/hannah_blessy.png",
                   bio: "Specializing in hardware arrays, piezoelectric logic, and real-time sensor processing.",
                   linkedin: "https://www.linkedin.com/in/hannah-blessy-j-b0773636b/"
                 },
                 {
                   name: "Gurudev Kumaravel",
                   role: "Telemetry & Cloud Engineer",
-                  img: "",
+                  img: "/gurudev_kumaravel.jpg",
                   bio: "Managing secure telemetry routing, alert dispatching, and cloud infrastructure.",
                   linkedin: "https://www.linkedin.com/in/gurudev-kumaravel-955998355/"
                 },
