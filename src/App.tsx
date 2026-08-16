@@ -30,7 +30,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
           })
           .join("")
       );
-      if (iteration >= text.length) clearInterval(interval);
+      if (iteration >= text.length) clearInterval(iteration);
       iteration += 1;
     }, 30);
   };
@@ -55,14 +55,13 @@ export default function App() {
   useEffect(() => {
     const loaderTimer = setTimeout(() => {
       setLoading(false);
-      setTimeout(() => setEntranceComplete(true), 200);
-    }, 2200);
+      setTimeout(() => setEntranceComplete(true), 150);
+    }, 2000);
     return () => clearTimeout(loaderTimer);
   }, []);
 
-  // SCROLLYTELLING CANVAS ENGINE (Mobile Ultra-Optimized Progressive Preloader)
+  // SCROLLYTELLING CANVAS ENGINE (Zero Blank Screen, Instant Frame-1 Render)
   useEffect(() => {
-    if (loading) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const context = canvas.getContext('2d');
@@ -72,50 +71,33 @@ export default function App() {
     const currentFrame = (index: number) => `high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
     const images: HTMLImageElement[] = new Array(frameCount);
 
-    // Fast Progressive Load: Load key priority frames first for instant 60fps start without lag
-    const loadPriorityFrames = () => {
-      // First load 1 in every 3 frames for zero-lag startup
-      for (let i = 1; i <= frameCount; i += 2) {
-        const img = new Image();
-        img.src = currentFrame(i);
-        images[i - 1] = img;
-      }
-      // Then fill remaining frames in background
-      setTimeout(() => {
-        for (let i = 2; i <= frameCount; i += 2) {
-          if (!images[i - 1]) {
-            const img = new Image();
-            img.src = currentFrame(i);
-            images[i - 1] = img;
-          }
-        }
-      }, 300);
-    };
+    // Render Frame 1 Immediately on Mount (Zero Blank Screen)
+    const firstImg = new Image();
+    firstImg.src = currentFrame(1);
+    images[0] = firstImg;
+    firstImg.onload = () => drawFrame(1);
 
-    loadPriorityFrames();
+    // Preload remaining frames asynchronously
+    for (let i = 2; i <= frameCount; i++) {
+      const img = new Image();
+      img.src = currentFrame(i);
+      images[i - 1] = img;
+    }
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
-      // Fallback to nearest loaded frame if specific frame is still loading
       let img = images[index - 1];
       if (!img || !img.complete) {
-        for (let offset = 1; offset < 5; offset++) {
-          const prev = images[Math.max(0, index - 1 - offset)];
-          if (prev && prev.complete) { img = prev; break; }
-          const next = images[Math.min(frameCount - 1, index - 1 + offset)];
-          if (next && next.complete) { img = next; break; }
-        }
+        img = images[0]; // Instant fallback to frame 1 if loading
       }
       if (!img || !img.complete) return;
 
       context.clearRect(0, 0, canvas.width, canvas.height);
-      
-      const isMobile = window.innerWidth < 640;
+
       const hRatio = canvas.width / img.width;
       const vRatio = canvas.height / img.height;
-      
-      // On mobile vertical screens, use adaptive aspect ratio fit so entire 8K frame is visible
-      const ratio = isMobile ? Math.max(hRatio, vRatio * 0.88) : Math.max(hRatio, vRatio) * 1.35;
+      const ratio = Math.max(hRatio, vRatio); // Perfect 8K full cover fit on both mobile and desktop
+
       const width = img.width * ratio;
       const height = img.height * ratio;
       const x = (canvas.width - width) / 2;
@@ -125,7 +107,7 @@ export default function App() {
     };
 
     const resizeAndDraw = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap DPR at 2 for ultra-smooth mobile rendering
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = window.innerWidth + 'px';
@@ -148,7 +130,7 @@ export default function App() {
 
     let animationFrameId: number;
     const renderLoop = () => {
-      currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.09;
+      currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.1;
       if (Math.abs(targetFrameIndex - currentFrameIndex) < 0.01) {
         currentFrameIndex = targetFrameIndex;
       }
@@ -171,7 +153,7 @@ export default function App() {
       window.removeEventListener('resize', resizeAndDraw);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [loading]);
+  }, []);
 
   // Section Refs for Scroll Animations
   const heroRef = useRef<HTMLDivElement>(null);
@@ -201,36 +183,32 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (8K FRAME SCALING OPTIMIZED FOR MOBILE & DESKTOP) --- */}
-      {!loading && (
-        <canvas 
-          ref={canvasRef} 
-          className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
-          style={{ 
-            filter: "contrast(1.08) saturate(1.1)",
-            zIndex: 0,
-            opacity: scrollFraction > 0.94 ? 0 : 1
-          }}
-        />
-      )}
+      {/* --- SCROLLYTELLING CANVAS (ALWAYS MOUNTED FOR INSTANT RENDER - ZERO BLANK SCREEN) --- */}
+      <canvas 
+        ref={canvasRef} 
+        className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
+        style={{ 
+          filter: "contrast(1.08) saturate(1.1)",
+          zIndex: 0,
+          opacity: scrollFraction > 0.94 ? 0 : 1
+        }}
+      />
 
-      {/* --- GALAXY VIDEO BACKGROUND (FADES IN AT VERY END) --- */}
-      {!loading && (
-        <video
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="fixed inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000"
-          style={{ 
-            zIndex: 0,
-            opacity: scrollFraction > 0.94 ? 0.85 : 0
-          }}
-        />
-      )}
+      {/* --- GALAXY VIDEO BACKGROUND (FADES IN STRICTLY AT THE VERY END) --- */}
+      <video
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="fixed inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000"
+        style={{ 
+          zIndex: 0,
+          opacity: scrollFraction > 0.94 ? 0.85 : 0
+        }}
+      />
 
-      {/* --- FAST MULTI-FONT LOADER --- */}
+      {/* --- ENTRANCE LOADER --- */}
       <AnimatePresence>
         {loading && (
           <motion.div
@@ -245,8 +223,8 @@ export default function App() {
               <motion.div
                 initial={{ x: -30, opacity: 0 }}
                 animate={{ x: 0, opacity: 0.9 }}
-                transition={{ duration: 1 }}
-                className="text-xs sm:text-3xl tracking-[0.3em] font-light text-white uppercase font-display"
+                transition={{ duration: 0.8 }}
+                className="text-xs sm:text-2xl tracking-[0.3em] font-light text-white uppercase font-display"
               >
                 AURA SYSTEM INITIALIZATION
               </motion.div>
@@ -261,18 +239,9 @@ export default function App() {
               </motion.div>
 
               <motion.div
-                initial={{ x: 30, opacity: 0 }}
-                animate={{ x: 0, opacity: 0.9 }}
-                transition={{ duration: 1, delay: 0.4 }}
-                className="text-2xl sm:text-4xl italic tracking-wider text-white animate-pulse font-display"
-              >
-                A   U   R   A
-              </motion.div>
-
-              <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
                 className="text-sm sm:text-xl font-bold tracking-[0.3em] text-flowing-purple border border-[#9333EA]/50 px-5 py-2 rounded-lg font-display bg-black/40 backdrop-blur-md"
               >
                 SYSTEM ONLINE
@@ -282,49 +251,52 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- RESPONSIVE MOBILE & DESKTOP NAVBAR --- */}
+      {/* --- PROPERLY ARRANGED NAVBAR (DESKTOP & MOBILE SAFELY ALIGNED) --- */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="fixed top-3 sm:top-5 left-3 right-3 sm:left-6 sm:right-6 z-50 py-2 px-3 sm:px-6 max-w-7xl mx-auto flex items-center justify-between bg-black/50 backdrop-blur-lg border border-white/15 rounded-full shadow-2xl"
+        className="fixed top-3 sm:top-5 left-3 right-3 sm:left-6 sm:right-6 z-50 py-2.5 px-4 sm:px-6 max-w-7xl mx-auto flex items-center justify-between bg-black/60 backdrop-blur-xl border border-white/15 rounded-full shadow-2xl"
       >
-        <div className="flex items-center gap-3">
+        {/* Left: Brand Logo & Title */}
+        <div className="flex items-center gap-3 shrink-0">
           <motion.div
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            className="cursor-pointer flex items-center shrink-0"
+            className="cursor-pointer flex items-center"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            <AuraLogo className="w-10 h-10 sm:w-11 sm:h-11 object-cover rounded-full border-2 border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.6)]" />
+            <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border-2 border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.6)]" />
           </motion.div>
-
-          {/* Navigation Links: Visible on ALL devices via horizontal scroll on small screens */}
-          <div className="flex items-center gap-3 sm:gap-6 overflow-x-auto py-1 scrollbar-none text-[10px] sm:text-[11px] uppercase font-bold tracking-widest text-white font-display">
-            <button onClick={() => heroRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Hero" /></button>
-            <button onClick={() => problemRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Problem" /></button>
-            <button onClick={() => missionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Mission" /></button>
-            <button onClick={() => techRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Tech" /></button>
-            <button onClick={() => teamRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Team" /></button>
-          </div>
+          <span className="text-sm sm:text-base font-extrabold tracking-wider text-white font-display hidden sm:inline">A.U.R.A.</span>
         </div>
 
+        {/* Center: Navigation Jump Links */}
+        <div className="flex items-center gap-4 sm:gap-7 overflow-x-auto py-1 scrollbar-none text-[11px] sm:text-[12px] uppercase font-bold tracking-widest text-white/90 font-display">
+          <button onClick={() => heroRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Hero" /></button>
+          <button onClick={() => problemRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Problem" /></button>
+          <button onClick={() => missionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Mission" /></button>
+          <button onClick={() => techRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Tech" /></button>
+          <button onClick={() => teamRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Team" /></button>
+        </div>
+
+        {/* Right: Direct GitHub Repo Button */}
         <div className="flex items-center gap-2 shrink-0 ml-2">
           <motion.a
             href="https://github.com/jafferrilwaan-png/A.U.R.A-System"
             target="_blank"
             rel="noreferrer"
-            whileHover={{ scale: 1.05, color: "#C084FC" }}
+            whileHover={{ scale: 1.05, backgroundColor: "#C084FC", color: "#000" }}
             whileTap={{ scale: 0.95 }}
-            className="h-8 sm:h-9 px-3 sm:px-5 bg-white/10 backdrop-blur-md rounded-full flex items-center gap-1.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all font-display"
+            className="h-8 sm:h-9 px-3.5 sm:px-5 bg-white/15 backdrop-blur-md rounded-full flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all font-display shadow-md"
           >
-            <i className="bi bi-github text-xs sm:text-base" />
-            <span className="hidden xs:inline"><ScrambleText text="Repo" /></span>
+            <i className="bi bi-github text-xs sm:text-sm" />
+            <span className="hidden md:inline"><ScrambleText text="Repository" /></span>
           </motion.a>
         </div>
       </motion.nav>
 
-      {/* --- RICH MOBILE OVERLAYS (HIGH CONTRAST & BOLD TYPOGRAPHY) --- */}
+      {/* --- CONTENT OVERLAYS --- */}
       <div className="relative z-10 w-full bg-transparent">
         
         {/* --- SECTION 1: HERO --- */}
@@ -339,12 +311,7 @@ export default function App() {
             style={heroScroll}
             className="max-w-4xl flex flex-col gap-5 sm:gap-6 text-left bg-transparent"
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/40 border border-[#C084FC]/40 backdrop-blur-md w-fit">
-              <span className="w-2 h-2 rounded-full bg-[#C084FC] animate-ping" />
-              <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-[#C084FC] font-display">A.U.R.A. RECOVERY SYSTEM</span>
-            </div>
-
-            <h1 className="font-extrabold leading-[1.05] sm:leading-[0.98] tracking-tight text-[clamp(32px,8vw,76px)] uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
+            <h1 className="font-black leading-[1.02] sm:leading-[0.98] tracking-tight text-[clamp(32px,8vw,76px)] uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
               Sub-Surface Cavity & <br />
               Life Detection System
             </h1>
@@ -364,7 +331,7 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <div className="p-5 sm:p-6 rounded-2xl bg-black/35 backdrop-blur-sm border border-white/10">
+              <div className="bg-transparent">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
                 <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
@@ -372,7 +339,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="p-5 sm:p-6 rounded-2xl bg-black/35 backdrop-blur-sm border border-white/10">
+              <div className="bg-transparent">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
                 <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
@@ -392,13 +359,13 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-center text-left">
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/25 backdrop-blur-sm rounded-r-xl">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-transparent">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80,000+</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
                 <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
               </div>
 
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/25 backdrop-blur-sm rounded-r-xl">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-transparent">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80%</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
                 <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
@@ -429,7 +396,7 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-black/35 backdrop-blur-sm border border-white/10 flex flex-col justify-between min-h-[160px] text-left">
+                <div key={idx} className="p-4 sm:p-5 bg-transparent flex flex-col justify-between min-h-[160px] text-left">
                   <div>
                     <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
                     <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
@@ -487,7 +454,7 @@ while True:
 
               {/* Right Column: Model Images */}
               <div className="flex flex-col gap-6 sm:gap-8">
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/35 backdrop-blur-sm group">
+                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-transparent group">
                   <img 
                     src="high_res_frames/frame-100.jpg" 
                     alt="Subsurface model scan phase 1" 
@@ -503,7 +470,7 @@ while True:
                   </div>
                 </div>
 
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/35 backdrop-blur-sm group">
+                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-transparent group">
                   <img 
                     src="high_res_frames/frame-260.jpg" 
                     alt="Subsurface model scan phase 2" 
@@ -564,7 +531,7 @@ while True:
               ].map((member, idx) => (
                 <div 
                   key={idx} 
-                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-black/35 backdrop-blur-sm border border-white/10 group cursor-pointer hover:border-[#C084FC] transition-all"
+                  className="flex flex-col items-start text-left bg-transparent group cursor-pointer"
                 >
                   <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/20 group-hover:border-[#C084FC] transition-all mb-3 relative shadow-2xl">
                     <img 
