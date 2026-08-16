@@ -1,63 +1,58 @@
-# Hardware Specifications & Tech Architecture
+# Hardware Specifications & Wiring Connections
 
-This document details the hardware components, sensor integration, and firmware logic utilized during the hackathon demonstration of A.U.R.A.
+![A.U.R.A. Hardware Connection Schematic](./public/aura_hardware_architecture.jpg)
 
----
-
-## 🛠️ Hardware Component Breakdown
-
-| Component | Function | Specifications |
-| :--- | :--- | :--- |
-| **Piezoelectric Geophone Sensors** | Seismic acoustic pulse detection | Frequency Response: 10 Hz – 250 Hz |
-| **Ultrasonic Transducers** | Subsurface void depth scanning | Range: 0.5m – 15m, 40kHz signal frequency |
-| **ESP32 Edge Microcontroller** | Fast local DSP & signal filtering | Dual-core 240MHz, Integrated Wi-Fi/BLE |
-| **GPS / GNSS Telemetry Module** | Location tagging for rescue tablets | Accuracy: < 2.5m CEP |
-| **LiFePO4 Power System** | Field operation power supply | 12V 10Ah portable power pack |
+This document details the hardware schematic connections, component breakdown, and step-by-step wiring instructions for the **A.U.R.A. Sub-Surface Cavity & Life Detection System** demonstrated for the hackathon.
 
 ---
 
-## 💻 Hackathon Firmware Logic (`aura_telemetry_feed.py`)
+## 🔌 Hardware Step-by-Step Connection Instructions
 
-```python
-import time
-import numpy as np
+### Step 1: Microcontroller Power Setup
+- Connect the **12V LiFePO4 Battery** output to an LM2596 step-down voltage regulator tuned to **5V DC**.
+- Connect the 5V Regulator Output to the **5V (VIN)** and **GND** pins on the **ESP32 DevKit V1**.
 
-class AuraTelemetry:
-    """
-    Simulates real-time subsurface void parsing & piezoelectric acoustic tap detection.
-    """
-    def __init__(self, sensor_frequency=18.4):
-        self.freq = sensor_frequency
-        self.active_voids = []
+### Step 2: Piezoelectric Seismic Acoustic Sensor Setup
+- Connect the **Signal (VOUT)** wire of the Piezoelectric Geophone Module to **Analog Pin A0 (GPIO 36)** on the ESP32.
+- Connect the Sensor **VCC** to 3.3V and **GND** to common Ground.
 
-    def scan_depth_anomalies(self):
-        # Generate simulated subsurface depth readings
-        anomalies = np.random.normal(3.42, 0.12, 10)
-        self.active_voids = [round(d, 2) for d in anomalies if d > 3.0]
-        return self.active_voids
+### Step 3: Subsurface Ultrasonic Depth Transducer Setup
+- Connect **Trigger Pin (TRIG)** on the Ultrasonic sensor to **Digital GPIO 5** on the ESP32.
+- Connect **Echo Pin (ECHO)** through a 1kΩ / 2kΩ resistor voltage divider to **Digital GPIO 18** on the ESP32.
+- Connect sensor VCC to 5V power rail and GND to common Ground.
 
-if __name__ == "__main__":
-    print("Initiating A.U.R.A. realtime cavity parsing...")
-    aura = AuraTelemetry()
-    for _ in range(5):
-        voids = aura.scan_depth_anomalies()
-        print(f"[TELEMETRY] Sub-surface scan complete: {len(voids)} active cavities found at depths {voids} meters.")
-        time.sleep(1.0)
-```
+### Step 4: GPS Telemetry Module Setup
+- Connect **NEO-6M GPS TX** pin to **ESP32 RX2 (GPIO 16)**.
+- Connect **NEO-6M GPS RX** pin to **ESP32 TX2 (GPIO 17)**.
 
 ---
 
-## 🛰️ Signal Pipeline Workflow
+## 🛠️ Hardware Component Table
 
-```
-[Piezoelectric & Ultrasonic Sensors]
-                 │
-                 ▼ (Raw Analog Telemetry)
-    [ESP32 Microcontroller Edge Node]
-                 │
-                 ▼ (DSP Noise Filtering & FFT)
-    [Live Telemetry Alert Broadcast]
-                 │
-                 ▼ (WebSocket Feed)
-    [A.U.R.A. Scrollytelling Web Dashboard]
+| Component | Function | Specifications | Saved File Path |
+| :--- | :--- | :--- | :--- |
+| **ESP32 Microcontroller** | Central Processing Node & Telemetry Stream | Dual Core 240MHz, Wi-Fi/BLE | `firmware/esp32_aura_node.ino` |
+| **Piezoelectric Sensor** | Seismic Survivor Tapping Detection | Range: 10Hz - 250Hz | Pin A0 (GPIO 36) |
+| **Ultrasonic Transducer** | Subsurface Air Pocket Depth Scanner | 40kHz, 0.5m - 15m Range | GPIO 5 / GPIO 18 |
+| **NEO-6M GPS Module** | Live Target Location Coordinates | UART Stream (RX2/TX2) | GPIO 16 / GPIO 17 |
+| **Hardware Architecture Diagram** | Complete Wiring Visual Schematic | 16:9 Schematic Graphic | `public/aura_hardware_architecture.jpg` |
+
+---
+
+## 💻 ESP32 Microcontroller Source Code (`firmware/esp32_aura_node.ino`)
+
+The actual C++ / Arduino firmware driving the hardware sensors is located at:
+📁 **[`firmware/esp32_aura_node.ino`](./firmware/esp32_aura_node.ino)**
+
+```cpp
+// Excerpt from firmware/esp32_aura_node.ino
+void loop() {
+  float currentDepthMeters = readSubsurfaceDepthMeters();
+  int acousticPulseValue = readSeismicAcousticPulse();
+
+  if (acousticPulseValue > ACOUSTIC_TAP_THRESHOLD) {
+    digitalWrite(LED_STATUS_PIN, HIGH);
+    Serial.println(">>> [ALERT] SURVIVOR TAP SIGNATURE DETECTED! TRANSMITTING GPS...");
+  }
+}
 ```
