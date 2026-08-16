@@ -30,7 +30,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
           })
           .join("")
       );
-      if (iteration >= text.length) clearInterval(iteration);
+      if (iteration >= text.length) clearInterval(interval);
       iteration += 1;
     }, 30);
   };
@@ -48,6 +48,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [entranceComplete, setEntranceComplete] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollFraction, setScrollFraction] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -56,48 +57,64 @@ export default function App() {
     const loaderTimer = setTimeout(() => {
       setLoading(false);
       setTimeout(() => setEntranceComplete(true), 150);
-    }, 2000);
+    }, 1800);
     return () => clearTimeout(loaderTimer);
   }, []);
 
-  // SCROLLYTELLING CANVAS ENGINE (Zero Blank Screen, Instant Frame-1 Render)
+  // SCROLLYTELLING CANVAS ENGINE (GPU & Thermal Optimized for Mobile)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext('2d', { alpha: false }); // Disable alpha for 30% faster GPU rendering
     if (!context) return;
 
     const frameCount = 311;
     const currentFrame = (index: number) => `high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
     const images: HTMLImageElement[] = new Array(frameCount);
 
-    // Render Frame 1 Immediately on Mount (Zero Blank Screen)
+    // Render Frame 1 Immediately on Mount
     const firstImg = new Image();
     firstImg.src = currentFrame(1);
     images[0] = firstImg;
     firstImg.onload = () => drawFrame(1);
 
-    // Preload remaining frames asynchronously
-    for (let i = 2; i <= frameCount; i++) {
-      const img = new Image();
-      img.src = currentFrame(i);
-      images[i - 1] = img;
-    }
+    // Preload remaining frames asynchronously with idle delay to prevent phone heating
+    let preloadIndex = 2;
+    const preloadChunk = () => {
+      const isMobile = window.innerWidth < 640;
+      const step = isMobile ? 2 : 1; // On mobile, preload 1 in every 2 frames to save 50% RAM & battery
+      for (let i = 0; i < 15 && preloadIndex <= frameCount; i += step, preloadIndex += step) {
+        if (!images[preloadIndex - 1]) {
+          const img = new Image();
+          img.src = currentFrame(preloadIndex);
+          images[preloadIndex - 1] = img;
+        }
+      }
+      if (preloadIndex <= frameCount) {
+        setTimeout(preloadChunk, isMobile ? 120 : 50);
+      }
+    };
+    setTimeout(preloadChunk, 200);
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
       let img = images[index - 1];
       if (!img || !img.complete) {
-        img = images[0]; // Instant fallback to frame 1 if loading
+        // Nearest loaded neighbor fallback
+        for (let offset = 1; offset < 10; offset++) {
+          const prev = images[Math.max(0, index - 1 - offset)];
+          if (prev && prev.complete) { img = prev; break; }
+        }
       }
+      if (!img || !img.complete) img = images[0];
       if (!img || !img.complete) return;
 
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      const hRatio = canvas.width / img.width;
-      const vRatio = canvas.height / img.height;
-      const ratio = Math.max(hRatio, vRatio); // Perfect 8K full cover fit on both mobile and desktop
+      const isMobile = window.innerWidth < 640;
+      const overscanScale = isMobile ? 1.04 : 1.05;
 
+      const ratio = Math.max(canvas.width / img.width, canvas.height / img.height) * overscanScale;
       const width = img.width * ratio;
       const height = img.height * ratio;
       const x = (canvas.width - width) / 2;
@@ -107,19 +124,22 @@ export default function App() {
     };
 
     const resizeAndDraw = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const isMobile = window.innerWidth < 640;
+      // Cap DPR at 1.0 on mobile to prevent phone battery drain and overheating
+      const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = 'high';
+      context.imageSmoothingQuality = isMobile ? 'medium' : 'high';
       drawFrame(Math.round(currentFrameIndex));
     };
 
     let targetFrameIndex = 1;
     let currentFrameIndex = 1;
     let lastRenderedIndex = -1;
+    let lastRenderTime = 0;
 
     const handleScroll = () => {
       const html = document.documentElement;
@@ -129,15 +149,21 @@ export default function App() {
     };
 
     let animationFrameId: number;
-    const renderLoop = () => {
-      currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.1;
-      if (Math.abs(targetFrameIndex - currentFrameIndex) < 0.01) {
-        currentFrameIndex = targetFrameIndex;
-      }
-      const roundedIndex = Math.round(currentFrameIndex);
-      if (roundedIndex !== lastRenderedIndex) {
-        drawFrame(roundedIndex);
-        lastRenderedIndex = roundedIndex;
+    const renderLoop = (timestamp: number) => {
+      const isMobile = window.innerWidth < 640;
+      const frameInterval = isMobile ? 33 : 16; // 30 FPS throttle on mobile to keep phone cool
+
+      if (timestamp - lastRenderTime >= frameInterval) {
+        currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.12;
+        if (Math.abs(targetFrameIndex - currentFrameIndex) < 0.01) {
+          currentFrameIndex = targetFrameIndex;
+        }
+        const roundedIndex = Math.round(currentFrameIndex);
+        if (roundedIndex !== lastRenderedIndex) {
+          drawFrame(roundedIndex);
+          lastRenderedIndex = roundedIndex;
+        }
+        lastRenderTime = timestamp;
       }
       animationFrameId = requestAnimationFrame(renderLoop);
     };
@@ -146,7 +172,7 @@ export default function App() {
     window.addEventListener('resize', resizeAndDraw);
     
     resizeAndDraw();
-    renderLoop();
+    renderLoop(0);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -180,21 +206,27 @@ export default function App() {
   const telemetryScroll = useSectionScroll(telemetryRef);
   const teamScroll = useSectionScroll(teamRef);
 
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    setMobileMenuOpen(false);
+    ref.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (ALWAYS MOUNTED FOR INSTANT RENDER - ZERO BLANK SCREEN) --- */}
+      {/* --- SCROLLYTELLING CANVAS (THERMAL OPTIMIZED AT 30FPS ON MOBILE) --- */}
       <canvas 
         ref={canvasRef} 
         className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
         style={{ 
           filter: "contrast(1.08) saturate(1.1)",
           zIndex: 0,
-          opacity: scrollFraction > 0.94 ? 0 : 1
+          opacity: scrollFraction > 0.94 ? 0 : 1,
+          willChange: "transform"
         }}
       />
 
-      {/* --- GALAXY VIDEO BACKGROUND (FADES IN STRICTLY AT THE VERY END) --- */}
+      {/* --- GALAXY VIDEO BACKGROUND (FADES IN AT VERY END) --- */}
       <video
         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
         autoPlay
@@ -208,7 +240,7 @@ export default function App() {
         }}
       />
 
-      {/* --- ENTRANCE LOADER --- */}
+      {/* --- FAST ENTRANCE LOADER --- */}
       <AnimatePresence>
         {loading && (
           <motion.div
@@ -251,52 +283,89 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- PROPERLY ARRANGED NAVBAR (DESKTOP & MOBILE SAFELY ALIGNED) --- */}
+      {/* --- CLEAN MOBILE & DESKTOP NAVBAR --- */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="fixed top-3 sm:top-5 left-3 right-3 sm:left-6 sm:right-6 z-50 py-2.5 px-4 sm:px-6 max-w-7xl mx-auto flex items-center justify-between bg-black/60 backdrop-blur-xl border border-white/15 rounded-full shadow-2xl"
+        className="fixed top-4 left-4 right-4 sm:top-5 sm:left-6 sm:right-6 z-50 h-14 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between bg-black/70 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl"
       >
-        {/* Left: Brand Logo & Title */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Left: Logo & Brand */}
+        <div className="flex items-center gap-3">
           <motion.div
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            className="cursor-pointer flex items-center"
+            className="cursor-pointer flex items-center gap-2.5"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
             <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border-2 border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.6)]" />
+            <span className="text-base font-extrabold tracking-widest text-white font-display">A.U.R.A.</span>
           </motion.div>
-          <span className="text-sm sm:text-base font-extrabold tracking-wider text-white font-display hidden sm:inline">A.U.R.A.</span>
         </div>
 
-        {/* Center: Navigation Jump Links */}
-        <div className="flex items-center gap-4 sm:gap-7 overflow-x-auto py-1 scrollbar-none text-[11px] sm:text-[12px] uppercase font-bold tracking-widest text-white/90 font-display">
-          <button onClick={() => heroRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Hero" /></button>
-          <button onClick={() => problemRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Problem" /></button>
-          <button onClick={() => missionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Mission" /></button>
-          <button onClick={() => techRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Tech" /></button>
-          <button onClick={() => teamRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-[#C084FC] whitespace-nowrap transition-colors"><ScrambleText text="Team" /></button>
+        {/* Center: Desktop Navigation Links */}
+        <div className="hidden md:flex items-center gap-8 text-[11px] uppercase font-bold tracking-widest text-white/90 font-display">
+          <button onClick={() => scrollToSection(heroRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Hero" /></button>
+          <button onClick={() => scrollToSection(problemRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Problem" /></button>
+          <button onClick={() => scrollToSection(missionRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Mission" /></button>
+          <button onClick={() => scrollToSection(techRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Tech" /></button>
+          <button onClick={() => scrollToSection(teamRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Team" /></button>
         </div>
 
-        {/* Right: Direct GitHub Repo Button */}
-        <div className="flex items-center gap-2 shrink-0 ml-2">
+        {/* Right: GitHub Button (Desktop) & Hamburger Toggle (Mobile) */}
+        <div className="flex items-center gap-3">
           <motion.a
             href="https://github.com/jafferrilwaan-png/A.U.R.A-System"
             target="_blank"
             rel="noreferrer"
             whileHover={{ scale: 1.05, backgroundColor: "#C084FC", color: "#000" }}
             whileTap={{ scale: 0.95 }}
-            className="h-8 sm:h-9 px-3.5 sm:px-5 bg-white/15 backdrop-blur-md rounded-full flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all font-display shadow-md"
+            className="hidden sm:flex h-9 px-4 sm:px-5 bg-white/15 backdrop-blur-md rounded-full items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all font-display shadow-md"
           >
-            <i className="bi bi-github text-xs sm:text-sm" />
-            <span className="hidden md:inline"><ScrambleText text="Repository" /></span>
+            <i className="bi bi-github text-sm" />
+            <ScrambleText text="Repository" />
           </motion.a>
+
+          {/* Mobile Hamburger Button */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-xl border border-white/20 active:scale-95 transition-all"
+            aria-label="Toggle Navigation Menu"
+          >
+            <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} />
+          </button>
         </div>
       </motion.nav>
 
-      {/* --- CONTENT OVERLAYS --- */}
+      {/* --- MOBILE DROPDOWN MENU --- */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-20 left-4 right-4 z-50 p-6 bg-black/90 backdrop-blur-2xl border border-white/20 rounded-3xl md:hidden flex flex-col gap-4 text-center shadow-2xl"
+          >
+            <button onClick={() => scrollToSection(heroRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Hero</button>
+            <button onClick={() => scrollToSection(problemRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Problem</button>
+            <button onClick={() => scrollToSection(missionRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Mission</button>
+            <button onClick={() => scrollToSection(techRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Tech</button>
+            <button onClick={() => scrollToSection(teamRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Team</button>
+            <a 
+              href="https://github.com/jafferrilwaan-png/A.U.R.A-System" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="mt-2 py-3 bg-[#9333EA] text-white font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 font-display"
+            >
+              <i className="bi bi-github text-lg" />
+              GitHub Repository
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- CONTENT OVERLAYS (HIGH CONTRAST & SLEEK MOBILE CARDS) --- */}
       <div className="relative z-10 w-full bg-transparent">
         
         {/* --- SECTION 1: HERO --- */}
@@ -331,7 +400,7 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <div className="bg-transparent">
+              <div className="p-5 sm:p-6 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
                 <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
@@ -339,7 +408,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="bg-transparent">
+              <div className="p-5 sm:p-6 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
                 <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
@@ -359,13 +428,13 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-center text-left">
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-transparent">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/30 backdrop-blur-sm rounded-r-xl">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80,000+</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
                 <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
               </div>
 
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-transparent">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/30 backdrop-blur-sm rounded-r-xl">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80%</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
                 <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
@@ -396,7 +465,7 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="p-4 sm:p-5 bg-transparent flex flex-col justify-between min-h-[160px] text-left">
+                <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col justify-between min-h-[160px] text-left">
                   <div>
                     <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
                     <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
@@ -454,7 +523,7 @@ while True:
 
               {/* Right Column: Model Images */}
               <div className="flex flex-col gap-6 sm:gap-8">
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-transparent group">
+                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group">
                   <img 
                     src="high_res_frames/frame-100.jpg" 
                     alt="Subsurface model scan phase 1" 
@@ -470,7 +539,7 @@ while True:
                   </div>
                 </div>
 
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-transparent group">
+                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group">
                   <img 
                     src="high_res_frames/frame-260.jpg" 
                     alt="Subsurface model scan phase 2" 
@@ -531,7 +600,7 @@ while True:
               ].map((member, idx) => (
                 <div 
                   key={idx} 
-                  className="flex flex-col items-start text-left bg-transparent group cursor-pointer"
+                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC] transition-all"
                 >
                   <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/20 group-hover:border-[#C084FC] transition-all mb-3 relative shadow-2xl">
                     <img 
