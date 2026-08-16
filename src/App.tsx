@@ -734,14 +734,14 @@ export default function App() {
                 {
                   name: "Jaffer Rilwaan V",
                   role: "Lead Systems Architect",
-                  img: "high_res_frames/frame-050.jpg",
+                  img: "/jaffer_rilwaan.png",
                   bio: "Architecting the core structural algorithms and real-time mapping engine.",
-                  linkedin: "https://github.com/jafferrilwaan-png/A.U.R.A-System"
+                  linkedin: "https://www.linkedin.com/in/jaffer-rilwaan-b4b803386"
                 },
                 {
                   name: "Hannah Blessy J",
                   role: "Hardware & Sensor Lead",
-                  img: "high_res_frames/frame-180.jpg",
+                  img: "/hannah_blessy.jpg",
                   bio: "Specializing in hardware arrays, piezoelectric logic, and real-time sensor processing.",
                   linkedin: "https://www.linkedin.com/in/hannah-blessy-j-b0773636b/"
                 },
