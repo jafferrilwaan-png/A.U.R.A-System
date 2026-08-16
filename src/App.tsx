@@ -822,7 +822,7 @@ export default function App() {
 
         {/* --- FOOTER --- */}
         <footer className="relative bg-[#05070a]/45 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-between pt-12 pb-10 sm:pt-16 sm:pb-12 px-5 sm:px-12 mt-12 z-20">
-          <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-12 border-b border-white/10 pb-12">
+          <div className="w-full max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12 border-b border-white/10 pb-12">
              <div className="flex flex-col items-start gap-4">
                 <motion.div 
                   className="flex items-center gap-3 cursor-pointer group"
@@ -848,16 +848,43 @@ export default function App() {
              </div>
 
              <div className="flex flex-col items-start gap-4">
-                <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Contact & Resources</h4>
+                <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Team Profiles</h4>
+                <div className="flex flex-col gap-3 text-xs sm:text-sm text-white/70 font-medium">
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Jaffer Rilwaan V</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="https://www.linkedin.com/in/jaffer-rilwaan-b4b803386" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/jaffer_rilwaan.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                      </div>
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Hannah Blessy J</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="https://www.linkedin.com/in/hannah-blessy-j-b0773636b/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/hannah_blessy.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                      </div>
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Gurudev Kumaravel</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="https://www.linkedin.com/in/gurudev-kumaravel-955998355/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/gurudev_kumaravel.jpg" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                      </div>
+                   </div>
+                </div>
+             </div>
+
+             <div className="flex flex-col items-start gap-4">
+                <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Resources & Code</h4>
                 <div className="flex flex-col gap-3 text-xs sm:text-sm text-white/70 font-medium">
                    <a href="mailto:tactical@aurasystem.dev" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
                      <i className="bi bi-envelope text-base" /> tactical@aurasystem.dev
                    </a>
                    <a href="https://github.com/jafferrilwaan-png/A.U.R.A-System" target="_blank" rel="noreferrer" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
-                     <i className="bi bi-file-earmark-text text-base" /> Documentation
+                     <i className="bi bi-github text-base" /> GitHub Repository
                    </a>
                    <a href="https://github.com/jafferrilwaan-png/A.U.R.A-System" target="_blank" rel="noreferrer" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
-                     <i className="bi bi-github text-base" /> GitHub Repository
+                     <i className="bi bi-file-earmark-text text-base" /> Documentation
                    </a>
                 </div>
              </div>
