@@ -51,6 +51,9 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollFraction, setScrollFraction] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
+  const scrollFractionRef = useRef(0);
 
   // Loading Screen Timer
   useEffect(() => {
@@ -111,12 +114,10 @@ export default function App() {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
       // --- WATERMARK ASSASSINATION ---
-      // We brutally crop off the bottom 12% and right 10% of the source image!
-      // This completely obliterates the Minimax Hailuo logo from existence before it even reaches the canvas.
       const sx = 0;
       const sy = 0;
-      const sWidth = img.width * 0.90;  // Cut off right 10%
-      const sHeight = img.height * 0.88; // Cut off bottom 12%
+      const sWidth = img.width * 0.90;  
+      const sHeight = img.height * 0.88; 
 
       // Calculate perfect cover fit ratios based on the NEW cleanly cropped dimensions
       const hRatio = canvas.width / sWidth;
@@ -126,15 +127,20 @@ export default function App() {
       const dWidth = sWidth * ratio;
       const dHeight = sHeight * ratio;
       
-      // Center vertically
       const dy = (canvas.height - dHeight) / 2;
       
-      // On mobile, align to left edge so the man is fully visible.
-      // On desktop, center horizontally.
+      // On mobile, pan from left to center as user scrolls
       const isMobile = window.innerWidth < 640;
-      const dx = isMobile ? 0 : (canvas.width - dWidth) / 2;
+      let dx = 0;
+      if (isMobile) {
+        const centerDx = (canvas.width - dWidth) / 2;
+        // scrollFraction goes from 0 to ~1
+        const progress = Math.min(1, Math.max(0, scrollFractionRef.current));
+        dx = progress * centerDx;
+      } else {
+        dx = (canvas.width - dWidth) / 2;
+      }
 
-      // Draw the brutally cropped image to the canvas
       context.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
     };
 
@@ -159,6 +165,7 @@ export default function App() {
       const html = document.documentElement;
       const fraction = html.scrollTop / (html.scrollHeight - html.clientHeight);
       setScrollFraction(fraction);
+      scrollFractionRef.current = fraction;
       targetFrameIndex = Math.max(1, Math.min(frameCount, fraction * frameCount));
     };
 
@@ -173,7 +180,9 @@ export default function App() {
           currentFrameIndex = targetFrameIndex;
         }
         const roundedIndex = Math.round(currentFrameIndex);
-        if (roundedIndex !== lastRenderedIndex) {
+        
+        // Redraw if index changed OR if we are on mobile and scrolling (dx depends on scroll)
+        if (roundedIndex !== lastRenderedIndex || (isMobile && targetFrameIndex !== currentFrameIndex)) {
           drawFrame(roundedIndex);
           lastRenderedIndex = roundedIndex;
         }
@@ -228,7 +237,7 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (RAZOR SHARP CRISP RENDER, WATERMARK OBLITERATED, FULL MAN VISIBLE) --- */}
+      {/* --- SCROLLYTELLING CANVAS --- */}
       <canvas 
         ref={canvasRef} 
         className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
@@ -240,7 +249,7 @@ export default function App() {
         }}
       />
 
-      {/* --- GALAXY VIDEO BACKGROUND (FADES IN AT VERY END) --- */}
+      {/* --- GALAXY VIDEO BACKGROUND --- */}
       <video
         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
         autoPlay
@@ -302,7 +311,7 @@ export default function App() {
         initial={{ opacity: 0, y: -20 }}
         animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="fixed top-4 left-4 right-4 sm:top-5 sm:left-6 sm:right-6 z-50 h-14 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between bg-black/70 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl"
+        className="fixed top-4 left-4 right-4 sm:top-5 sm:left-6 sm:right-6 z-50 h-14 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between bg-[#05070a]/80 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl"
       >
         {/* Left: Logo & Brand */}
         <div className="flex items-center gap-3">
@@ -312,7 +321,7 @@ export default function App() {
             className="cursor-pointer flex items-center gap-2.5"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border-2 border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.6)]" />
+            <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.4)]" />
             <span className="text-base font-extrabold tracking-widest text-white font-display">A.U.R.A.</span>
           </motion.div>
         </div>
@@ -334,7 +343,7 @@ export default function App() {
             rel="noreferrer"
             whileHover={{ scale: 1.05, backgroundColor: "#C084FC", color: "#000" }}
             whileTap={{ scale: 0.95 }}
-            className="hidden sm:flex h-9 px-4 sm:px-5 bg-white/15 backdrop-blur-md rounded-full items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all font-display shadow-md"
+            className="hidden sm:flex h-9 px-4 sm:px-5 bg-white/10 backdrop-blur-md rounded-full items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white border border-white/10 transition-all font-display shadow-md"
           >
             <i className="bi bi-github text-sm" />
             <ScrambleText text="Repository" />
@@ -343,7 +352,7 @@ export default function App() {
           {/* Mobile Hamburger Button */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-xl border border-white/20 active:scale-95 transition-all"
+            className="md:hidden w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-xl border border-white/10 active:scale-95 transition-all"
             aria-label="Toggle Navigation Menu"
           >
             <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} />
@@ -359,7 +368,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-20 left-4 right-4 z-50 p-6 bg-black/90 backdrop-blur-2xl border border-white/20 rounded-3xl md:hidden flex flex-col gap-4 text-center shadow-2xl"
+            className="fixed top-20 left-4 right-4 z-50 p-6 bg-[#05070a]/95 backdrop-blur-2xl border border-white/20 rounded-3xl md:hidden flex flex-col gap-4 text-center shadow-2xl"
           >
             <button onClick={() => scrollToSection(heroRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Hero</button>
             <button onClick={() => scrollToSection(problemRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Problem</button>
@@ -414,18 +423,18 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <div className="p-5 sm:p-6 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
+              <div className="p-5 sm:p-6 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 shadow-lg">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
-                <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                   First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
                 </p>
               </div>
 
-              <div className="p-5 sm:p-6 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
+              <div className="p-5 sm:p-6 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 shadow-lg">
                 <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
                 <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
-                <p className="text-sm sm:text-base text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                   Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
                 </p>
               </div>
@@ -442,21 +451,21 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-center text-left">
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/30 backdrop-blur-sm rounded-r-xl">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80,000+</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
-                <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
+                <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
               </div>
 
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-black/30 backdrop-blur-sm rounded-r-xl">
+              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
                 <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80%</span>
                 <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
-                <p className="text-xs sm:text-sm text-white mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
+                <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
               </div>
 
               <div className="md:col-span-1 border-t md:border-t-0 md:border-l border-white/20 md:pl-8 pt-4 md:pt-0">
                 <span className="text-[#C084FC] text-xs font-bold uppercase tracking-widest block mb-2 font-display drop-shadow-sm">MISSION STATEMENT</span>
-                <p className="text-sm sm:text-base text-white leading-relaxed font-light italic drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
+                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-light italic drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
                   "Our mission is absolute: Zero unmapped survivors. By translating seismic acoustics into immediate locational coordinates, A.U.R.A. ensures that no life remains buried in silence."
                 </p>
               </div>
@@ -479,96 +488,140 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 flex flex-col justify-between min-h-[160px] text-left">
+                <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 flex flex-col justify-between min-h-[160px] text-left shadow-lg">
                   <div>
                     <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
                     <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
                   </div>
-                  <p className="text-xs sm:text-sm text-white leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
+                  <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
                 </div>
               ))}
             </div>
           </motion.div>
         </section>
 
-        {/* --- SECTION 4: TELEMETRY & MODELS SECTION --- */}
-        <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
+        {/* --- SECTION 4: LIVE TACTICAL DASHBOARD --- */}
+        <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent overflow-hidden">
           <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">VISUAL DATA</span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Telemetry & Models</h2>
+              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">LIVE TELEMETRY</span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Tactical Dashboard</h2>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6 sm:gap-12 items-start">
-              {/* Left Column: Browser Mockup */}
-              <div className="lg:col-span-2 rounded-xl overflow-hidden border border-white/20 bg-black/80 shadow-2xl">
-                <div className="h-10 bg-white/10 border-b border-white/10 px-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                    <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                    <span className="w-3 h-3 rounded-full bg-[#27C93F]" />
+            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+              
+              {/* Left Column: Anti-Gravity Card Entry */}
+              <motion.div 
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="relative"
+              >
+                <div className="animate-anti-gravity rounded-2xl bg-[#05070a]/90 backdrop-blur-xl border border-white/15 p-6 sm:p-8 shadow-[0_0_40px_rgba(192,132,252,0.15)] relative overflow-hidden group">
+                  
+                  {/* Tech borders and crosshairs */}
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-[#C084FC] opacity-70" />
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-[#C084FC] opacity-70" />
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-[#C084FC] opacity-70" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-[#C084FC] opacity-70" />
+                  
+                  <div className="absolute -inset-1 bg-gradient-to-tr from-[#C084FC]/0 via-[#C084FC]/5 to-[#C084FC]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+
+                  <div className="flex items-start gap-5 sm:gap-6 relative z-10">
+                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-lg border border-[#C084FC]/40 overflow-hidden shrink-0 relative shadow-inner">
+                      <img src="high_res_frames/frame-300.jpg" alt="Priyanka Mohan - UI/UX Developer Tactical Profile" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                      <div className="absolute inset-0 bg-[#C084FC]/10 pointer-events-none" />
+                      
+                      {/* Scanning line overlay */}
+                      <div className="absolute inset-0 flex flex-col justify-between opacity-30 pointer-events-none">
+                         <div className="w-full h-[1px] bg-white/20" />
+                         <div className="w-full h-[1px] bg-white/20" />
+                         <div className="w-full h-[1px] bg-white/20" />
+                         <div className="w-full h-[1px] bg-white/20" />
+                         <div className="w-full h-[1px] bg-white/20" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col justify-center">
+                      <span className="text-[#C084FC] text-[10px] sm:text-xs font-bold tracking-widest uppercase mb-1 drop-shadow-sm"><ScrambleText text="UI/UX DEVELOPER" /></span>
+                      <h3 className="text-lg sm:text-2xl font-black text-white uppercase tracking-tight font-display mb-3 drop-shadow-md">Priyanka Mohan</h3>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-[10px] sm:text-xs font-mono text-white/80 bg-black/40 px-2 py-1 rounded w-fit border border-white/5">
+                          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          STATUS: ACTIVE_LINK
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] sm:text-xs font-mono text-white/80 bg-black/40 px-2 py-1 rounded w-fit border border-white/5">
+                          <i className="bi bi-geo-alt text-[#C084FC]" />
+                          SECTOR_07_ALPHA
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-xs text-white/80 font-mono select-none">telemetry_feed.py</span>
-                  <div className="w-12" />
-                </div>
-                <pre className="p-4 sm:p-8 overflow-x-auto text-[11px] sm:text-xs md:text-sm text-white font-mono leading-relaxed select-text font-medium">
-{`import time
-import numpy as np
-
-class AuraTelemetry:
-    def __init__(self, sensor_frequency=18.4):
-        self.freq = sensor_frequency
-        self.active_voids = []
-
-    def scan_depth_anomalies(self):
-        # Scan subsurface telemetry mapping
-        anomalies = np.random.normal(3.42, 0.12, 10)
-        self.active_voids = [d for d in anomalies if d > 3.0]
-        return self.active_voids
-
-# Initiating realtime cavity parsing...
-aura = AuraTelemetry()
-while True:
-    voids = aura.scan_depth_anomalies()
-    print(f"Sub-surface scan complete: {len(voids)} active cavities found.")
-    time.sleep(1.0)`}
-                </pre>
-              </div>
-
-              {/* Right Column: Model Images */}
-              <div className="flex flex-col gap-6 sm:gap-8">
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group">
-                  <img 
-                    src="high_res_frames/frame-100.jpg" 
-                    alt="Subsurface model scan phase 1" 
-                    className="w-full h-[160px] sm:h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
-                    onError={(e) => {
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
-                    }}
-                  />
-                  <div className="pt-3 text-left">
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm">MODEL PROFILE 01</span>
-                    <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-1 font-display">Tunnel Cavity Scan</h4>
-                    <p className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">Maps structural cavities and returns safety margins.</p>
+                  
+                  <div className="mt-6 pt-6 border-t border-white/10 relative z-10">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-[#0a0d14] border border-white/10 rounded-md p-2 text-center shadow-inner group-hover:border-[#C084FC]/30 transition-colors">
+                         <div className="text-[9px] sm:text-[10px] text-white/60 mb-1 tracking-wider">UPTIME</div>
+                         <div className="text-xs sm:text-sm font-mono font-bold text-[#C084FC]">99.9%</div>
+                      </div>
+                      <div className="bg-[#0a0d14] border border-white/10 rounded-md p-2 text-center shadow-inner group-hover:border-[#C084FC]/30 transition-colors">
+                         <div className="text-[9px] sm:text-[10px] text-white/60 mb-1 tracking-wider">PING</div>
+                         <div className="text-xs sm:text-sm font-mono font-bold text-[#C084FC]">12ms</div>
+                      </div>
+                      <div className="bg-[#0a0d14] border border-white/10 rounded-md p-2 text-center shadow-inner group-hover:border-[#C084FC]/30 transition-colors">
+                         <div className="text-[9px] sm:text-[10px] text-white/60 mb-1 tracking-wider">DATA</div>
+                         <div className="text-xs sm:text-sm font-mono font-bold text-[#C084FC]">RX_OK</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </motion.div>
 
-                <div className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group">
-                  <img 
-                    src="high_res_frames/frame-260.jpg" 
-                    alt="Subsurface model scan phase 2" 
-                    className="w-full h-[160px] sm:h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
-                    onError={(e) => {
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
-                    }}
-                  />
-                  <div className="pt-3 text-left">
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm">MODEL PROFILE 02</span>
-                    <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-1 font-display">Void Isolation Map</h4>
-                    <p className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">Highlights internal structures to locate survivors.</p>
-                  </div>
+              {/* Right Column: Fading Scrolling Data Log */}
+              <motion.div 
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                className="h-[300px] sm:h-[400px] bg-[#05070a]/90 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden relative font-mono text-[10px] sm:text-xs shadow-2xl p-6 shadow-[0_0_30px_rgba(0,0,0,0.8)]"
+              >
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#C084FC]/80 to-transparent" />
+                <div className="absolute top-4 left-5 text-[9px] sm:text-[10px] text-white/50 tracking-widest z-10 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C084FC] animate-pulse" />
+                  LIVE_FEED_TERMINAL //
                 </div>
-              </div>
+                
+                <div className="w-full h-full pt-8 mask-fade-y overflow-hidden relative">
+                   <div className="absolute w-full animate-scroll-log flex flex-col gap-4 sm:gap-5 text-white/70">
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span>A.U.R.A Core Engine initialized. Validating active sub-routines...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Calibrating piezoelectric arrays. Network latency: 12ms. OK.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-yellow-400 shrink-0">[WARN]</span> <span>Structural anomaly detected at sector 4. Density drop 14%.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span className="font-bold text-white">VOID 14 FOUND: depth 3.2m, volume 18m³</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-red-400 shrink-0 font-bold">[ALERT]</span> <span className="font-bold text-white">ACOUSTIC SIGNATURE 09 ID'D: distress tap (pattern match 88%)</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Triangulating exact coordinates...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-green-400 shrink-0 font-bold">[SUC]</span> <span>Lock acquired. Transmitting to rescue edge dashboards.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span>Scanning deeper strata for secondary collapsed voids...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span className="font-bold text-white">VOID 15 FOUND: depth 5.1m, volume 12m³</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Thermal baseline stable. No heat signatures in VOID 15.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-white/50 shrink-0">[LOG]</span> <span>Waiting for next seismic event...</span></div>
+                      
+                      {/* Repeat for endless loop effect */}
+                      <div className="flex gap-3 sm:gap-4 mt-12"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span>A.U.R.A Core Engine initialized. Validating active sub-routines...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Calibrating piezoelectric arrays. Network latency: 12ms. OK.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-yellow-400 shrink-0">[WARN]</span> <span>Structural anomaly detected at sector 4. Density drop 14%.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span className="font-bold text-white">VOID 14 FOUND: depth 3.2m, volume 18m³</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-red-400 shrink-0 font-bold">[ALERT]</span> <span className="font-bold text-white">ACOUSTIC SIGNATURE 09 ID'D: distress tap (pattern match 88%)</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Triangulating exact coordinates...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-green-400 shrink-0 font-bold">[SUC]</span> <span>Lock acquired. Transmitting to rescue edge dashboards.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span>Scanning deeper strata for secondary collapsed voids...</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-[#C084FC] shrink-0">[SYS]</span> <span className="font-bold text-white">VOID 15 FOUND: depth 5.1m, volume 12m³</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-cyan-400 shrink-0">[DAT]</span> <span>Thermal baseline stable. No heat signatures in VOID 15.</span></div>
+                      <div className="flex gap-3 sm:gap-4"><span className="text-white/50 shrink-0">[LOG]</span> <span>Waiting for next seismic event...</span></div>
+                   </div>
+                </div>
+              </motion.div>
+
             </div>
           </motion.div>
         </section>
@@ -579,7 +632,7 @@ while True:
             <div className="text-center mb-12 sm:mb-16">
               <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase mb-2 block font-display drop-shadow-md">COLLABORATIVE ARCHITECTURE</span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Core Architecture Team</h2>
-              <p className="text-xs sm:text-sm text-white mt-2 max-w-md mx-auto leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+              <p className="text-xs sm:text-sm text-white/90 mt-2 max-w-md mx-auto leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                 The core minds behind the A.U.R.A. sub-surface cavity & life detection system architecture.
               </p>
             </div>
@@ -589,47 +642,58 @@ while True:
                 {
                   name: "Jaffer Rilwaan V",
                   role: "Lead Systems Architect",
-                  img: "high_res_frames/frame-050.jpg"
+                  img: "high_res_frames/frame-050.jpg",
+                  bio: "Architecting the core structural algorithms and real-time mapping engine."
                 },
                 {
                   name: "Aravind Kumar",
                   role: "Sensor Integration Lead",
-                  img: "high_res_frames/frame-120.jpg"
+                  img: "high_res_frames/frame-120.jpg",
+                  bio: "Specializing in piezoelectric hardware arrays and seismic signal filtering."
                 },
                 {
                   name: "Divya S.",
                   role: "Firmware Engineer",
-                  img: "high_res_frames/frame-180.jpg"
+                  img: "high_res_frames/frame-180.jpg",
+                  bio: "Writing zero-latency micro-controller logic for rapid field deployment."
                 },
                 {
                   name: "Karthik Raja",
                   role: "Cloud Infrastructure",
-                  img: "high_res_frames/frame-220.jpg"
+                  img: "high_res_frames/frame-220.jpg",
+                  bio: "Managing the secure telemetry broadcasting and edge network servers."
                 },
                 {
                   name: "Priyanka Mohan",
                   role: "UI/UX Developer",
-                  img: "high_res_frames/frame-300.jpg"
+                  img: "high_res_frames/frame-300.jpg",
+                  bio: "Designing the tactical dashboards used directly by first responders."
                 }
               ].map((member, idx) => (
                 <div 
                   key={idx} 
-                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC] transition-all"
+                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300"
                 >
-                  <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/20 group-hover:border-[#C084FC] transition-all mb-3 relative shadow-2xl">
+                  <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/40 transition-all mb-3 relative shadow-xl">
                     <img 
                       src={member.img} 
-                      alt={member.name} 
-                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+                      alt={`Portrait of ${member.name}, ${member.role}`} 
+                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                       onError={(e) => {
                         e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${member.name}`;
                       }}
                     />
-                    <div className="absolute inset-0 bg-[#C084FC]/15 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                    
+                    {/* Dark frosted-glass overlay for Bio reveal on hover */}
+                    <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 backdrop-blur-[2px]">
+                       <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                         {member.bio}
+                       </p>
+                    </div>
                   </div>
                   
                   <h3 className="text-xs sm:text-base font-bold text-flowing-purple mb-0.5 tracking-tight uppercase font-display drop-shadow-md"><ScrambleText text={member.name} /></h3>
-                  <div className="text-[10px] sm:text-xs text-white tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
+                  <div className="text-[10px] sm:text-xs text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
                 </div>
               ))}
             </div>
@@ -637,31 +701,72 @@ while True:
         </section>
 
         {/* --- FOOTER --- */}
-        <footer className="relative bg-transparent border-t border-white/10 flex flex-col items-center justify-between min-h-[400px] py-12 sm:py-16 px-5 sm:px-12">
-          <div className="flex flex-col items-center justify-center text-center my-8 sm:my-12 bg-transparent max-w-2xl mx-auto">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1 }}
-              className="flex items-center gap-4 sm:gap-6 cursor-pointer group"
-            >
-              <AuraLogo className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-full border-2 border-[#C084FC]/60 group-hover:border-[#C084FC] transition-colors shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
-              
-              <span className="text-5xl sm:text-7xl font-black tracking-tighter text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
-                AURA
-              </span>
-            </motion.div>
-            <p className="text-xs sm:text-sm text-white leading-relaxed max-w-md mt-4 sm:mt-6 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-              Bridging the gap between first responders and life trapped beneath disaster rubble. Zero unmapped survivors.
-            </p>
+        <footer className="relative bg-[#05070a]/90 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-between py-12 sm:py-16 px-5 sm:px-12 mt-12 z-20">
+          <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 mb-12 border-b border-white/10 pb-12">
+             <div className="flex flex-col items-start gap-4">
+                <motion.div 
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                >
+                  <AuraLogo className="w-10 h-10 object-cover rounded-full border border-[#C084FC]/60 group-hover:border-[#C084FC] transition-colors shadow-[0_0_15px_rgba(147,51,234,0.3)]" />
+                  <span className="text-2xl font-black tracking-tighter text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">AURA</span>
+                </motion.div>
+                <p className="text-xs text-white/70 leading-relaxed max-w-xs font-normal">
+                  Bridging the gap between first responders and life trapped beneath disaster rubble. Zero unmapped survivors.
+                </p>
+             </div>
+             
+             <div className="flex flex-col items-start gap-4">
+                <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Navigation</h4>
+                <div className="flex flex-col gap-2.5 text-xs sm:text-sm text-white/70 font-medium">
+                   <button onClick={() => scrollToSection(heroRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Hero Overview</button>
+                   <button onClick={() => scrollToSection(problemRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">The Problem</button>
+                   <button onClick={() => scrollToSection(techRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Architecture</button>
+                   <button onClick={() => scrollToSection(telemetryRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Live Dashboard</button>
+                   <button onClick={() => scrollToSection(teamRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Core Team</button>
+                </div>
+             </div>
+
+             <div className="flex flex-col items-start gap-4">
+                <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Contact & Resources</h4>
+                <div className="flex flex-col gap-3 text-xs sm:text-sm text-white/70 font-medium">
+                   <a href="mailto:tactical@aurasystem.dev" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
+                     <i className="bi bi-envelope text-base" /> tactical@aurasystem.dev
+                   </a>
+                   <a href="https://github.com/jafferrilwaan-png/A.U.R.A-System" target="_blank" rel="noreferrer" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
+                     <i className="bi bi-file-earmark-text text-base" /> Documentation
+                   </a>
+                   <a href="https://github.com/jafferrilwaan-png/A.U.R.A-System" target="_blank" rel="noreferrer" className="hover:text-white hover:translate-x-1 transition-all flex items-center gap-2">
+                     <i className="bi bi-github text-base" /> GitHub Repository
+                   </a>
+                </div>
+             </div>
           </div>
           
-          <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-center items-center border-t border-white/10 pt-6">
-            <div className="text-[10px] sm:text-[11px] text-white tracking-widest font-semibold drop-shadow-sm">
-              © 2026 A.U.R.A. ALL RIGHTS RESERVED.
-            </div>
+          <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center text-[10px] sm:text-[11px] text-white/40 tracking-widest font-semibold uppercase">
+            <span>© 2026 A.U.R.A. ALL RIGHTS RESERVED.</span>
+            <span className="mt-2 md:mt-0 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              SECURE TACTICAL NETWORK ONLINE
+            </span>
           </div>
         </footer>
+
+        {/* --- BACK TO TOP ARROW --- */}
+        <AnimatePresence>
+          {scrollFraction > 0.1 && (
+            <motion.button
+              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.8 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-50 w-12 h-12 rounded-full bg-black/80 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/80 hover:text-[#C084FC] hover:border-[#C084FC] hover:shadow-[0_0_20px_rgba(192,132,252,0.4)] hover:-translate-y-1 transition-all duration-300"
+              aria-label="Back to Top"
+            >
+              <i className="bi bi-chevron-up text-lg stroke-2" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
       </div>
 

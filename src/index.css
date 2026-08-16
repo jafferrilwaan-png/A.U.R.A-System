@@ -56,3 +56,37 @@ html {
   animation: purpleFlowAnimation 12s ease-in-out infinite;
   filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.8));
 }
+
+/* ANTI-GRAVITY ANIMATION FOR TACTICAL DASHBOARD CARDS */
+@keyframes antiGravity {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-anti-gravity {
+  animation: antiGravity 4s ease-in-out infinite;
+}
+
+/* SCROLLING DATA LOG ANIMATION */
+@keyframes scrollLog {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
+.animate-scroll-log {
+  animation: scrollLog 15s linear infinite;
+}
+
+/* FADE MASK FOR SCROLLING TEXT CONTAINER */
+.mask-fade-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+}
