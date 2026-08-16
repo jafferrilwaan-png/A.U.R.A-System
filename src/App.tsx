@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-9 h-9 object-cover rounded-full" }: { className?: string }) {
@@ -9,29 +9,6 @@ function AuraLogo({ className = "w-9 h-9 object-cover rounded-full" }: { classNa
       alt="A.U.R.A. Logo" 
       className={className} 
     />
-  );
-}
-
-// --- HAMBURGER ANIMATION ---
-function SquashHamburger({ isOpen }: { isOpen: boolean }) {
-  return (
-    <div className="relative w-[18px] h-[12px] flex flex-col justify-between items-center">
-      <motion.span
-        animate={isOpen ? { rotate: 45, y: 5 } : { rotate: 0, y: 0 }}
-        transition={{ stiffness: 300, damping: 20 }}
-        className="w-full h-[1.5px] bg-[#C084FC] absolute top-0 rounded-full"
-      />
-      <motion.span
-        animate={isOpen ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }}
-        transition={{ duration: 0.15 }}
-        className="w-full h-[1.5px] bg-[#C084FC] absolute top-[5.25px] rounded-full"
-      />
-      <motion.span
-        animate={isOpen ? { rotate: -45, y: -5 } : { rotate: 0, y: 0 }}
-        transition={{ stiffness: 300, damping: 20 }}
-        className="w-full h-[1.5px] bg-[#C084FC] absolute bottom-0 rounded-full"
-      />
-    </div>
   );
 }
 
@@ -71,7 +48,6 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [entranceComplete, setEntranceComplete] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [scrollFraction, setScrollFraction] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
