@@ -753,16 +753,16 @@ export default function App() {
                   linkedin: "https://www.linkedin.com/in/gurudev-kumaravel-955998355/"
                 },
                 {
-                  name: "Aravind Kumar",
+                  name: "Darsini",
                   role: "Firmware Engineer",
-                  img: "high_res_frames/frame-120.jpg",
+                  img: "",
                   bio: "Writing zero-latency microcontroller logic and seismic acoustic filters.",
                   linkedin: "#"
                 },
                 {
-                  name: "Priyanka Mohan",
+                  name: "P Karan",
                   role: "UI/UX Developer",
-                  img: "high_res_frames/frame-300.jpg",
+                  img: "",
                   bio: "Designing tactical command dashboards for first responders in disaster zones.",
                   linkedin: "#"
                 }
@@ -787,9 +787,9 @@ export default function App() {
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
                         <div className="w-16 h-16 rounded-full bg-[#9333EA]/20 border border-[#C084FC]/40 flex items-center justify-center text-white text-xl font-bold font-display shadow-inner">
-                          <i className="bi bi-person-fill text-2xl text-[#C084FC]" />
+                          {member.name.split(" ").map(n => n[0]).join("").substring(0, 2)}
                         </div>
-                        <span className="text-[10px] text-white/60 font-mono uppercase tracking-wider">LinkedIn Profile</span>
+                        <span className="text-[10px] text-white/60 font-mono uppercase tracking-wider">A.U.R.A. PROFILE</span>
                       </div>
                     )}
                     
@@ -849,7 +849,7 @@ export default function App() {
 
              <div className="flex flex-col items-start gap-4">
                 <h4 className="text-[#C084FC] text-[10px] sm:text-xs font-bold uppercase tracking-widest">Team Profiles</h4>
-                <div className="flex flex-col gap-3 text-xs sm:text-sm text-white/70 font-medium">
+                <div className="flex flex-col gap-3 text-xs sm:text-sm text-white/70 font-medium w-full">
                    <div className="flex flex-col">
                       <span className="font-bold text-white text-[11px] uppercase tracking-wider">Jaffer Rilwaan V</span>
                       <div className="flex gap-3 mt-1 text-xs">
@@ -869,6 +869,18 @@ export default function App() {
                       <div className="flex gap-3 mt-1 text-xs">
                          <a href="https://www.linkedin.com/in/gurudev-kumaravel-955998355/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
                          <a href="/gurudev_kumaravel.jpg" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                      </div>
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Darsini</span>
+                      <div className="flex gap-3 mt-1 text-xs text-white/50">
+                         <span>No LinkedIn</span>
+                      </div>
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">P Karan</span>
+                      <div className="flex gap-3 mt-1 text-xs text-white/50">
+                         <span>No LinkedIn</span>
                       </div>
                    </div>
                 </div>
