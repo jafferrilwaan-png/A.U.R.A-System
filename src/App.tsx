@@ -61,11 +61,11 @@ export default function App() {
     return () => clearTimeout(loaderTimer);
   }, []);
 
-  // SCROLLYTELLING CANVAS ENGINE (GPU & Thermal Optimized for Mobile)
+  // SCROLLYTELLING CANVAS ENGINE (1.10x Watermark Crop & Full Aspect Ratio Fit)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const context = canvas.getContext('2d', { alpha: false }); // Disable alpha for 30% faster GPU rendering
+    const context = canvas.getContext('2d', { alpha: false });
     if (!context) return;
 
     const frameCount = 311;
@@ -78,11 +78,11 @@ export default function App() {
     images[0] = firstImg;
     firstImg.onload = () => drawFrame(1);
 
-    // Preload remaining frames asynchronously with idle delay to prevent phone heating
+    // Stream remaining frames asynchronously
     let preloadIndex = 2;
     const preloadChunk = () => {
       const isMobile = window.innerWidth < 640;
-      const step = isMobile ? 2 : 1; // On mobile, preload 1 in every 2 frames to save 50% RAM & battery
+      const step = isMobile ? 2 : 1;
       for (let i = 0; i < 15 && preloadIndex <= frameCount; i += step, preloadIndex += step) {
         if (!images[preloadIndex - 1]) {
           const img = new Image();
@@ -91,16 +91,15 @@ export default function App() {
         }
       }
       if (preloadIndex <= frameCount) {
-        setTimeout(preloadChunk, isMobile ? 120 : 50);
+        setTimeout(preloadChunk, isMobile ? 100 : 40);
       }
     };
-    setTimeout(preloadChunk, 200);
+    setTimeout(preloadChunk, 150);
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
       let img = images[index - 1];
       if (!img || !img.complete) {
-        // Nearest loaded neighbor fallback
         for (let offset = 1; offset < 10; offset++) {
           const prev = images[Math.max(0, index - 1 - offset)];
           if (prev && prev.complete) { img = prev; break; }
@@ -112,9 +111,15 @@ export default function App() {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
       const isMobile = window.innerWidth < 640;
-      const overscanScale = isMobile ? 1.04 : 1.05;
+      // 1.10x zoom crops out Minimax Hailuo logo completely from the bottom-right corner
+      const overscanScale = isMobile ? 1.08 : 1.10;
 
-      const ratio = Math.max(canvas.width / img.width, canvas.height / img.height) * overscanScale;
+      const hRatio = canvas.width / img.width;
+      const vRatio = canvas.height / img.height;
+
+      // On mobile vertical screens, use horizontal ratio so the MAN standing on the left & right sides is 100% FULLY VISIBLE
+      const ratio = isMobile ? hRatio * overscanScale : Math.max(hRatio, vRatio) * overscanScale;
+
       const width = img.width * ratio;
       const height = img.height * ratio;
       const x = (canvas.width - width) / 2;
@@ -125,14 +130,14 @@ export default function App() {
 
     const resizeAndDraw = () => {
       const isMobile = window.innerWidth < 640;
-      // Cap DPR at 1.0 on mobile to prevent phone battery drain and overheating
-      const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 2);
+      // Crisp 1.5 DPR on mobile for razor-sharp rendering without overheating
+      const dpr = isMobile ? 1.5 : Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = isMobile ? 'medium' : 'high';
+      context.imageSmoothingQuality = 'high';
       drawFrame(Math.round(currentFrameIndex));
     };
 
@@ -151,7 +156,7 @@ export default function App() {
     let animationFrameId: number;
     const renderLoop = (timestamp: number) => {
       const isMobile = window.innerWidth < 640;
-      const frameInterval = isMobile ? 33 : 16; // 30 FPS throttle on mobile to keep phone cool
+      const frameInterval = isMobile ? 25 : 16; // Crisp 40 FPS throttle on mobile
 
       if (timestamp - lastRenderTime >= frameInterval) {
         currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.12;
@@ -214,7 +219,7 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (THERMAL OPTIMIZED AT 30FPS ON MOBILE) --- */}
+      {/* --- SCROLLYTELLING CANVAS (RAZOR SHARP CRISP RENDER, WATERMARK REMOVED, FULL MAN VISIBLE) --- */}
       <canvas 
         ref={canvasRef} 
         className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
@@ -365,7 +370,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- CONTENT OVERLAYS (HIGH CONTRAST & SLEEK MOBILE CARDS) --- */}
+      {/* --- CONTENT OVERLAYS --- */}
       <div className="relative z-10 w-full bg-transparent">
         
         {/* --- SECTION 1: HERO --- */}
