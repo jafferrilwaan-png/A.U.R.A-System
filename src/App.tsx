@@ -110,27 +110,32 @@ export default function App() {
 
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      const isMobile = window.innerWidth < 640;
+      // --- WATERMARK ASSASSINATION ---
+      // We brutally crop off the bottom 12% and right 10% of the source image!
+      // This completely obliterates the Minimax Hailuo logo from existence before it even reaches the canvas.
+      const sx = 0;
+      const sy = 0;
+      const sWidth = img.width * 0.90;  // Cut off right 10%
+      const sHeight = img.height * 0.88; // Cut off bottom 12%
 
-      // Calculate perfect cover fit ratios
-      const hRatio = canvas.width / img.width;
-      const vRatio = canvas.height / img.height;
-      
-      // Zoom in by 1.05x to push edges (and watermark) out of frame.
-      const ratio = Math.max(hRatio, vRatio) * 1.05;
+      // Calculate perfect cover fit ratios based on the NEW cleanly cropped dimensions
+      const hRatio = canvas.width / sWidth;
+      const vRatio = canvas.height / sHeight;
+      const ratio = Math.max(hRatio, vRatio);
 
-      const width = img.width * ratio;
-      const height = img.height * ratio;
+      const dWidth = sWidth * ratio;
+      const dHeight = sHeight * ratio;
       
       // Center vertically
-      const y = (canvas.height - height) / 2;
+      const dy = (canvas.height - dHeight) / 2;
       
-      // On mobile, align to left edge so the man is fully visible. 
-      // This also pushes the right side (with watermark) completely off screen!
+      // On mobile, align to left edge so the man is fully visible.
       // On desktop, center horizontally.
-      const x = isMobile ? 0 : (canvas.width - width) / 2;
+      const isMobile = window.innerWidth < 640;
+      const dx = isMobile ? 0 : (canvas.width - dWidth) / 2;
 
-      context.drawImage(img, x, y, width, height);
+      // Draw the brutally cropped image to the canvas
+      context.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
     };
 
     const resizeAndDraw = () => {
@@ -223,7 +228,7 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS (RAZOR SHARP CRISP RENDER, WATERMARK REMOVED, FULL MAN VISIBLE) --- */}
+      {/* --- SCROLLYTELLING CANVAS (RAZOR SHARP CRISP RENDER, WATERMARK OBLITERATED, FULL MAN VISIBLE) --- */}
       <canvas 
         ref={canvasRef} 
         className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
