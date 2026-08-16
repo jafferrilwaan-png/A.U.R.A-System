@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+body {
+  background-color: #080B10;
+  color: white;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  scrollbar-width: none;
+}
+
+.font-display {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+/* CONTINUOUS SLOW & ELEGANT PURPLE FLOW ANIMATION ACROSS WHITE TEXT */
+@keyframes purpleFlowAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.text-flowing-purple {
+  background: linear-gradient(
+    90deg,
+    #FFFFFF 0%,
+    #F3E8FF 25%,
+    #9333EA 48%,
+    #C084FC 62%,
+    #FFFFFF 85%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: purpleFlowAnimation 12s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(147, 51, 234, 0.3));
+}
