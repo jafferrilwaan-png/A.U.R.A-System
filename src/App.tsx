@@ -735,58 +735,86 @@ export default function App() {
                   name: "Jaffer Rilwaan V",
                   role: "Lead Systems Architect",
                   img: "high_res_frames/frame-050.jpg",
-                  bio: "Architecting the core structural algorithms and real-time mapping engine."
+                  bio: "Architecting the core structural algorithms and real-time mapping engine.",
+                  linkedin: "https://github.com/jafferrilwaan-png/A.U.R.A-System"
+                },
+                {
+                  name: "Hannah Blessy J",
+                  role: "Hardware & Sensor Lead",
+                  img: "high_res_frames/frame-180.jpg",
+                  bio: "Specializing in hardware arrays, piezoelectric logic, and real-time sensor processing.",
+                  linkedin: "https://www.linkedin.com/in/hannah-blessy-j-b0773636b/"
+                },
+                {
+                  name: "Gurudev Kumaravel",
+                  role: "Telemetry & Cloud Engineer",
+                  img: "",
+                  bio: "Managing secure telemetry routing, alert dispatching, and cloud infrastructure.",
+                  linkedin: "https://www.linkedin.com/in/gurudev-kumaravel-955998355/"
                 },
                 {
                   name: "Aravind Kumar",
-                  role: "Sensor Integration Lead",
-                  img: "high_res_frames/frame-120.jpg",
-                  bio: "Specializing in piezoelectric hardware arrays and seismic signal filtering."
-                },
-                {
-                  name: "Divya S.",
                   role: "Firmware Engineer",
-                  img: "high_res_frames/frame-180.jpg",
-                  bio: "Writing zero-latency micro-controller logic for rapid field deployment."
-                },
-                {
-                  name: "Karthik Raja",
-                  role: "Cloud Infrastructure",
-                  img: "high_res_frames/frame-220.jpg",
-                  bio: "Managing the secure telemetry broadcasting and edge network servers."
+                  img: "high_res_frames/frame-120.jpg",
+                  bio: "Writing zero-latency microcontroller logic and seismic acoustic filters.",
+                  linkedin: "#"
                 },
                 {
                   name: "Priyanka Mohan",
                   role: "UI/UX Developer",
                   img: "high_res_frames/frame-300.jpg",
-                  bio: "Designing the tactical dashboards used directly by first responders."
+                  bio: "Designing tactical command dashboards for first responders in disaster zones.",
+                  linkedin: "#"
                 }
               ].map((member, idx) => (
-                <div 
+                <a 
                   key={idx} 
-                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300"
+                  href={member.linkedin !== "#" ? member.linkedin : undefined}
+                  target={member.linkedin !== "#" ? "_blank" : undefined}
+                  rel="noreferrer"
+                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300 relative"
                 >
-                  <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/40 transition-all mb-3 relative shadow-xl">
-                    <img 
-                      src={member.img} 
-                      alt={`Portrait of ${member.name}, ${member.role}`} 
-                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                      onError={(e) => {
-                        e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${member.name}`;
-                      }}
-                    />
+                  <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/40 transition-all mb-3 relative shadow-xl bg-gradient-to-b from-[#141a29] to-[#080b10] flex items-center justify-center">
+                    {member.img ? (
+                      <img 
+                        src={member.img} 
+                        alt={`Portrait of ${member.name}, ${member.role}`} 
+                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                        onError={(e) => {
+                          e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(member.name)}`;
+                        }}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                        <div className="w-16 h-16 rounded-full bg-[#9333EA]/20 border border-[#C084FC]/40 flex items-center justify-center text-white text-xl font-bold font-display shadow-inner">
+                          <i className="bi bi-person-fill text-2xl text-[#C084FC]" />
+                        </div>
+                        <span className="text-[10px] text-white/60 font-mono uppercase tracking-wider">LinkedIn Profile</span>
+                      </div>
+                    )}
                     
                     {/* Dark frosted-glass overlay for Bio reveal on hover */}
-                    <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 backdrop-blur-[2px]">
+                    <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px]">
                        <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                          {member.bio}
                        </p>
+                       {member.linkedin !== "#" && (
+                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C084FC] pt-2 border-t border-white/10">
+                           <i className="bi bi-linkedin text-xs" />
+                           View LinkedIn <i className="bi bi-arrow-up-right text-[9px]" />
+                         </div>
+                       )}
                     </div>
                   </div>
                   
-                  <h3 className="text-xs sm:text-base font-bold text-flowing-purple mb-0.5 tracking-tight uppercase font-display drop-shadow-md"><ScrambleText text={member.name} /></h3>
+                  <div className="w-full flex items-center justify-between gap-1 mb-0.5">
+                    <h3 className="text-xs sm:text-base font-bold text-flowing-purple tracking-tight uppercase font-display drop-shadow-md truncate"><ScrambleText text={member.name} /></h3>
+                    {member.linkedin !== "#" && (
+                      <i className="bi bi-linkedin text-xs text-[#C084FC] opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                    )}
+                  </div>
                   <div className="text-[10px] sm:text-xs text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
-                </div>
+                </a>
               ))}
             </div>
           </motion.div>
