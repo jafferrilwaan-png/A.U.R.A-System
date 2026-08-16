@@ -61,7 +61,7 @@ export default function App() {
     return () => clearTimeout(loaderTimer);
   }, []);
 
-  // SCROLLYTELLING CANVAS ENGINE (1.10x Watermark Crop & Full Aspect Ratio Fit)
+  // SCROLLYTELLING CANVAS ENGINE
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -111,26 +111,30 @@ export default function App() {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
       const isMobile = window.innerWidth < 640;
-      // 1.10x zoom crops out Minimax Hailuo logo completely from the bottom-right corner
-      const overscanScale = isMobile ? 1.08 : 1.10;
 
+      // Calculate perfect cover fit ratios
       const hRatio = canvas.width / img.width;
       const vRatio = canvas.height / img.height;
-
-      // On mobile vertical screens, use horizontal ratio so the MAN standing on the left & right sides is 100% FULLY VISIBLE
-      const ratio = isMobile ? hRatio * overscanScale : Math.max(hRatio, vRatio) * overscanScale;
+      
+      // Zoom in by 1.05x to push edges (and watermark) out of frame.
+      const ratio = Math.max(hRatio, vRatio) * 1.05;
 
       const width = img.width * ratio;
       const height = img.height * ratio;
-      const x = (canvas.width - width) / 2;
+      
+      // Center vertically
       const y = (canvas.height - height) / 2;
+      
+      // On mobile, align to left edge so the man is fully visible. 
+      // This also pushes the right side (with watermark) completely off screen!
+      // On desktop, center horizontally.
+      const x = isMobile ? 0 : (canvas.width - width) / 2;
 
       context.drawImage(img, x, y, width, height);
     };
 
     const resizeAndDraw = () => {
       const isMobile = window.innerWidth < 640;
-      // Crisp 1.5 DPR on mobile for razor-sharp rendering without overheating
       const dpr = isMobile ? 1.5 : Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
@@ -156,7 +160,7 @@ export default function App() {
     let animationFrameId: number;
     const renderLoop = (timestamp: number) => {
       const isMobile = window.innerWidth < 640;
-      const frameInterval = isMobile ? 25 : 16; // Crisp 40 FPS throttle on mobile
+      const frameInterval = isMobile ? 25 : 16; 
 
       if (timestamp - lastRenderTime >= frameInterval) {
         currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.12;
