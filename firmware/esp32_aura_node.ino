@@ -1,77 +1,166 @@
 /*
  * A.U.R.A. System - Sub-Surface Cavity & Life Detection Firmware
  * Microcontroller: ESP32 DevKit V1
- * Sensors: Piezoelectric Geophone Sensor (A0), Ultrasonic Depth Scanner (Trig D5, Echo D18), NEO-6M GPS (RX2/TX2)
+ * Hardware: OLED SSD1306 (I2C 0x3C), Piezoelectric Geophone, Ultrasonic Sensor, NEO-6M GPS, WS2812B RGB LED
  * Platform: Arduino / ESP-IDF Framework
  */
 
 #include <WiFi.h>
-#include <HTTPClient.h>
-#include <HardwareSerial.h>
+#include <WebServer.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <TinyGPS++.h>
+#include <FastLED.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Pin Definitions
-#define PIEZO_SENSOR_PIN A0
-#define ULTRASONIC_TRIG_PIN 5
-#define ULTRASONIC_ECHO_PIN 18
-#define LED_STATUS_PIN 2
+#define PIN_PIEZO A0
+#define PIN_TRIG 5
+#define PIN_ECHO 18
+#define PIN_LED 2
+#define NUM_LEDS 1
+
+CRGB leds[NUM_LEDS];
+WebServer server(80);
+TinyGPSPlus gps;
+HardwareSerial gpsSerial(2); // RX2 = 16, TX2 = 17
 
 // Threshold Settings
-const int ACOUSTIC_TAP_THRESHOLD = 450;
-const float MIN_VOID_DEPTH_METERS = 1.50;
+const int SEISMIC_ALERT_THRESHOLD = 450;
+const float VOID_PROXIMITY_THRESHOLD = 150.0; // cm
 
-// Setup Serial & Sensors
+// Global State
+float voidDistance = 0.0;
+int seismicLevel = 0;
+double latitude = 0.0;
+double longitude = 0.0;
+bool gpsLocked = false;
+String nodeStatus = "INITIALIZING";
+
+const char* ssid = "AURA_RESCUE_NODE_01";
+const char* password = "aurasystempass";
+
+float getDistanceCM() {
+  digitalWrite(PIN_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_TRIG, LOW);
+
+  long duration = pulseIn(PIN_ECHO, HIGH, 30000);
+  if (duration == 0) return 0.0;
+  return (duration * 0.0343) / 2.0;
+}
+
+void handleTelemetry() {
+  String json = "{";
+  json += "\"status\":\"" + nodeStatus + "\",";
+  json += "\"void_depth_cm\":" + String(voidDistance, 2) + ",";
+  json += "\"seismic_signal\":" + String(seismicLevel) + ",";
+  json += "\"gps_locked\":" + String(gpsLocked ? "true" : "false") + ",";
+  json += "\"lat\":" + String(latitude, 6) + ",";
+  json += "\"lng\":" + String(longitude, 6);
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
 void setup() {
   Serial.begin(115200);
-  pinMode(ULTRASONIC_TRIG_PIN, OUTPUT);
-  pinMode(ULTRASONIC_ECHO_PIN, INPUT);
-  pinMode(LED_STATUS_PIN, OUTPUT);
-  pinMode(PIEZO_SENSOR_PIN, INPUT);
+  gpsSerial.begin(9600, SERIAL_8N1, 16, 17);
 
-  Serial.println("[AURA ESP32 NODE] Initializing Sub-Surface Cavity Sensors...");
-  digitalWrite(LED_STATUS_PIN, HIGH);
+  pinMode(PIN_TRIG, OUTPUT);
+  pinMode(PIN_ECHO, INPUT);
+  pinMode(PIN_PIEZO, INPUT);
+
+  FastLED.addLeds<WS2812B, PIN_LED, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(128);
+
+  Wire.begin(21, 22);
+  if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(1);
+    display.setCursor(0, 10);
+    display.println(">> A.U.R.A. ONLINE <<");
+    display.setCursor(0, 30);
+    display.println("Initializing Node...");
+    display.display();
+  }
+
+  // Launch Wi-Fi Access Point
+  WiFi.softAP(ssid, password);
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("Access Point Live at: http://");
+  Serial.println(IP);
+
+  // Setup Server Route
+  server.on("/data", handleTelemetry);
+  server.begin();
   delay(1000);
-  digitalWrite(LED_STATUS_PIN, LOW);
-  Serial.println("[AURA ESP32 NODE] System Status: ONLINE & READY.");
-}
-
-// Read Ultrasonic Void Depth (in meters)
-float readSubsurfaceDepthMeters() {
-  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(ULTRASONIC_TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
-
-  long durationMicroSec = pulseIn(ULTRASONIC_ECHO_PIN, HIGH, 30000);
-  if (durationMicroSec == 0) return 0.0;
-
-  // Speed of sound = 343 m/s
-  float distanceCm = (durationMicroSec * 0.0343) / 2.0;
-  return distanceCm / 100.0;
-}
-
-// Read Piezoelectric Seismic Acoustic Pulse
-int readSeismicAcousticPulse() {
-  int rawAnalog = analogRead(PIEZO_SENSOR_PIN);
-  return rawAnalog;
 }
 
 void loop() {
-  float currentDepthMeters = readSubsurfaceDepthMeters();
-  int acousticPulseValue = readSeismicAcousticPulse();
+  server.handleClient();
 
-  Serial.print("[TELEMETRY SCAN] Sub-surface Void Depth: ");
-  Serial.print(currentDepthMeters);
-  Serial.print(" m | Seismic Acoustic Signal: ");
-  Serial.println(acousticPulseValue);
-
-  // Check for Survivor Tapping Signature or Cavity Void
-  if (acousticPulseValue > ACOUSTIC_TAP_THRESHOLD) {
-    digitalWrite(LED_STATUS_PIN, HIGH);
-    Serial.println(">>> [ALERT] RHYTHMIC SURVIVOR TAP SIGNATURE DETECTED! TRANSMITTING GPS...");
-    delay(200);
-    digitalWrite(LED_STATUS_PIN, LOW);
+  // Ingest GPS NMEA Sentences
+  while (gpsSerial.available() > 0) {
+    gps.encode(gpsSerial.read());
   }
 
-  delay(500); // 2Hz sampling frequency
+  if (gps.location.isValid()) {
+    latitude = gps.location.lat();
+    longitude = gps.location.lng();
+    gpsLocked = true;
+  }
+
+  // Acquire Sensor Data
+  voidDistance = getDistanceCM();
+  seismicLevel = analogRead(PIN_PIEZO);
+
+  // Evaluate Threat / Alert State
+  if (seismicLevel > SEISMIC_ALERT_THRESHOLD || (voidDistance > 0 && voidDistance < VOID_PROXIMITY_THRESHOLD)) {
+    nodeStatus = "HAZARD_DETECTED";
+    leds[0] = (millis() % 500 < 250) ? CRGB::Red : CRGB::Black; // Flashing Alert
+  } else {
+    nodeStatus = "NOMINAL_SCAN";
+    leds[0] = CRGB::Green;
+  }
+  FastLED.show();
+
+  // Render Mission HUD on OLED
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.println("AURA RESCUE NODE [01]");
+  display.drawLine(0, 9, 128, 9, SSD1306_WHITE);
+
+  display.setCursor(0, 14);
+  display.print("Void Depth: ");
+  display.print(voidDistance, 1);
+  display.println(" cm");
+
+  display.setCursor(0, 26);
+  display.print("Seismic:    ");
+  display.println(seismicLevel);
+
+  display.setCursor(0, 38);
+  display.print("GPS: ");
+  if (gpsLocked) {
+    display.print(latitude, 3);
+    display.print(",");
+    display.println(longitude, 3);
+  } else {
+    display.println("ACQUIRING...");
+  }
+
+  display.setCursor(0, 52);
+  display.print("SYS: ");
+  display.println(nodeStatus);
+  display.display();
+
+  delay(50);
 }
+

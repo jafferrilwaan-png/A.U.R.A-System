@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import NeonBorder from "./components/NeonBorder";
+import AsciiImage from "./components/AsciiImage";
+import StarfieldButton from "./components/StarfieldButton";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -51,6 +54,7 @@ export default function App() {
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollFraction, setScrollFraction] = useState(0);
+  const [activeSection, setActiveSection] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
@@ -213,13 +217,35 @@ export default function App() {
   const telemetryRef = useRef<HTMLDivElement>(null);
   const teamRef = useRef<HTMLDivElement>(null);
 
+  // Active section tracker for right-side HUD (01, 02, 03, 04, 05, 06)
+  useEffect(() => {
+    const sections = [heroRef, problemRef, missionRef, techRef, telemetryRef, teamRef];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = sections.findIndex((s) => s.current === entry.target);
+            if (index !== -1) setActiveSection(index);
+          }
+        });
+      },
+      { threshold: 0.35 }
+    );
+
+    sections.forEach((s) => {
+      if (s.current) observer.observe(s.current);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const useSectionScroll = (ref: React.RefObject<HTMLDivElement | null>) => {
     const { scrollYProgress } = useScroll({
       target: ref,
       offset: ["start end", "end start"]
     });
     const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
-    const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [30, 0, 0, -30]);
+    const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [40, 0, 0, -40]);
     return { opacity, y };
   };
 
@@ -307,58 +333,86 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* --- CLEAN MOBILE & DESKTOP NAVBAR --- */}
+      {/* --- CLEAN MOBILE & DESKTOP NAVBAR WITH NEON BORDER --- */}
       <motion.nav
         initial={{ opacity: 0, y: -20 }}
         animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="fixed top-4 left-4 right-4 sm:top-5 sm:left-6 sm:right-6 z-50 h-14 max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between bg-[#05070a]/80 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl"
+        className="fixed top-4 left-4 right-4 sm:top-5 sm:left-6 sm:right-6 z-50 max-w-7xl mx-auto"
       >
-        {/* Left: Logo & Brand */}
-        <div className="flex items-center gap-3">
-          <motion.div
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-            className="cursor-pointer flex items-center gap-2.5"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          >
-            <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.4)]" />
-            <span className="text-base font-extrabold tracking-widest text-flowing-purple font-display">A.U.R.A.</span>
-          </motion.div>
-        </div>
+        <NeonBorder
+          color="#C084FC"
+          rounded={100}
+          thickness={3}
+          borderSize={45}
+          glow={85}
+          speed={14}
+          className="w-full"
+        >
+          <div className="h-14 px-4 sm:px-6 flex items-center justify-between bg-[#05070a]/90 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl">
+            {/* Left: Logo & Brand */}
+            <div className="flex items-center gap-3">
+              <motion.div
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.95 }}
+                className="cursor-pointer flex items-center gap-2.5"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              >
+                <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.4)]" />
+                <span className="text-base font-extrabold tracking-widest text-flowing-purple font-display">A.U.R.A.</span>
+              </motion.div>
+            </div>
 
-        {/* Center: Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-8 text-[11px] uppercase font-bold tracking-widest text-white/90 font-display">
-          <button onClick={() => scrollToSection(heroRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Hero" /></button>
-          <button onClick={() => scrollToSection(problemRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Problem" /></button>
-          <button onClick={() => scrollToSection(missionRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Mission" /></button>
-          <button onClick={() => scrollToSection(techRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Tech" /></button>
-          <button onClick={() => scrollToSection(teamRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Team" /></button>
-        </div>
+            {/* Center: Desktop Navigation Links */}
+            <div className="hidden md:flex items-center gap-8 text-[11px] uppercase font-bold tracking-widest text-white/90 font-display">
+              <button onClick={() => scrollToSection(heroRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Hero" /></button>
+              <button onClick={() => scrollToSection(problemRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Problem" /></button>
+              <button onClick={() => scrollToSection(missionRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Mission" /></button>
+              <button onClick={() => scrollToSection(techRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Tech" /></button>
+              <button onClick={() => scrollToSection(telemetryRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Data" /></button>
+              <button onClick={() => scrollToSection(teamRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Team" /></button>
+            </div>
 
-        {/* Right: GitHub Button (Desktop) & Hamburger Toggle (Mobile) */}
-        <div className="flex items-center gap-3">
-          <motion.a
-            href="https://github.com/jafferrilwaan-png/A.U.R.A-System"
-            target="_blank"
-            rel="noreferrer"
-            whileHover={{ scale: 1.05, backgroundColor: "#C084FC", color: "#000" }}
-            whileTap={{ scale: 0.95 }}
-            className="hidden sm:flex h-9 px-4 sm:px-5 bg-white/10 backdrop-blur-md rounded-full items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white border border-white/10 transition-all font-display shadow-md"
-          >
-            <i className="bi bi-github text-sm" />
-            <ScrambleText text="Repository" />
-          </motion.a>
+            {/* Right: Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:block">
+                <StarfieldButton
+                  label="REPOSITORY"
+                  link="https://github.com/jafferrilwaan-png/A.U.R.A-System"
+                  newTab={true}
+                  padding="8px 20px"
+                  font={{
+                    fontSize: 11,
+                    fontFamily: "Plus Jakarta Sans, sans-serif",
+                    fontWeight: 800,
+                    letterSpacing: "0.12em",
+                  }}
+                  stroke={{
+                    color: "#C084FC",
+                    count: 2,
+                    speed: 45,
+                    size: 80,
+                    thickness: 2,
+                    movement: "continuous",
+                    direction: "cw",
+                  }}
+                  glow={{ color: "#9333EA", size: 14, opacity: 80 }}
+                  pixel={{ color: "#C084FC", size: 3, density: 45, brightness: 100 }}
+                  colors={{ fill: "rgba(12, 10, 20, 0.7)", textColor: "#FFFFFF" }}
+                />
+              </div>
 
-          {/* Mobile Hamburger Button */}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-xl border border-white/10 active:scale-95 transition-all"
-            aria-label="Toggle Navigation Menu"
-          >
-            <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} />
-          </button>
-        </div>
+              {/* Mobile Hamburger Button */}
+              <button 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-xl border border-white/10 active:scale-95 transition-all"
+                aria-label="Toggle Navigation Menu"
+              >
+                <i className={`bi ${mobileMenuOpen ? 'bi-x-lg' : 'bi-list'}`} />
+              </button>
+            </div>
+          </div>
+        </NeonBorder>
       </motion.nav>
 
       {/* --- MOBILE DROPDOWN MENU --- */}
@@ -746,25 +800,25 @@ export default function App() {
                   linkedin: "https://www.linkedin.com/in/hannah-blessy-j-b0773636b/"
                 },
                 {
-                  name: "Gurudev Kumaravel",
+                  name: "Kathiravan V",
                   role: "Telemetry & Cloud Engineer",
-                  img: "/gurudev_kumaravel.jpg",
+                  img: "/kathiravan.png",
                   bio: "Managing secure telemetry routing, alert dispatching, and cloud infrastructure.",
-                  linkedin: "https://www.linkedin.com/in/gurudev-kumaravel-955998355/"
+                  linkedin: "https://www.linkedin.com/in/kathiravan-v-160555395/"
                 },
                 {
-                  name: "Darsini",
-                  role: "Firmware Engineer",
-                  img: "",
-                  bio: "Writing zero-latency microcontroller logic and seismic acoustic filters.",
+                  name: "Kingston",
+                  role: "Firmware & Signal Specialist",
+                  img: "/kingston.png",
+                  bio: "Writing zero-latency microcontroller logic and seismic acoustic signal filters.",
                   linkedin: "#"
                 },
                 {
-                  name: "P Karan",
-                  role: "UI/UX Developer",
-                  img: "",
+                  name: "Giridhar K",
+                  role: "UI/UX & Field Ops Lead",
+                  img: "/giridhar.png",
                   bio: "Designing tactical command dashboards for first responders in disaster zones.",
-                  linkedin: "#"
+                  linkedin: "https://www.linkedin.com/in/giridhar-k-b4bb40402/"
                 }
               ].map((member, idx) => (
                 <a 
@@ -774,27 +828,20 @@ export default function App() {
                   rel="noreferrer"
                   className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300 relative"
                 >
-                  <div className="w-full h-[180px] sm:h-[220px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/40 transition-all mb-3 relative shadow-xl bg-gradient-to-b from-[#141a29] to-[#080b10] flex items-center justify-center">
-                    {member.img ? (
-                      <img 
-                        src={member.img} 
-                        alt={`Portrait of ${member.name}, ${member.role}`} 
-                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                        onError={(e) => {
-                          e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(member.name)}`;
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
-                        <div className="w-16 h-16 rounded-full bg-[#9333EA]/20 border border-[#C084FC]/40 flex items-center justify-center text-white text-xl font-bold font-display shadow-inner">
-                          {member.name.split(" ").map(n => n[0]).join("").substring(0, 2)}
-                        </div>
-                        <span className="text-[10px] text-white/60 font-mono uppercase tracking-wider">A.U.R.A. PROFILE</span>
-                      </div>
-                    )}
+                  <div className="w-full h-[190px] sm:h-[230px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/50 transition-all mb-3 relative shadow-xl bg-[#080B10]">
+                    <AsciiImage
+                      image={member.img}
+                      fit="cover"
+                      focusY={25}
+                      columns={70}
+                      colorMode="image"
+                      reveal={true}
+                      revealOptions={{ size: 65, softness: 12 }}
+                      className="w-full h-full object-cover"
+                    />
                     
                     {/* Dark frosted-glass overlay for Bio reveal on hover */}
-                    <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px]">
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px] pointer-events-none">
                        <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                          {member.bio}
                        </p>
@@ -820,6 +867,52 @@ export default function App() {
           </motion.div>
         </section>
 
+        {/* --- RIGHT-SIDE PAGE NUMBER HUD (01, 02, 03, 04, 05, 06) --- */}
+        <div className="fixed right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-4 items-end pointer-events-auto select-none">
+          {[
+            { num: "01", label: "HERO", ref: heroRef },
+            { num: "02", label: "CRISIS", ref: problemRef },
+            { num: "03", label: "MISSION", ref: missionRef },
+            { num: "04", label: "SYSTEM", ref: techRef },
+            { num: "05", label: "DATA", ref: telemetryRef },
+            { num: "06", label: "CREW", ref: teamRef },
+          ].map((sec, idx) => {
+            const isActive = activeSection === idx;
+            return (
+              <button
+                key={sec.num}
+                onClick={() => scrollToSection(sec.ref)}
+                className="group flex items-center gap-2.5 cursor-pointer py-1 text-right focus:outline-none"
+                aria-label={`Go to section ${sec.num} ${sec.label}`}
+              >
+                <span
+                  className={`text-[9px] font-mono tracking-widest uppercase transition-all duration-300 opacity-0 group-hover:opacity-100 ${
+                    isActive ? "text-[#C084FC] opacity-100 font-bold" : "text-white/60"
+                  }`}
+                >
+                  {sec.label}
+                </span>
+                <span
+                  className={`font-mono text-xs sm:text-sm tracking-widest font-black transition-all duration-300 ${
+                    isActive
+                      ? "text-[#C084FC] scale-125 drop-shadow-[0_0_12px_rgba(192,132,252,0.9)]"
+                      : "text-white/30 group-hover:text-white/80"
+                  }`}
+                >
+                  {sec.num}
+                </span>
+                <span
+                  className={`h-[2px] transition-all duration-300 rounded-full ${
+                    isActive
+                      ? "w-5 bg-[#C084FC] shadow-[0_0_8px_#C084FC]"
+                      : "w-2 bg-white/20 group-hover:w-3.5 group-hover:bg-white/60"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+
         {/* --- FOOTER --- */}
         <footer className="relative bg-[#05070a]/45 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-between pt-12 pb-10 sm:pt-16 sm:pb-12 px-5 sm:px-12 mt-12 z-20">
           <div className="w-full max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12 border-b border-white/10 pb-12">
@@ -841,6 +934,7 @@ export default function App() {
                 <div className="flex flex-col gap-2.5 text-xs sm:text-sm text-white/70 font-medium">
                    <button onClick={() => scrollToSection(heroRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Hero Overview</button>
                    <button onClick={() => scrollToSection(problemRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">The Problem</button>
+                   <button onClick={() => scrollToSection(missionRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Mission Statement</button>
                    <button onClick={() => scrollToSection(techRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Architecture</button>
                    <button onClick={() => scrollToSection(telemetryRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Telemetry & Models</button>
                    <button onClick={() => scrollToSection(teamRef)} className="hover:text-white hover:translate-x-1 transition-all text-left">Core Team</button>
@@ -865,22 +959,23 @@ export default function App() {
                       </div>
                    </div>
                    <div className="flex flex-col">
-                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Gurudev Kumaravel</span>
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Kathiravan V</span>
                       <div className="flex gap-3 mt-1 text-xs">
-                         <a href="https://www.linkedin.com/in/gurudev-kumaravel-955998355/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
-                         <a href="/gurudev_kumaravel.jpg" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                         <a href="https://www.linkedin.com/in/kathiravan-v-160555395/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/kathiravan.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
                       </div>
                    </div>
                    <div className="flex flex-col">
-                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Darsini</span>
-                      <div className="flex gap-3 mt-1 text-xs text-white/50">
-                         <span>No LinkedIn</span>
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Kingston</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="/kingston.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
                       </div>
                    </div>
                    <div className="flex flex-col">
-                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">P Karan</span>
-                      <div className="flex gap-3 mt-1 text-xs text-white/50">
-                         <span>No LinkedIn</span>
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">Giridhar K</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="https://www.linkedin.com/in/giridhar-k-b4bb40402/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/giridhar.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
                       </div>
                    </div>
                 </div>

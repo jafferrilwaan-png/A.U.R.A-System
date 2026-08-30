@@ -63,9 +63,9 @@ c:/AURA WEBSITE/
 | :--- | :--- | :--- |
 | **Jaffer Rilwaan V** | Lead Systems Architect | System Logic, Telemetry Integration & Flow |
 | **Hannah Blessy J** | Hardware & Sensor Lead | Piezoelectric Hardware Arrays & Signal Logic |
-| **Gurudev Kumaravel** | Telemetry & Cloud Engineer | Secure Telemetry Broadcasting & Cloud Network |
-| **Darsini** | Firmware Engineer | Microcontroller Logic & Real-time Filters |
-| **P Karan** | UI/UX Developer | High-Tech Command Dashboard & Components |
+| **Kathiravan V** | Telemetry & Cloud Engineer | Secure Telemetry Broadcasting & Cloud Network |
+| **Kingston** | Firmware & Signal Specialist | Microcontroller Logic & Real-time Filters |
+| **Giridhar K** | UI/UX & Field Ops Lead | High-Tech Command Dashboard & Components |
 
 ---
 
