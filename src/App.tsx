@@ -362,15 +362,20 @@ export default function App() {
         >
           <div className="h-14 px-4 sm:px-6 flex items-center justify-between bg-[#05070a]/90 backdrop-blur-2xl border border-white/10 rounded-full shadow-2xl">
             {/* Left: Logo & Brand */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0 pl-1">
               <motion.div
-                whileHover={{ scale: 1.08 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="cursor-pointer flex items-center gap-2.5"
+                className="cursor-pointer flex items-center gap-2 sm:gap-2.5 flex-shrink-0"
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               >
-                <AuraLogo className="w-9 h-9 sm:w-10 sm:h-10 object-cover rounded-full border border-[#C084FC]/70 shadow-[0_0_15px_rgba(147,51,234,0.4)]" />
-                <span className="text-base font-extrabold tracking-widest text-flowing-purple font-display">A.U.R.A.</span>
+                <AuraLogo className="w-8 h-8 sm:w-9 sm:h-9 object-cover rounded-full border border-[#C084FC] shadow-[0_0_15px_rgba(192,132,252,0.6)] flex-shrink-0" />
+                <span className="text-sm sm:text-base font-black tracking-[0.2em] text-white font-display flex items-center drop-shadow-[0_0_10px_rgba(192,132,252,0.8)]">
+                  <span className="text-[#C084FC]">A.</span>
+                  <span className="text-white">U.</span>
+                  <span className="text-[#C084FC]">R.</span>
+                  <span className="text-white">A.</span>
+                </span>
               </motion.div>
             </div>
 
@@ -484,7 +489,9 @@ export default function App() {
         <section ref={problemRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={problemScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">CRITICAL VECTOR</span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                ⚠️ CRITICAL VECTOR
+              </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Subterranean Blindspots</h2>
             </div>
 
@@ -516,7 +523,9 @@ export default function App() {
         <section ref={missionRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={missionScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">THE HUMAN COST & OUR MISSION</span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                🚨 THE HUMAN COST & OUR MISSION
+              </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Buried in Silence</h2>
             </div>
 
@@ -544,10 +553,17 @@ export default function App() {
         </section>
 
         {/* --- SECTION 3: TECH ARCHITECTURE --- */}
-        <section ref={techRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
-          <motion.div style={techScroll} className="max-w-7xl mx-auto w-full bg-transparent">
+        <section ref={techRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent relative overflow-hidden">
+          {/* Ambient AURA Watermark Label */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-10">
+            <span className="text-[20vw] font-black tracking-[0.15em] text-[#C084FC] font-display">AURA</span>
+          </div>
+
+          <motion.div style={techScroll} className="max-w-7xl mx-auto w-full bg-transparent relative z-10">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6 sm:pb-8">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">SYSTEM FLOW</span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                ⚡ SYSTEM FLOW
+              </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Tech Architecture</h2>
             </div>
 
@@ -574,7 +590,9 @@ export default function App() {
         <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent overflow-hidden">
           <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase block mb-2 font-display drop-shadow-md">LIVE TELEMETRY</span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                📡 LIVE TELEMETRY
+              </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Telemetry & Models</h2>
             </div>
 
@@ -656,7 +674,9 @@ export default function App() {
         <section ref={teamRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={teamScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-12 sm:mb-16">
-              <span className="text-[#C084FC] text-xs font-extrabold tracking-widest uppercase mb-2 block font-display drop-shadow-md">COLLABORATIVE ARCHITECTURE</span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                👥 COLLABORATIVE ARCHITECTURE
+              </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Core Architecture Team</h2>
               <p className="text-xs sm:text-sm text-white/90 mt-2 max-w-md mx-auto leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
                 The core minds behind the A.U.R.A. sub-surface cavity & life detection system architecture.
