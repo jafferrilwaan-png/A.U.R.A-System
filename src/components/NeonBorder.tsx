@@ -223,9 +223,23 @@ export default function NeonBorder(props: Props) {
         let lap = 0;
         let corner = 0;
         let stepT = 0;
+        let isVisible = true;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                isVisible = e.isIntersecting;
+            });
+        }, { threshold: 0.05 });
+
+        if (rootRef.current) observer.observe(rootRef.current);
 
         const frame = (now: number) => {
-            const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+            if (!isVisible) {
+                raf = requestAnimationFrame(frame);
+                return;
+            }
+
+            const dt = Math.min(0.04, Math.max(0, (now - last) / 1000));
             last = now;
             const p = live.current;
             const s = Math.max(0, Math.min(20, p.speed));
@@ -275,7 +289,10 @@ export default function NeonBorder(props: Props) {
         };
         raf = requestAnimationFrame(frame);
 
-        return () => cancelAnimationFrame(raf);
+        return () => {
+            cancelAnimationFrame(raf);
+            observer.disconnect();
+        };
     }, []);
 
     const thick = Math.max(1, Math.min(10, thickness));

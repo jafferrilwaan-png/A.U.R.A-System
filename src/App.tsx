@@ -54,7 +54,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrollFraction, setScrollFraction] = useState(0);
   const [activeSection, setActiveSection] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   
@@ -170,7 +169,6 @@ export default function App() {
     const handleScroll = () => {
       const html = document.documentElement;
       const fraction = html.scrollTop / (html.scrollHeight - html.clientHeight);
-      setScrollFraction(fraction);
       scrollFractionRef.current = fraction;
       targetFrameIndex = Math.max(1, Math.min(frameCount, fraction * frameCount));
     };
@@ -178,17 +176,22 @@ export default function App() {
     let animationFrameId: number;
     const renderLoop = (timestamp: number) => {
       const isMobile = window.innerWidth < 640;
-      const frameInterval = isMobile ? 25 : 16; 
+      const frameInterval = isMobile ? 24 : 16; 
 
       if (timestamp - lastRenderTime >= frameInterval) {
-        currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.12;
+        currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.18;
         if (Math.abs(targetFrameIndex - currentFrameIndex) < 0.01) {
           currentFrameIndex = targetFrameIndex;
         }
         const roundedIndex = Math.round(currentFrameIndex);
         
+        // Hide canvas near footer seamlessly via direct DOM manipulation
+        if (canvas) {
+          canvas.style.opacity = scrollFractionRef.current > 0.94 ? "0" : "1";
+        }
+
         // Redraw if index changed OR if we are on mobile and scrolling (dx depends on scroll)
-        if (roundedIndex !== lastRenderedIndex || (isMobile && targetFrameIndex !== currentFrameIndex)) {
+        if (roundedIndex !== lastRenderedIndex || (isMobile && Math.abs(targetFrameIndex - currentFrameIndex) > 0.1)) {
           drawFrame(roundedIndex);
           lastRenderedIndex = roundedIndex;
         }
@@ -246,7 +249,7 @@ export default function App() {
       offset: ["start end", "end start"]
     });
     const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
-    const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [40, 0, 0, -40]);
+    const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [30, 0, 0, -30]);
     return { opacity, y };
   };
 
@@ -268,12 +271,11 @@ export default function App() {
       {/* --- SCROLLYTELLING CANVAS --- */}
       <canvas 
         ref={canvasRef} 
-        className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-1000"
+        className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-700"
         style={{ 
           filter: "contrast(1.08) saturate(1.1)",
           zIndex: 0,
-          opacity: scrollFraction > 0.94 ? 0 : 1,
-          willChange: "transform"
+          willChange: "transform, opacity"
         }}
       />
 
