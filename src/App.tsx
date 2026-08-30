@@ -54,6 +54,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 // --- MAIN APP COMPONENT ---
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [preloadProgress, setPreloadProgress] = useState(0);
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -62,50 +63,60 @@ export default function App() {
   
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
   const scrollFractionRef = useRef(0);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
 
-  // Loading Screen Timer
+  // SCROLLYTELLING CANVAS ENGINE & HIGH-PERFORMANCE PRELOADER
   useEffect(() => {
-    const loaderTimer = setTimeout(() => {
-      setLoading(false);
-      setTimeout(() => setEntranceComplete(true), 150);
-    }, 1800);
-    return () => clearTimeout(loaderTimer);
-  }, []);
-
-  // SCROLLYTELLING CANVAS ENGINE
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext('2d', { alpha: false });
-    if (!context) return;
-
     const frameCount = 311;
     const currentFrame = (index: number) => `high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
     const images: HTMLImageElement[] = new Array(frameCount);
+    imagesRef.current = images;
 
-    // Render Frame 1 Immediately on Mount
-    const firstImg = new Image();
-    firstImg.src = currentFrame(1);
-    images[0] = firstImg;
-    firstImg.onload = () => drawFrame(1);
+    let loadedCount = 0;
+    const isMobile = window.innerWidth < 640;
+    const step = isMobile ? 2 : 1;
+    const targetPreloadCount = Math.floor(frameCount / step);
 
-    // Stream remaining frames asynchronously
-    let preloadIndex = 2;
-    const preloadChunk = () => {
-      const isMobile = window.innerWidth < 640;
-      const step = isMobile ? 2 : 1;
-      for (let i = 0; i < 15 && preloadIndex <= frameCount; i += step, preloadIndex += step) {
-        if (!images[preloadIndex - 1]) {
-          const img = new Image();
-          img.src = currentFrame(preloadIndex);
-          images[preloadIndex - 1] = img;
-        }
-      }
-      if (preloadIndex <= frameCount) {
-        setTimeout(preloadChunk, isMobile ? 100 : 40);
+    const onImageLoaded = () => {
+      loadedCount++;
+      const progress = Math.min(100, Math.round((loadedCount / targetPreloadCount) * 100));
+      setPreloadProgress(progress);
+
+      if (progress >= 85) {
+        setTimeout(() => {
+          setLoading(false);
+          setTimeout(() => setEntranceComplete(true), 200);
+        }, 300);
       }
     };
-    setTimeout(preloadChunk, 150);
+
+    // Preload frames in parallel streams
+    for (let i = 1; i <= frameCount; i += step) {
+      const img = new Image();
+      img.src = currentFrame(i);
+      images[i - 1] = img;
+      if (img.complete) {
+        onImageLoaded();
+      } else {
+        img.onload = () => {
+          img.decode?.().catch(() => {});
+          onImageLoaded();
+        };
+        img.onerror = () => onImageLoaded();
+      }
+    }
+
+    // Safety fallback timeout to never trap the user
+    const safetyTimer = setTimeout(() => {
+      setPreloadProgress(100);
+      setLoading(false);
+      setTimeout(() => setEntranceComplete(true), 200);
+    }, 2800);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return () => clearTimeout(safetyTimer);
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) return () => clearTimeout(safetyTimer);
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
@@ -334,10 +345,29 @@ export default function App() {
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="text-sm sm:text-xl font-bold tracking-[0.3em] text-flowing-purple border border-[#9333EA]/50 px-5 py-2 rounded-lg font-display bg-black/40 backdrop-blur-md"
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="w-[260px] sm:w-[320px] flex flex-col gap-2 items-center mt-2"
               >
-                SYSTEM ONLINE
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden p-[1px] border border-white/10 shadow-[0_0_10px_rgba(192,132,252,0.2)]">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-[#9333EA] via-[#C084FC] to-cyan-400 shadow-[0_0_12px_#C084FC]"
+                    style={{ width: `${preloadProgress}%` }}
+                    transition={{ ease: "easeOut" }}
+                  />
+                </div>
+                <div className="flex justify-between w-full text-[10px] sm:text-xs text-white/70 font-mono tracking-widest uppercase">
+                  <span>PRELOADING FRAMES</span>
+                  <span className="text-[#C084FC] font-bold">{preloadProgress}%</span>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+                className="text-xs sm:text-sm font-bold tracking-[0.25em] text-flowing-purple border border-[#9333EA]/50 px-5 py-1.5 rounded-lg font-display bg-black/40 backdrop-blur-md"
+              >
+                {preloadProgress >= 85 ? "SYSTEM READY" : "INITIALIZING NODE"}
               </motion.div>
             </div>
           </motion.div>
