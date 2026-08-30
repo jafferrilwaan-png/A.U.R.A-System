@@ -489,8 +489,8 @@ export default function App() {
         <section ref={problemRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={problemScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
-                ⚠️ CRITICAL VECTOR
+              <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                CRITICAL VECTOR
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Subterranean Blindspots</h2>
             </div>
@@ -523,8 +523,8 @@ export default function App() {
         <section ref={missionRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={missionScroll} className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
-                🚨 THE HUMAN COST & OUR MISSION
+              <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                THE HUMAN COST & OUR MISSION
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Buried in Silence</h2>
             </div>
@@ -561,8 +561,8 @@ export default function App() {
 
           <motion.div style={techScroll} className="max-w-7xl mx-auto w-full bg-transparent relative z-10">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6 sm:pb-8">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
-                ⚡ SYSTEM FLOW
+              <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                SYSTEM FLOW
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Tech Architecture</h2>
             </div>
@@ -590,81 +590,75 @@ export default function App() {
         <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent overflow-hidden">
           <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
-                📡 LIVE TELEMETRY
+              <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                LIVE TELEMETRY
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Telemetry & Models</h2>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6 sm:gap-12 items-start">
+            <div className="grid lg:grid-cols-3 gap-6 sm:gap-10 items-start">
               {/* Left Column: macOS Terminal with Interactive Telemetry */}
               <div className="lg:col-span-2">
                 <Terminal title="esp32_aura_node.ino — ESP32 DevKit V1" />
               </div>
 
               {/* Right Column: Model Images with 3D Pin Interaction */}
-              <div className="flex flex-col gap-10 sm:gap-14 pt-4">
+              <div className="flex flex-col gap-6 w-full">
                 {/* Model 1 */}
-                <div className="w-full flex items-center justify-center min-h-[240px]">
-                  <PinContainer
-                    title="Tunnel Cavity Scan"
-                    href="/high_res_frames/frame-100.jpg"
-                    className="w-[280px] sm:w-[320px] p-3"
-                  >
-                    <div className="flex flex-col text-left">
-                      <div className="w-full h-[140px] sm:h-[160px] overflow-hidden rounded-lg mb-3 border border-white/10">
-                        <img 
-                          src="high_res_frames/frame-100.jpg" 
-                          alt="Subsurface model scan phase 1" 
-                          className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
-                          onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
-                          }}
-                        />
-                      </div>
-                      <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
-                        MODEL PROFILE 01
-                      </span>
-                      <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
-                        Tunnel Cavity Scan
-                      </h4>
-                      <p className="text-[11px] text-white/80 leading-snug font-normal">
-                        Maps structural cavities and returns subterranean safety margins.
-                      </p>
+                <PinContainer
+                  title="Tunnel Cavity Scan"
+                  href="/high_res_frames/frame-100.jpg"
+                >
+                  <div className="flex flex-col text-left">
+                    <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
+                      <img 
+                        src="high_res_frames/frame-100.jpg" 
+                        alt="Subsurface model scan phase 1" 
+                        className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
+                        }}
+                      />
                     </div>
-                  </PinContainer>
-                </div>
+                    <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                      MODEL PROFILE 01
+                    </span>
+                    <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                      Tunnel Cavity Scan
+                    </h4>
+                    <p className="text-[11px] text-white/80 leading-snug font-normal">
+                      Maps structural cavities and returns subterranean safety margins.
+                    </p>
+                  </div>
+                </PinContainer>
 
                 {/* Model 2 */}
-                <div className="w-full flex items-center justify-center min-h-[240px]">
-                  <PinContainer
-                    title="Void Isolation Map"
-                    href="/aura_hardware_architecture.jpg"
-                    className="w-[280px] sm:w-[320px] p-3"
-                  >
-                    <div className="flex flex-col text-left">
-                      <div className="w-full h-[140px] sm:h-[160px] overflow-hidden rounded-lg mb-3 border border-white/10">
-                        <img 
-                          src="aura_hardware_architecture.jpg" 
-                          alt="Subsurface model scan phase 2" 
-                          className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
-                          onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
-                          }}
-                        />
-                      </div>
-                      <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
-                        MODEL PROFILE 02
-                      </span>
-                      <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
-                        Void Isolation Map
-                      </h4>
-                      <p className="text-[11px] text-white/80 leading-snug font-normal">
-                        Highlights internal structures to locate survivors.
-                      </p>
+                <PinContainer
+                  title="Void Isolation Map"
+                  href="/aura_hardware_architecture.jpg"
+                >
+                  <div className="flex flex-col text-left">
+                    <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
+                      <img 
+                        src="aura_hardware_architecture.jpg" 
+                        alt="Subsurface model scan phase 2" 
+                        className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
+                        }}
+                      />
                     </div>
-                  </PinContainer>
-                </div>
+                    <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                      MODEL PROFILE 02
+                    </span>
+                    <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                      Void Isolation Map
+                    </h4>
+                    <p className="text-[11px] text-white/80 leading-snug font-normal">
+                      Highlights internal structures to locate survivors.
+                    </p>
+                  </div>
+                </PinContainer>
               </div>
             </div>
           </motion.div>
@@ -674,8 +668,8 @@ export default function App() {
         <section ref={teamRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
           <motion.div style={teamScroll} className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-12 sm:mb-16">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
-                👥 COLLABORATIVE ARCHITECTURE
+              <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
+                COLLABORATIVE ARCHITECTURE
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">Core Architecture Team</h2>
               <p className="text-xs sm:text-sm text-white/90 mt-2 max-w-md mx-auto leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">

@@ -7,8 +7,8 @@ export const PinContainer = ({
   children,
   title,
   href,
-  className,
-  containerClassName,
+  className = "",
+  containerClassName = "",
 }: {
   children: React.ReactNode;
   title?: string;
@@ -16,145 +16,57 @@ export const PinContainer = ({
   className?: string;
   containerClassName?: string;
 }) => {
-  const [transform, setTransform] = useState(
-    "rotateX(0deg) translateZ(0px)"
-  );
-
-  const onMouseEnter = () => {
-    setTransform("rotateX(40deg) scale(0.85)");
-  };
-  const onMouseLeave = () => {
-    setTransform("rotateX(0deg) scale(1)");
-  };
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
-      className={`relative group/pin z-50 cursor-pointer ${containerClassName || ""}`}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      onTouchStart={onMouseEnter}
-      onTouchEnd={onMouseLeave}
+      className={`relative group/pin w-full rounded-2xl ${containerClassName}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
+      style={{ perspective: "1000px" }}
     >
-      <div
-        style={{
-          perspective: "1000px",
-          transform: "rotateX(70deg) translateZ(0deg)",
+      <motion.div
+        animate={{
+          rotateX: isHovered ? 10 : 0,
+          rotateY: isHovered ? -8 : 0,
+          scale: isHovered ? 1.02 : 1,
+          y: isHovered ? -4 : 0,
         }}
-        className="absolute left-1/2 top-1/2 ml-[0.09375rem] mt-4 -translate-x-1/2 -translate-y-1/2"
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className={`relative w-full rounded-2xl bg-[#0a0d14]/90 backdrop-blur-xl border border-white/10 group-hover/pin:border-[#C084FC]/60 transition-colors shadow-2xl overflow-hidden p-3.5 sm:p-4 ${className}`}
       >
+        {/* Glowing laser top accent when active */}
         <div
-          style={{
-            transform: transform,
-          }}
-          className="absolute left-1/2 p-4 top-1/2 flex justify-start items-start rounded-2xl shadow-[0_8px_16px_rgb(0_0_0/0.4)] bg-black/70 border border-white/[0.1] group-hover/pin:border-white/[0.25] transition duration-700 overflow-hidden"
-        >
-          <div className={className}>{children}</div>
-        </div>
-      </div>
-      <PinPerspective title={title} href={href} />
+          className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#C084FC] to-transparent transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        />
+
+        {/* Floating Pin Badge */}
+        {title && (
+          <div
+            className={`absolute top-3 right-3 z-30 transition-all duration-300 ${
+              isHovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none"
+            }`}
+          >
+            <a
+              href={href || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/90 border border-[#C084FC]/60 text-[#C084FC] text-[10px] font-bold tracking-wider uppercase shadow-[0_0_12px_rgba(192,132,252,0.4)]"
+            >
+              <span>{title}</span>
+              <i className="bi bi-arrow-up-right text-[9px]" />
+            </a>
+          </div>
+        )}
+
+        {children}
+      </motion.div>
     </div>
   );
 };
 
-export const PinPerspective = ({
-  title,
-  href,
-}: {
-  title?: string;
-  href?: string;
-}) => {
-  return (
-    <motion.div className="pointer-events-none w-full h-80 flex items-center justify-center opacity-0 group-hover/pin:opacity-100 z-[60] transition duration-500">
-      <div className="w-full h-full -mt-7 flex-none inset-0">
-        <div className="absolute top-0 inset-x-0 flex justify-center">
-          <a
-            href={href || "#"}
-            target="_blank"
-            rel="noreferrer"
-            className="relative flex space-x-2 items-center z-10 rounded-full bg-zinc-950 py-0.5 px-4 ring-1 ring-white/10"
-          >
-            <span className="relative z-20 text-white text-xs font-bold inline-block py-0.5">
-              {title}
-            </span>
-            <span className="absolute -bottom-0 left-[1.125rem] h-px w-[calc(100%-2.25rem)] bg-gradient-to-r from-purple-400/0 via-purple-400/90 to-purple-400/0 transition-opacity duration-500"></span>
-          </a>
-        </div>
-
-        <div
-          style={{
-            perspective: "1000px",
-            transform: "rotateX(70deg) translateZ(0deg)",
-          }}
-          className="absolute left-1/2 top-1/2 ml-[0.09375rem] mt-4 -translate-x-1/2 -translate-y-1/2"
-        >
-          <>
-            <motion.div
-              initial={{
-                opacity: 0,
-                scale: 0,
-                x: "-50%",
-                y: "-50%",
-              }}
-              animate={{
-                opacity: [0, 1, 0.5, 0],
-                scale: 1,
-                z: 0,
-              }}
-              transition={{
-                duration: 6,
-                repeat: Infinity,
-                delay: 0,
-              }}
-              className="absolute left-1/2 top-1/2 h-[11.25rem] w-[11.25rem] rounded-[50%] bg-[#C084FC]/[0.08] shadow-[0_8px_16px_rgb(0_0_0/0.4)]"
-            ></motion.div>
-            <motion.div
-              initial={{
-                opacity: 0,
-                scale: 0,
-                x: "-50%",
-                y: "-50%",
-              }}
-              animate={{
-                opacity: [0, 1, 0.5, 0],
-                scale: 1,
-                z: 0,
-              }}
-              transition={{
-                duration: 6,
-                repeat: Infinity,
-                delay: 2,
-              }}
-              className="absolute left-1/2 top-1/2 h-[11.25rem] w-[11.25rem] rounded-[50%] bg-[#C084FC]/[0.08] shadow-[0_8px_16px_rgb(0_0_0/0.4)]"
-            ></motion.div>
-            <motion.div
-              initial={{
-                opacity: 0,
-                scale: 0,
-                x: "-50%",
-                y: "-50%",
-              }}
-              animate={{
-                opacity: [0, 1, 0.5, 0],
-                scale: 1,
-                z: 0,
-              }}
-              transition={{
-                duration: 6,
-                repeat: Infinity,
-                delay: 4,
-              }}
-              className="absolute left-1/2 top-1/2 h-[11.25rem] w-[11.25rem] rounded-[50%] bg-[#C084FC]/[0.08] shadow-[0_8px_16px_rgb(0_0_0/0.4)]"
-            ></motion.div>
-          </>
-        </div>
-
-        <>
-          <motion.div className="absolute right-1/2 bottom-1/2 bg-gradient-to-b from-transparent to-[#C084FC] translate-y-[14px] w-px h-20 group-hover/pin:h-40 blur-[2px]" />
-          <motion.div className="absolute right-1/2 bottom-1/2 bg-gradient-to-b from-transparent to-[#C084FC] translate-y-[14px] w-px h-20 group-hover/pin:h-40" />
-          <motion.div className="absolute right-1/2 translate-x-[1.5px] bottom-1/2 bg-[#C084FC] translate-y-[14px] w-[4px] h-[4px] rounded-full z-40 blur-[3px]" />
-          <motion.div className="absolute right-1/2 translate-x-[0.5px] bottom-1/2 bg-purple-300 translate-y-[14px] w-[2px] h-[2px] rounded-full z-40" />
-        </>
-      </div>
-    </motion.div>
-  );
-};
+export default PinContainer;
