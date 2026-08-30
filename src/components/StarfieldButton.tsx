@@ -306,6 +306,7 @@ export interface StarfieldButtonProps {
         brightness?: number;
     };
     link?: string;
+    newTab?: boolean;
     transition?: Transition;
     autoAnimate?: boolean;
     style?: React.CSSProperties;
