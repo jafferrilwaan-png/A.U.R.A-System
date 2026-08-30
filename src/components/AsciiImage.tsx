@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import React, { useEffect, useRef, type CSSProperties } from "react";
 
 const DEFAULT_IMAGE =
     "https://imagedelivery.net/IEUjvl3YUlxY-MrTpOAWDQ/e4476503-c1e3-4358-3ff6-539deda1f800/w=800";
@@ -15,21 +15,19 @@ interface RevealOptions {
 
 const DEFAULTS = {
     fit: "cover" as Fit,
-    focusY: 19,
-    columns: 200,
+    focusY: 20,
+    columns: 60,
     ramp: " .:-=+*#%@",
     invert: false,
     contrast: 100,
-    colorMode: "mono" as ColorMode,
+    colorMode: "image" as ColorMode,
     inkColor: "#FFFFFF",
     reveal: true,
-    revealOptions: { size: 80, softness: 16 } as RevealOptions,
+    autoReveal: true,
+    revealOptions: { size: 65, softness: 12 } as RevealOptions,
 };
 
 const contrastAt = (value: number) => 0.5 + (value / 100) * 2;
-
-const clampFocus = (value: number) =>
-    Math.min(100, Math.max(0, typeof value === "number" ? value : 50));
 
 function placeRect(
     imgW: number,
@@ -45,7 +43,7 @@ function placeRect(
             : Math.max(boxW / imgW, boxH / imgH);
     const dw = imgW * scale;
     const dh = imgH * scale;
-    const f = fit === "cover" ? clampFocus(focusY) / 100 : 0.5;
+    const f = fit === "cover" ? Math.min(1, Math.max(0, focusY / 100)) : 0.5;
     return { dx: (boxW - dw) / 2, dy: (boxH - dh) * f, dw, dh };
 }
 
@@ -60,6 +58,7 @@ export interface AsciiImageProps {
     colorMode?: ColorMode;
     inkColor?: string;
     reveal?: boolean;
+    autoReveal?: boolean;
     revealOptions?: RevealOptions;
     style?: CSSProperties;
     className?: string;
@@ -83,6 +82,7 @@ export default function AsciiImage(props: AsciiImageProps) {
         colorMode = DEFAULTS.colorMode,
         inkColor = DEFAULTS.inkColor,
         reveal = DEFAULTS.reveal,
+        autoReveal = true,
         revealOptions = DEFAULTS.revealOptions,
         style,
         className = "",
@@ -90,93 +90,69 @@ export default function AsciiImage(props: AsciiImageProps) {
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const offRef = useRef<HTMLCanvasElement | null>(null);
-    const samplerRef = useRef<HTMLCanvasElement | null>(null);
-    const imgRef = useRef<HTMLImageElement | null>(null);
-    const revealRef = useRef<HTMLCanvasElement | null>(null);
+    const photoRef = useRef<HTMLCanvasElement | null>(null);
     const maskRef = useRef<HTMLCanvasElement | null>(null);
-    const blobsRef = useRef<Array<{ x: number; y: number }>>([]);
-    const seededRef = useRef(false);
+    const imgRef = useRef<HTMLImageElement | null>(null);
+    const isVisibleRef = useRef(false);
     const pointer = useRef({ x: -9999, y: -9999, inside: false });
 
     const src = resolveImageSrc(image) || DEFAULT_IMAGE;
     const revealSize = revealOptions?.size ?? DEFAULTS.revealOptions.size;
-    const revealSoftness =
-        revealOptions?.softness ?? DEFAULTS.revealOptions.softness;
+    const revealSoftness = revealOptions?.softness ?? DEFAULTS.revealOptions.softness;
 
     useEffect(() => {
-        const canvasEl = canvasRef.current;
-        if (!canvasEl) return;
-        const context = canvasEl.getContext("2d");
-        if (!context) return;
-        const canvas: HTMLCanvasElement = canvasEl;
-        const ctx: CanvasRenderingContext2D = context;
-
-        const chars = ramp && ramp.length > 0 ? ramp : DEFAULTS.ramp;
-        const punch = contrastAt(contrast);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d", { alpha: false });
+        if (!ctx) return;
 
         let raf = 0;
         let alive = true;
         let coverRect = { dx: 0, dy: 0, dw: 0, dh: 0 };
+        let blobX = 0;
+        let blobY = 0;
+        let seeded = false;
 
-        const BLOB_COUNT = 5;
-        blobsRef.current = Array.from({ length: BLOB_COUNT }, () => ({
-            x: 0,
-            y: 0,
-        }));
-        seededRef.current = false;
+        const chars = ramp && ramp.length > 0 ? ramp : DEFAULTS.ramp;
+        const punch = contrastAt(contrast);
 
         function getSize() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            const w = canvas.clientWidth || 600;
-            const h = canvas.clientHeight || 600;
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            const w = canvas.clientWidth || 300;
+            const h = canvas.clientHeight || 300;
             return { w, h, dpr };
         }
 
+        // Build cached ASCII canvas once on image load / resize
         function buildAscii() {
             const img = imgRef.current;
-            if (!img) return;
+            if (!img || !img.complete || img.naturalWidth === 0) return;
             const { w, h, dpr } = getSize();
             canvas.width = Math.max(1, Math.round(w * dpr));
             canvas.height = Math.max(1, Math.round(h * dpr));
 
-            const cols = Math.max(8, Math.round(columns));
+            const cols = Math.max(16, Math.min(80, Math.round(columns)));
             const cellW = (w * dpr) / cols;
-            const fontPx = cellW * 1.7;
+            const fontPx = cellW * 1.6;
             const cellH = fontPx;
             const rows = Math.max(1, Math.floor((h * dpr) / cellH));
 
-            let sampler = samplerRef.current;
-            if (!sampler) {
-                sampler = document.createElement("canvas");
-                samplerRef.current = sampler;
-            }
+            const sampler = document.createElement("canvas");
             sampler.width = cols;
             sampler.height = rows;
             const sctx = sampler.getContext("2d", { willReadFrequently: true });
             if (!sctx) return;
 
-            const place = placeRect(
-                img.width,
-                img.height,
-                canvas.width,
-                canvas.height,
-                fit,
-                focusY
-            );
+            const place = placeRect(img.naturalWidth, img.naturalHeight, canvas.width, canvas.height, fit, focusY);
+            coverRect = place;
+
             sctx.clearRect(0, 0, cols, rows);
-            sctx.drawImage(
-                img,
-                place.dx / cellW,
-                place.dy / cellH,
-                place.dw / cellW,
-                place.dh / cellH
-            );
+            sctx.drawImage(img, place.dx / cellW, place.dy / cellH, place.dw / cellW, place.dh / cellH);
 
             let data: Uint8ClampedArray;
             try {
                 data = sctx.getImageData(0, 0, cols, rows).data;
             } catch {
-                imgRef.current = null;
                 return;
             }
 
@@ -189,8 +165,10 @@ export default function AsciiImage(props: AsciiImageProps) {
             off.height = canvas.height;
             const octx = off.getContext("2d");
             if (!octx) return;
-            octx.clearRect(0, 0, off.width, off.height);
-            octx.font = fontPx.toFixed(2) + "px ui-monospace, monospace";
+
+            octx.fillStyle = "#080B10";
+            octx.fillRect(0, 0, off.width, off.height);
+            octx.font = `${fontPx.toFixed(1)}px ui-monospace, monospace`;
             octx.textBaseline = "top";
 
             const last = chars.length - 1;
@@ -203,126 +181,127 @@ export default function AsciiImage(props: AsciiImageProps) {
                     let lum = (0.299 * rr + 0.587 * gg + 0.114 * bb) / 255;
                     lum = (lum - 0.5) * punch + 0.5;
                     if (invert) lum = 1 - lum;
-                    lum = lum < 0 ? 0 : lum > 1 ? 1 : lum;
+                    lum = Math.max(0, Math.min(1, lum));
                     const ch = chars[Math.round(lum * last)];
                     if (ch === " ") continue;
+
                     octx.fillStyle =
                         colorMode === "image"
-                            ? `rgb(${Math.min(255, rr + 30)}, ${Math.min(
-                                  255,
-                                  gg + 30
-                              )}, ${Math.min(255, bb + 30)})`
+                            ? `rgb(${Math.min(255, rr + 25)}, ${Math.min(255, gg + 25)}, ${Math.min(255, bb + 25)})`
                             : inkColor;
                     octx.fillText(ch, c * cellW, r * cellH);
                 }
             }
 
-            coverRect = place;
-        }
-
-        function ensureLayer(ref: { current: HTMLCanvasElement | null }) {
-            let layer = ref.current;
-            if (!layer) {
-                layer = document.createElement("canvas");
-                ref.current = layer;
+            // Prepare pre-rendered high-res photo layer
+            let photo = photoRef.current;
+            if (!photo) {
+                photo = document.createElement("canvas");
+                photoRef.current = photo;
             }
-            if (
-                layer.width !== canvas.width ||
-                layer.height !== canvas.height
-            ) {
-                layer.width = canvas.width;
-                layer.height = canvas.height;
-            }
-            return layer;
-        }
-
-        function updateBlobs() {
-            const blobs = blobsRef.current;
-            if (blobs.length === 0) return;
-            const { dpr } = getSize();
-            const tx = pointer.current.x * dpr;
-            const ty = pointer.current.y * dpr;
-            if (!seededRef.current) {
-                for (const blob of blobs) {
-                    blob.x = tx;
-                    blob.y = ty;
-                }
-                seededRef.current = true;
-                return;
-            }
-            blobs[0].x += (tx - blobs[0].x) * 0.35;
-            blobs[0].y += (ty - blobs[0].y) * 0.35;
-            for (let i = 1; i < blobs.length; i++) {
-                blobs[i].x += (blobs[i - 1].x - blobs[i].x) * 0.35;
-                blobs[i].y += (blobs[i - 1].y - blobs[i].y) * 0.35;
+            photo.width = canvas.width;
+            photo.height = canvas.height;
+            const pctx = photo.getContext("2d");
+            if (pctx) {
+                pctx.clearRect(0, 0, photo.width, photo.height);
+                pctx.drawImage(img, coverRect.dx, coverRect.dy, coverRect.dw, coverRect.dh);
             }
         }
 
         function paint() {
             const off = offRef.current;
             if (!off) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             ctx.drawImage(off, 0, 0);
 
             const img = imgRef.current;
-            if (!reveal || !pointer.current.inside || !img) return;
+            const photo = photoRef.current;
+            if (!reveal || !img || !photo) return;
 
             const { dpr } = getSize();
-            const blobs = blobsRef.current;
-            const photo = ensureLayer(revealRef);
-            const pctx = photo.getContext("2d");
-            const mask = ensureLayer(maskRef);
-            const mctx = mask.getContext("2d");
-            if (!pctx || !mctx) return;
+            const now = performance.now() / 1000;
 
-            pctx.globalCompositeOperation = "source-over";
-            pctx.clearRect(0, 0, photo.width, photo.height);
-            pctx.drawImage(
-                img,
-                coverRect.dx,
-                coverRect.dy,
-                coverRect.dw,
-                coverRect.dh
-            );
+            let targetX = 0;
+            let targetY = 0;
+
+            if (pointer.current.inside) {
+                targetX = pointer.current.x * dpr;
+                targetY = pointer.current.y * dpr;
+            } else if (autoReveal) {
+                const cw = canvas.width;
+                const ch = canvas.height;
+                const cx = cw * 0.5;
+                const cy = ch * 0.42;
+                targetX = cx + Math.sin(now * 1.5) * (cw * 0.28);
+                targetY = cy + Math.cos(now * 1.1) * (ch * 0.22);
+            } else {
+                return;
+            }
+
+            if (!seeded) {
+                blobX = targetX;
+                blobY = targetY;
+                seeded = true;
+            } else {
+                blobX += (targetX - blobX) * 0.2;
+                blobY += (targetY - blobY) * 0.2;
+            }
+
+            let mask = maskRef.current;
+            if (!mask) {
+                mask = document.createElement("canvas");
+                maskRef.current = mask;
+            }
+            if (mask.width !== canvas.width || mask.height !== canvas.height) {
+                mask.width = canvas.width;
+                mask.height = canvas.height;
+            }
+
+            const mctx = mask.getContext("2d");
+            if (!mctx) return;
+
+            const pulse = autoReveal && !pointer.current.inside ? 1 + 0.12 * Math.sin(now * 2.5) : 1;
+            const radius = revealSize * dpr * pulse;
 
             mctx.clearRect(0, 0, mask.width, mask.height);
             mctx.save();
-            mctx.filter = `blur(${(revealSoftness * dpr).toFixed(1)}px)`;
+            mctx.filter = `blur(${Math.round(revealSoftness * dpr)}px)`;
             mctx.fillStyle = "#FFFFFF";
-            for (let i = 0; i < blobs.length; i++) {
-                const t = blobs.length <= 1 ? 0 : i / (blobs.length - 1);
-                const radius = revealSize * dpr * (1 - t * 0.5);
-                mctx.beginPath();
-                mctx.arc(blobs[i].x, blobs[i].y, radius, 0, Math.PI * 2);
-                mctx.fill();
-            }
+            mctx.beginPath();
+            mctx.arc(blobX, blobY, radius, 0, Math.PI * 2);
+            mctx.fill();
             mctx.restore();
 
-            pctx.globalCompositeOperation = "destination-in";
-            pctx.drawImage(mask, 0, 0);
-            pctx.globalCompositeOperation = "source-over";
+            // Composite revealed photo onto final canvas
+            ctx.save();
+            ctx.globalCompositeOperation = "source-over";
+            
+            // Draw masked photo directly using clipping
+            ctx.beginPath();
+            ctx.arc(blobX, blobY, radius * 1.25, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
             ctx.drawImage(photo, 0, 0);
+            ctx.restore();
         }
 
         function loop() {
             if (!alive) return;
-            updateBlobs();
-            paint();
+            if (isVisibleRef.current) {
+                paint();
+            }
             raf = requestAnimationFrame(loop);
         }
 
         function onMove(event: PointerEvent) {
             const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            pointer.current.x = x;
-            pointer.current.y = y;
-            pointer.current.inside =
-                x >= 0 && y >= 0 && x <= rect.width && y <= rect.height;
+            pointer.current.x = event.clientX - rect.left;
+            pointer.current.y = event.clientY - rect.top;
+            pointer.current.inside = true;
         }
+
         function onLeave() {
             pointer.current.inside = false;
-            seededRef.current = false;
         }
 
         const img = new Image();
@@ -332,58 +311,46 @@ export default function AsciiImage(props: AsciiImageProps) {
             imgRef.current = img;
             buildAscii();
             paint();
-            if (reveal) raf = requestAnimationFrame(loop);
         };
-        if (src) img.src = src;
+        img.src = src;
 
-        let ro: ResizeObserver | null = null;
-        if (typeof ResizeObserver !== "undefined") {
-            ro = new ResizeObserver(() => {
-                buildAscii();
-                paint();
-            });
-            ro.observe(canvas);
-        }
+        // IntersectionObserver: only paint when in viewport to ensure 60fps buttery scrolling
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((e) => {
+                    isVisibleRef.current = e.isIntersecting;
+                });
+            },
+            { threshold: 0.05 }
+        );
+        observer.observe(canvas);
+
+        raf = requestAnimationFrame(loop);
+
         canvas.addEventListener("pointermove", onMove);
         canvas.addEventListener("pointerleave", onLeave);
 
         return () => {
             alive = false;
             cancelAnimationFrame(raf);
-            ro?.disconnect();
+            observer.disconnect();
             canvas.removeEventListener("pointermove", onMove);
             canvas.removeEventListener("pointerleave", onLeave);
         };
-    }, [
-        src,
-        fit,
-        focusY,
-        columns,
-        ramp,
-        invert,
-        contrast,
-        colorMode,
-        inkColor,
-        reveal,
-        revealSize,
-        revealSoftness,
-    ]);
+    }, [src, fit, focusY, columns, ramp, invert, contrast, colorMode, inkColor, reveal, autoReveal, revealSize, revealSoftness]);
 
     return (
         <canvas
             ref={canvasRef}
-            aria-label={
-                typeof image === "object"
-                    ? (image?.alt ?? "ASCII art")
-                    : "ASCII art"
-            }
+            aria-label="Profile ASCII Reveal"
             className={className}
             style={{
                 ...style,
                 display: "block",
                 width: "100%",
                 height: "100%",
-                cursor: reveal ? "crosshair" : "default",
+                cursor: "pointer",
+                willChange: "transform",
             }}
         />
     );
