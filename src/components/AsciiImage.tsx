@@ -101,9 +101,9 @@ export default function AsciiImage(props: AsciiImageProps) {
     const revealSoftness = revealOptions?.softness ?? DEFAULTS.revealOptions.softness;
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d", { alpha: false });
+        const canvasEl = canvasRef.current;
+        if (!canvasEl) return;
+        const ctx = canvasEl.getContext("2d", { alpha: false });
         if (!ctx) return;
 
         let raf = 0;
@@ -117,19 +117,20 @@ export default function AsciiImage(props: AsciiImageProps) {
         const punch = contrastAt(contrast);
 
         function getSize() {
+            if (!canvasEl) return { w: 300, h: 300, dpr: 1 };
             const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-            const w = canvas.clientWidth || 300;
-            const h = canvas.clientHeight || 300;
+            const w = canvasEl.clientWidth || 300;
+            const h = canvasEl.clientHeight || 300;
             return { w, h, dpr };
         }
 
-        // Build cached ASCII canvas once on image load / resize
         function buildAscii() {
+            if (!canvasEl) return;
             const img = imgRef.current;
             if (!img || !img.complete || img.naturalWidth === 0) return;
             const { w, h, dpr } = getSize();
-            canvas.width = Math.max(1, Math.round(w * dpr));
-            canvas.height = Math.max(1, Math.round(h * dpr));
+            canvasEl.width = Math.max(1, Math.round(w * dpr));
+            canvasEl.height = Math.max(1, Math.round(h * dpr));
 
             const cols = Math.max(16, Math.min(80, Math.round(columns)));
             const cellW = (w * dpr) / cols;
@@ -143,7 +144,7 @@ export default function AsciiImage(props: AsciiImageProps) {
             const sctx = sampler.getContext("2d", { willReadFrequently: true });
             if (!sctx) return;
 
-            const place = placeRect(img.naturalWidth, img.naturalHeight, canvas.width, canvas.height, fit, focusY);
+            const place = placeRect(img.naturalWidth, img.naturalHeight, canvasEl.width, canvasEl.height, fit, focusY);
             coverRect = place;
 
             sctx.clearRect(0, 0, cols, rows);
@@ -161,8 +162,8 @@ export default function AsciiImage(props: AsciiImageProps) {
                 off = document.createElement("canvas");
                 offRef.current = off;
             }
-            off.width = canvas.width;
-            off.height = canvas.height;
+            off.width = canvasEl.width;
+            off.height = canvasEl.height;
             const octx = off.getContext("2d");
             if (!octx) return;
 
@@ -193,14 +194,13 @@ export default function AsciiImage(props: AsciiImageProps) {
                 }
             }
 
-            // Prepare pre-rendered high-res photo layer
             let photo = photoRef.current;
             if (!photo) {
                 photo = document.createElement("canvas");
                 photoRef.current = photo;
             }
-            photo.width = canvas.width;
-            photo.height = canvas.height;
+            photo.width = canvasEl.width;
+            photo.height = canvasEl.height;
             const pctx = photo.getContext("2d");
             if (pctx) {
                 pctx.clearRect(0, 0, photo.width, photo.height);
@@ -209,6 +209,7 @@ export default function AsciiImage(props: AsciiImageProps) {
         }
 
         function paint() {
+            if (!canvasEl || !ctx) return;
             const off = offRef.current;
             if (!off) return;
 
@@ -228,8 +229,8 @@ export default function AsciiImage(props: AsciiImageProps) {
                 targetX = pointer.current.x * dpr;
                 targetY = pointer.current.y * dpr;
             } else if (autoReveal) {
-                const cw = canvas.width;
-                const ch = canvas.height;
+                const cw = canvasEl.width;
+                const ch = canvasEl.height;
                 const cx = cw * 0.5;
                 const cy = ch * 0.42;
                 targetX = cx + Math.sin(now * 1.5) * (cw * 0.28);
@@ -252,9 +253,9 @@ export default function AsciiImage(props: AsciiImageProps) {
                 mask = document.createElement("canvas");
                 maskRef.current = mask;
             }
-            if (mask.width !== canvas.width || mask.height !== canvas.height) {
-                mask.width = canvas.width;
-                mask.height = canvas.height;
+            if (mask.width !== canvasEl.width || mask.height !== canvasEl.height) {
+                mask.width = canvasEl.width;
+                mask.height = canvasEl.height;
             }
 
             const mctx = mask.getContext("2d");
@@ -275,8 +276,6 @@ export default function AsciiImage(props: AsciiImageProps) {
             // Composite revealed photo onto final canvas
             ctx.save();
             ctx.globalCompositeOperation = "source-over";
-            
-            // Draw masked photo directly using clipping
             ctx.beginPath();
             ctx.arc(blobX, blobY, radius * 1.25, 0, Math.PI * 2);
             ctx.closePath();
@@ -294,7 +293,8 @@ export default function AsciiImage(props: AsciiImageProps) {
         }
 
         function onMove(event: PointerEvent) {
-            const rect = canvas.getBoundingClientRect();
+            if (!canvasEl) return;
+            const rect = canvasEl.getBoundingClientRect();
             pointer.current.x = event.clientX - rect.left;
             pointer.current.y = event.clientY - rect.top;
             pointer.current.inside = true;
@@ -314,7 +314,6 @@ export default function AsciiImage(props: AsciiImageProps) {
         };
         img.src = src;
 
-        // IntersectionObserver: only paint when in viewport to ensure 60fps buttery scrolling
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((e) => {
@@ -323,19 +322,19 @@ export default function AsciiImage(props: AsciiImageProps) {
             },
             { threshold: 0.05 }
         );
-        observer.observe(canvas);
+        observer.observe(canvasEl);
 
         raf = requestAnimationFrame(loop);
 
-        canvas.addEventListener("pointermove", onMove);
-        canvas.addEventListener("pointerleave", onLeave);
+        canvasEl.addEventListener("pointermove", onMove);
+        canvasEl.addEventListener("pointerleave", onLeave);
 
         return () => {
             alive = false;
             cancelAnimationFrame(raf);
             observer.disconnect();
-            canvas.removeEventListener("pointermove", onMove);
-            canvas.removeEventListener("pointerleave", onLeave);
+            canvasEl.removeEventListener("pointermove", onMove);
+            canvasEl.removeEventListener("pointerleave", onLeave);
         };
     }, [src, fit, focusY, columns, ramp, invert, contrast, colorMode, inkColor, reveal, autoReveal, revealSize, revealSoftness]);
 
