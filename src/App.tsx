@@ -5,7 +5,7 @@ import AsciiImage from "./components/AsciiImage";
 import StarfieldButton from "./components/StarfieldButton";
 import Terminal from "./components/Terminal";
 import { PinContainer } from "./components/ui/3d-pin";
-import { BackgroundGradient } from "./components/ui/background-gradient";
+import { GlowingEffect } from "./components/ui/glowing-effect";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -496,25 +496,43 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <BackgroundGradient className="rounded-2xl p-5 sm:p-7 bg-[#0a0d14]/90 backdrop-blur-xl border border-white/10 shadow-2xl h-full flex flex-col justify-between">
-                <div>
-                  <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
-                  <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
-                  <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-                    First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
-                  </p>
+              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl">
+                <GlowingEffect
+                  spread={45}
+                  glow={true}
+                  disabled={false}
+                  proximity={80}
+                  inactiveZone={0.01}
+                />
+                <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
+                  <div>
+                    <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
+                    <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
+                    <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                      First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
+                    </p>
+                  </div>
                 </div>
-              </BackgroundGradient>
+              </div>
 
-              <BackgroundGradient className="rounded-2xl p-5 sm:p-7 bg-[#0a0d14]/90 backdrop-blur-xl border border-white/10 shadow-2xl h-full flex flex-col justify-between">
-                <div>
-                  <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
-                  <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
-                  <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-                    Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
-                  </p>
+              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl">
+                <GlowingEffect
+                  spread={45}
+                  glow={true}
+                  disabled={false}
+                  proximity={80}
+                  inactiveZone={0.01}
+                />
+                <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
+                  <div>
+                    <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
+                    <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
+                    <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                      Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
+                    </p>
+                  </div>
                 </div>
-              </BackgroundGradient>
+              </div>
             </div>
           </motion.div>
         </section>
@@ -574,12 +592,21 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 flex flex-col justify-between min-h-[160px] text-left shadow-lg">
-                  <div>
-                    <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
-                    <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
+                <div key={idx} className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl bg-[#0a0d14]/75 backdrop-blur-md flex flex-col justify-between min-h-[160px] text-left shadow-lg group">
+                  <GlowingEffect
+                    spread={35}
+                    glow={true}
+                    disabled={false}
+                    proximity={60}
+                    inactiveZone={0.01}
+                  />
+                  <div className="relative z-10 p-4 sm:p-5 flex flex-col justify-between h-full">
+                    <div>
+                      <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
+                      <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
+                    </div>
+                    <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
                   </div>
-                  <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
                 </div>
               ))}
             </div>
