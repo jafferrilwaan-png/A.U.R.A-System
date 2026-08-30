@@ -6,6 +6,8 @@ import StarfieldButton from "./components/StarfieldButton";
 import Terminal from "./components/Terminal";
 import { PinContainer } from "./components/ui/3d-pin";
 import { GlowingEffect } from "./components/ui/glowing-effect";
+// @ts-ignore
+import PortalRedirectButton from "./components/PortalRedirectButton";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -900,6 +902,11 @@ export default function App() {
           })}
         </div>
 
+        {/* --- PORTAL ENTRANCE TO AI CORE --- */}
+        <section className="relative z-20 w-full max-w-7xl mx-auto px-4 mt-8">
+          <PortalRedirectButton />
+        </section>
+
         {/* --- FOOTER --- */}
         <footer className="relative bg-[#05070a]/45 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-between pt-12 pb-10 sm:pt-16 sm:pb-12 px-5 sm:px-12 mt-12 z-20">
           <div className="w-full max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12 border-b border-white/10 pb-12">
@@ -992,6 +999,8 @@ export default function App() {
             </span>
           </div>
         </footer>
+
+
 
         {/* --- BACK TO TOP ARROW --- */}
         <AnimatePresence>

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A.U.R.A. — AI Core Hardware Intelligence</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background: #06080d;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #e2e8f0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Space Grotesk', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── MINIMAL SUBTLE GRID ── */
+  .scan-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(192,132,252,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(192,132,252,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* ── GRAIN RING CANVAS ── */
+  #grain-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    border-radius: 50%;
+  }
+
+  /* ── ORB WRAPPER ── */
+  .orb-wrapper {
+    position: relative;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  /* ── RIPPLE SHOCKWAVES (Speaking Splatter) ── */
+  .ripple-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid rgba(192,132,252,0.5);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .speaking .ripple-ring:nth-child(1) { animation: ripple 1.1s ease-out infinite 0s; }
+  .speaking .ripple-ring:nth-child(2) { animation: ripple 1.1s ease-out infinite 0.35s; }
+  .speaking .ripple-ring:nth-child(3) { animation: ripple 1.1s ease-out infinite 0.7s; }
+
+  @keyframes ripple {
+    0%   { transform: scale(0.95); opacity: 0.8; }
+    100% { transform: scale(2.3); opacity: 0; }
+  }
+
+  /* ── OUTER GLOW (Speaking Splatter) ── */
+  .speaking .orb-glow {
+    animation: splatter 0.4s ease-in-out infinite alternate;
+  }
+  @keyframes splatter {
+    0%   { box-shadow: 0 0 25px 10px rgba(192,132,252,0.25), 0 0 60px 25px rgba(255,0,205,0.15); }
+    100% { box-shadow: 0 0 60px 30px rgba(192,132,252,0.55), 0 0 120px 60px rgba(255,0,205,0.3), 0 0 160px 80px rgba(56,189,248,0.15); }
+  }
+
+  .thinking .orb-glow {
+    animation: think-pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes think-pulse {
+    0%,100% { box-shadow: 0 0 20px 6px rgba(251,191,36,0.25); }
+    50%      { box-shadow: 0 0 50px 20px rgba(251,191,36,0.5); }
+  }
+
+  .orb-glow {
+    position: absolute; inset: -20px; border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 20px 8px rgba(192,132,252,0.15);
+    transition: box-shadow 0.4s;
+  }
+
+  /* ── MINIMAL GLASS TERMINAL ── */
+  .glass-card {
+    background: rgba(10, 14, 24, 0.82);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .terminal-body {
+    height: 290px;
+    overflow-y: auto;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+  }
+  .terminal-body::-webkit-scrollbar { width: 3px; }
+  .terminal-body::-webkit-scrollbar-track { background: transparent; }
+  .terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  /* ── INPUT ── */
+  .ai-input {
+    background: transparent; border: none; outline: none;
+    color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px; width: 100%;
+  }
+  .ai-input::placeholder { color: rgba(255,255,255,0.25); font-weight: 400; }
+
+  /* ── MIC BUTTON RECORDING PULSE ── */
+  .mic-recording {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 25px rgba(239,68,68,0.85);
+    animation: mic-pulse 0.8s infinite alternate;
+  }
+  @keyframes mic-pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.06); }
+  }
+
+  /* ── STRUCTURE CARD GLOW ── */
+  .telemetry-badge {
+    background: rgba(192, 132, 252, 0.06);
+    border: 1px solid rgba(192, 132, 252, 0.22);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-top: 10px;
+  }
+
+  .cursor { animation: cursor-blink 1s step-end infinite; }
+  @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+</head>
+<body class="relative">
+
+<!-- SUBTLE BACKGROUND GRID -->
+<div class="scan-grid"></div>
+
+<!-- MAIN LAYOUT -->
+<div class="relative z-10 min-h-screen flex flex-col items-center justify-between px-4 py-8 gap-6" style="max-width:920px;margin:0 auto;">
+
+  <!-- MINIMAL TOP BAR -->
+  <div class="w-full flex justify-between items-center text-xs pb-3 border-b border-white/[0.06]">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-white/60 hover:text-white transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 hover:border-[#C084FC]">
+        <i class="bi bi-arrow-left"></i> <span class="font-medium text-xs">Back</span>
+      </a>
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#C084FC] animate-pulse"></span>
+        <span class="font-display font-bold text-white tracking-wide text-sm">A.U.R.A. <span class="text-[#C084FC] font-normal text-xs ml-1">HARDWARE INTELLIGENCE</span></span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="clearTerminal()" class="text-white/40 hover:text-white/80 transition-colors text-[11px] font-mono flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.03] border border-white/5">
+        <i class="bi bi-trash3"></i> Clear
+      </button>
+      <div id="status-label" class="font-mono text-xs font-semibold text-green-400 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> STANDBY
+      </div>
+      <div id="uptime-label" class="font-mono text-[11px] text-white/40 hidden sm:inline">00:00:00</div>
+    </div>
+  </div>
+
+  <!-- CENTER ORB & WAVEFORM AREA -->
+  <div class="w-full flex flex-col items-center justify-center my-auto py-2">
+    <div id="orb-container" class="relative flex flex-col items-center justify-center">
+      <div class="relative flex items-center justify-center">
+        <div class="orb-glow"></div>
+        <div class="orb-wrapper" id="orb-wrapper">
+          <div class="ripple-ring"></div>
+          <div class="ripple-ring"></div>
+          <div class="ripple-ring"></div>
+          <canvas id="grain-canvas"></canvas>
+        </div>
+      </div>
+      <div id="phase-label" class="font-display text-xs font-semibold text-white/40 tracking-widest uppercase mt-6 transition-colors text-center">
+        LISTENING LIVE — SPEAK ANY SENSOR COMMAND
+      </div>
+    </div>
+  </div>
+
+  <!-- MINIMAL CHAT & TELEMETRY DISPLAY -->
+  <div class="glass-card w-full max-w-3xl overflow-hidden">
+    <!-- Messages Viewport -->
+    <div class="terminal-body" id="terminal-body">
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-[#C084FC]/20 text-[#C084FC] flex items-center justify-center text-xs flex-shrink-0 mt-0.5 font-bold">A</div>
+        <div class="text-sm text-white/80 leading-relaxed">
+          Hello, I am <span class="text-white font-semibold">AURA Intelligence</span>. Microphone is active. Try asking:
+          <div class="mt-2 flex flex-wrap gap-2 text-xs font-mono">
+            <span class="text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">"Check piezoelectric vibrations"</span>
+            <span class="text-[#C084FC] bg-[#C084FC]/10 px-2 py-0.5 rounded border border-[#C084FC]/20">"Use ultrasonic sensor"</span>
+            <span class="text-green-400 bg-green-400/10 px-2 py-0.5 rounded border border-green-400/20">"What is GPS location & altitude"</span>
+            <span class="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">"How many units there"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Bar -->
+    <div class="border-t border-white/[0.08] p-3 sm:p-4 flex items-center gap-3 bg-black/30">
+      <!-- Microphone Button -->
+      <button
+        id="mic-btn"
+        onclick="handleMicClick()"
+        class="px-4 py-2.5 rounded-xl bg-[#C084FC]/15 hover:bg-[#C084FC]/25 text-[#C084FC] border border-[#C084FC]/30 transition-all text-xs font-bold flex items-center gap-2 flex-shrink-0"
+        title="Tap to speak or stop"
+      >
+        <i id="mic-icon" class="bi bi-mic-fill text-sm"></i>
+        <span id="mic-btn-text" class="hidden sm:inline">Listening (Tap to Stop)</span>
+      </button>
+
+      <input
+        id="ai-input"
+        class="ai-input"
+        type="text"
+        placeholder="Say 'piezoelectric', 'ultrasonic sensor', 'GPS location', 'how many units'..."
+        autocomplete="off"
+      />
+
+      <button
+        id="send-btn"
+        onclick="handleSend()"
+        class="px-5 py-2.5 rounded-xl bg-[#C084FC] hover:bg-[#A855F7] text-black font-extrabold text-xs transition-all flex-shrink-0 shadow-[0_0_15px_rgba(192,132,252,0.3)]"
+      >
+        Send
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── SCRIPTS ─────────────────────────────────────────────────────────────── -->
+<script>
+// ════════════════════════════════════════════════════════
+//  GRAIN RING WebGL ORB
+// ════════════════════════════════════════════════════════
+const VERT = `attribute vec2 a_pos; void main(){gl_Position=vec4(a_pos,0.0,1.0);}`;
+const FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 uRes; uniform float uTime; uniform vec2 uMouse; uniform float uHover;
+uniform vec3 uBg; uniform vec3 uBase; uniform vec3 uAccent; uniform vec3 uHigh;
+uniform float uRadius; uniform float uWidth; uniform float uSmear;
+uniform float uStir; uniform float uScale; uniform float uWarp;
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+34.56);return fract(p.x*p.y);}
+float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float a=h21(i),b=h21(i+vec2(1,0)),c=h21(i+vec2(0,1)),d=h21(i+vec2(1,1));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}
+float fbm5(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vnoise(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}
+float fbm3(vec2 p){float s=0.,a=.5;for(int i=0;i<3;i++){s+=a*vnoise(p);p=p*2.07+vec2(4.1,2.3);a*=.5;}return s;}
+vec2 warp(vec2 p,float t){return p+uWarp*vec2(fbm3(p*1.15+vec2(t*.05,0)),fbm3(p*1.15+vec2(4.7,2.1)-t*.04));}
+void main(){
+  float ar=uRes.x/max(uRes.y,1.);vec2 uv=gl_FragCoord.xy/uRes;
+  vec2 p=(uv-.5)*vec2(ar,1.);float r=length(p);float a=atan(p.y,p.x);
+  float rad=uRadius;vec2 q=warp(vec2(a*uSmear,r*uScale*3.-uTime*.1),uTime);
+  float f=fbm5(q);float g=fbm3(q*2.1+7.3);
+  float bq=(r-rad)/(rad*uWidth*.62);float band=exp(-bq*bq);
+  float v=clamp(band*(.45+1.35*f)+g*.2*band,0.,1.);
+  vec3 col=uBg;
+  col+=mix(uBase,uAccent,clamp(f*1.5-.15+sin(a*2.)*.28,0.,1.))*v*.72;
+  col+=uHigh*pow(v,4.5)*.38;
+  col*=1.-.9*exp(-pow(r/(rad*.78),1.7));
+  gl_FragColor=vec4(clamp(col,0.,1.),1.);
+}`;
+
+function hexToRgb(hex){
+  let h=hex.replace('#','');
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return[parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255];
+}
+
+(function initOrb(){
+  const canvas=document.getElementById('grain-canvas');
+  const gl=canvas.getContext('webgl',{antialias:false,alpha:false,depth:false});
+  if(!gl)return;
+
+  function mk(type,src){
+    const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;
+  }
+  const prog=gl.createProgram();
+  gl.attachShader(prog,mk(gl.VERTEX_SHADER,VERT));
+  gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,FRAG));
+  gl.linkProgram(prog);gl.useProgram(prog);
+
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const pos=gl.getAttribLocation(prog,'a_pos');
+  gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+
+  const L={};const u=n=>{if(!L[n])L[n]=gl.getUniformLocation(prog,n);return L[n];};
+
+  let clock=0,last=performance.now();
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    const dt=Math.min(.05,(now-last)/1000);last=now;
+    const spk=window._auSpeaking;const thk=window._auThinking;
+    const spd=spk?5.2:thk?2.8:1;
+    clock=(clock+dt*spd)%3600;
+
+    const dpr=Math.min(devicePixelRatio||1,2);
+    const cw=canvas.parentElement.clientWidth||240;
+    const ch=canvas.parentElement.clientHeight||240;
+    const bw=Math.round(cw*dpr);const bh=Math.round(ch*dpr);
+    if(canvas.width!==bw||canvas.height!==bh){canvas.width=bw;canvas.height=bh;}
+    gl.viewport(0,0,bw,bh);
+
+    const nc=spk?'#FF00CD':thk?'#FBBF24':'#1400FF';
+    const ac=spk?'#FF6B9D':thk?'#F59E0B':'#00A3FF';
+    const[r1,g1,b1]=hexToRgb('#06080d');
+    const[r2,g2,b2]=hexToRgb(nc);
+    const[r3,g3,b3]=hexToRgb(ac);
+    const[r4,g4,b4]=hexToRgb('#FFE0F5');
+
+    gl.uniform2f(u('uRes'),bw,bh);
+    gl.uniform1f(u('uTime'),clock);
+    gl.uniform2f(u('uMouse'),.5,.5);
+    gl.uniform1f(u('uHover'),spk?1.85:thk?1.4:.52);
+    gl.uniform3f(u('uBg'),r1,g1,b1);
+    gl.uniform3f(u('uBase'),r2,g2,b2);
+    gl.uniform3f(u('uAccent'),r3,g3,b3);
+    gl.uniform3f(u('uHigh'),r4,g4,b4);
+    gl.uniform1f(u('uRadius'),.25);
+    gl.uniform1f(u('uWidth'),spk?1.4:.69);
+    gl.uniform1f(u('uSmear'),spk?8:4.5);
+    gl.uniform1f(u('uStir'),spk?2.5:1.9);
+    gl.uniform1f(u('uScale'),.20);
+    gl.uniform1f(u('uWarp'),.55);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  requestAnimationFrame(frame);
+})();
+
+// ════════════════════════════════════════════════════════
+//  UPTIME COUNTER
+// ════════════════════════════════════════════════════════
+let startTime=Date.now();
+setInterval(()=>{
+  const s=Math.floor((Date.now()-startTime)/1000);
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const sc=String(s%60).padStart(2,'0');
+  const el=document.getElementById('uptime-label');
+  if(el) el.textContent=h+':'+m+':'+sc;
+},1000);
+
+// ════════════════════════════════════════════════════════
+//  FEMALE SPEECH SYNTHESIS
+// ════════════════════════════════════════════════════════
+window._auSpeaking=false;
+window._auThinking=false;
+
+let femaleVoice = null;
+
+function loadFemaleVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  femaleVoice = voices.find(v => v.lang.includes('en') && (
+    v.name.includes('Zira') || 
+    v.name.includes('Samantha') || 
+    v.name.includes('Victoria') || 
+    v.name.includes('Google UK English Female') || 
+    v.name.includes('Google US English') || 
+    v.name.includes('Karen') || 
+    v.name.includes('Jenny') ||
+    v.name.includes('Female')
+  )) || voices.find(v => v.lang.includes('en'));
+}
+
+if ('speechSynthesis' in window) {
+  loadFemaleVoice();
+  window.speechSynthesis.onvoiceschanged = loadFemaleVoice;
+}
+
+function speakText(text, onEnd) {
+  if (!('speechSynthesis' in window)) {
+    onEnd && onEnd();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.02;
+  utterance.pitch = 1.12; // Natural female tone
+  
+  if (!femaleVoice) loadFemaleVoice();
+  if (femaleVoice) utterance.voice = femaleVoice;
+
+  utterance.onend = () => { 
+    onEnd && onEnd();
+    setTimeout(() => { if (!isRecording) startMic(); }, 400);
+  };
+  utterance.onerror = () => { 
+    onEnd && onEnd();
+    setTimeout(() => { if (!isRecording) startMic(); }, 400);
+  };
+  window.speechSynthesis.speak(utterance);
+}
+
+function setPhase(phase, customLabel){
+  const wrapper=document.getElementById('orb-wrapper');
+  const label=document.getElementById('phase-label');
+  const statusLabel=document.getElementById('status-label');
+  wrapper.classList.remove('speaking','thinking');
+  window._auSpeaking=false;window._auThinking=false;
+
+  if(phase==='speaking'){
+    wrapper.classList.add('speaking');window._auSpeaking=true;
+    label.textContent = customLabel || 'AURA IS TRANSMITTING...';
+    label.style.color='#C084FC';
+    statusLabel.innerHTML='<span class="w-1.5 h-1.5 rounded-full bg-[#C084FC] animate-ping"></span> SPEAKING';
+    statusLabel.className='font-mono text-xs font-semibold text-[#C084FC] flex items-center gap-1.5';
+  } else if(phase==='thinking'){
+    wrapper.classList.add('thinking');window._auThinking=true;
+    label.textContent = customLabel || 'CONNECTING TO SENSORS & ANALYZING...';
+    label.style.color='#FBBF24';
+    statusLabel.innerHTML='<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> ANALYZING';
+    statusLabel.className='font-mono text-xs font-semibold text-amber-400 flex items-center gap-1.5';
+  } else {
+    label.textContent='LISTENING LIVE — SPEAK ANY SENSOR COMMAND';
+    label.style.color='rgba(255,255,255,0.4)';
+    statusLabel.innerHTML='<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span> STANDBY';
+    statusLabel.className='font-mono text-xs font-semibold text-green-400 flex items-center gap-1.5';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  STATE TRACKER FOR REPEAT QUERIES (PERSON VS NO PERSON)
+// ════════════════════════════════════════════════════════
+let ultrasonicScanCount = 0;
+let piezoScanCount = 0;
+
+// ════════════════════════════════════════════════════════
+//  STRICT PRIORITY CLASSIFIER ALGORITHM
+// ════════════════════════════════════════════════════════
+function classifyIntent(input) {
+  const q = input.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+
+  // 1. CLEAR COMMAND
+  if (q.includes("clear") || q.includes("reset") || q.includes("close system") || q.includes("clear all")) {
+    return {
+      type: 'clear',
+      calibrationSteps: ["Flushing system telemetry buffers...", "Resetting ADC registers...", "Standby state restored."],
+      spokenResponse: "System terminal buffer cleared. Standby mode active.",
+      structureCard: null
+    };
+  }
+
+  // 2. UNIT COUNT COMMAND
+  if (q.includes("unit") || q.includes("units") || q.includes("how many") || q.includes("how much unit") || q.includes("node count") || q.includes("nodes")) {
+    return {
+      type: 'units',
+      calibrationSteps: [
+        "Broadcasting mesh beacon across local 2.4 GHz subnet...",
+        "Querying SX1262 LoRa swarm routing table...",
+        "Node telemetry handshake confirmed."
+      ],
+      spokenResponse: "Scanning local mesh telemetry network... There is currently one active AURA autonomous node deployed in this search sector. Node identifier: AURA-NODE-0x1A3F.",
+      structureCard: `
+        <div class="telemetry-badge">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-mono text-cyan-400 font-bold flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> ACTIVE SWARM NODES</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● 1 NODE ACTIVE</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ACTIVE COUNT</span><span class="text-white font-bold">1 Unit</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">NODE ID</span><span class="text-[#C084FC] font-bold">0x1A3F</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">STATUS</span><span class="text-green-400 font-bold">Deploy Active</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">BATTERY</span><span class="text-white font-bold">94.2%</span></div>
+          </div>
+        </div>
+      `
+    };
+  }
+
+  // Token scoring
+  let scorePiezo = 0;
+  let scoreUltrasonic = 0;
+  let scoreGps = 0;
+
+  // Piezo keywords
+  const piezoKeys = ["piezo", "piezoelectric", "vibration", "vibrations", "seismograph", "seismic", "tap", "tapping", "knock", "knocking", "shakes", "shaking", "tremor", "ground"];
+  piezoKeys.forEach(k => { if (q.includes(k)) scorePiezo += 10; });
+
+  // Ultrasonic keywords
+  const ultraKeys = ["ultrasonic", "ultra", "sonic", "cavity", "proximity", "clearance", "obstacle", "person", "persons", "front", "object", "objects", "anyone", "someone", "ahead"];
+  ultraKeys.forEach(k => { if (q.includes(k)) scoreUltrasonic += 10; });
+
+  // GPS keywords
+  const gpsKeys = ["gps", "location", "satellite", "satellites", "coordinate", "coordinates", "altitude", "height", "where", "district", "sriperumbudur", "position", "pinpoint", "lat", "lon", "heading"];
+  gpsKeys.forEach(k => { if (q.includes(k)) scoreGps += 10; });
+
+  // 3. PIEZOELECTRIC
+  if (scorePiezo > 0 && scorePiezo >= scoreUltrasonic && scorePiezo >= scoreGps) {
+    piezoScanCount++;
+    return {
+      type: 'piezo',
+      calibrationSteps: [
+        "Initializing Piezoelectric ADC Channel 1...",
+        "Calibrating SM-24 Geophone seismic baseline...",
+        "Applying digital bandpass filter (5 Hz – 80 Hz)...",
+        "Vibration harmonics confirmed at 10 cm proximity."
+      ],
+      spokenResponse: "Accessing seismograph via piezoelectric plate... Yes, detecting vibrations. I am sensing rhythmic tap sounds nearby at approximately 10 cm from the enclosure.",
+      structureCard: `
+        <div class="telemetry-badge">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-mono text-amber-400 font-bold flex items-center gap-1.5"><i class="bi bi-activity"></i> PIEZOELECTRIC SEISMOGRAPH</span>
+            <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-mono text-[10px] font-bold border border-red-500/30 animate-pulse">● SOS VIBRATION DETECTED</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">DISTANCE</span><span class="text-white font-bold">10.2 cm</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">FREQUENCY</span><span class="text-cyan-400 font-bold">42.8 Hz</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">PATTERN</span><span class="text-[#C084FC] font-bold">Rhythmic Tap</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">CONFIDENCE</span><span class="text-green-400 font-bold">98.4%</span></div>
+          </div>
+        </div>
+      `
+    };
+  }
+
+  // 4. ULTRASONIC SENSOR
+  if (scoreUltrasonic > 0 && scoreUltrasonic >= scoreGps) {
+    ultrasonicScanCount++;
+    const hasPerson = (ultrasonicScanCount % 2 !== 0); // Alternates: 1st scan = person found, 2nd scan = no person found
+
+    if (hasPerson) {
+      return {
+        type: 'ultrasonic',
+        calibrationSteps: [
+          "Powering 40 kHz Ultrasonic Transducer array...",
+          "Firing active acoustic Time-of-Flight beam...",
+          "Calculating echo propagation delta: 0.58 ms...",
+          "Human body acoustic impedance profile matched."
+        ],
+        spokenResponse: "Scanning perimeter using ultrasonic sensors... Yes, I have found a person directly in front of you.",
+        structureCard: `
+          <div class="telemetry-badge">
+            <div class="flex items-center justify-between text-xs mb-2">
+              <span class="font-mono text-[#C084FC] font-bold flex items-center gap-1.5"><i class="bi bi-soundwave"></i> ULTRASONIC CAVITY SCANNER</span>
+              <span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 font-mono text-[10px] font-bold border border-green-500/30">● PERSON IN PROXIMITY</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">TARGET LOCK</span><span class="text-green-400 font-bold">Direct Front</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ToF TIME</span><span class="text-cyan-400 font-bold">0.58 ms</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">CLEARANCE</span><span class="text-white font-bold">0.94 m</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">FREQUENCY</span><span class="text-[#C084FC] font-bold">40.0 kHz</span></div>
+            </div>
+          </div>
+        `
+      };
+    } else {
+      return {
+        type: 'ultrasonic',
+        calibrationSteps: [
+          "Powering 40 kHz Ultrasonic Transducer array...",
+          "Sweeping 180° perimeter sector...",
+          "Analyzing echo reflection signatures...",
+          "Cavity void path unobstructed."
+        ],
+        spokenResponse: "Scanning perimeter using ultrasonic sensors... There is no person detected in the immediate perimeter. Cavity clearance is 3.4 meters unobstructed.",
+        structureCard: `
+          <div class="telemetry-badge">
+            <div class="flex items-center justify-between text-xs mb-2">
+              <span class="font-mono text-cyan-400 font-bold flex items-center gap-1.5"><i class="bi bi-soundwave"></i> ULTRASONIC CAVITY SCANNER</span>
+              <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● CLEAR CAVITY — NO PERSON</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">TARGET STATUS</span><span class="text-white/80 font-bold">No Target</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">CLEARANCE</span><span class="text-cyan-400 font-bold">3.40 m</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">SECTOR</span><span class="text-white font-bold">Clear Void</span></div>
+              <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">FREQUENCY</span><span class="text-[#C084FC] font-bold">40.0 kHz</span></div>
+            </div>
+          </div>
+        `
+      };
+    }
+  }
+
+  // 5. GPS SATELLITE LOCATION
+  if (scoreGps > 0) {
+    return {
+      type: 'gps',
+      calibrationSteps: [
+        "Connecting to NEO-6M Geospatial Satellite Receiver...",
+        "Acquiring NMEA sentence stream from 7 GNSS satellites...",
+        "DGPS differential correction locked (±2.8m precision)...",
+        "Geospatial coordinate frame synchronized."
+      ],
+      spokenResponse: "Accessing satellite data. Pinpointing target location... Coordinate lock acquired. Target is located exactly at Sriperumbudur, Kanchipuram District, Tamil Nadu. Coordinates: 12.9675° N, 79.9468° E. Heading: 247° Southwest. Altitude: 36.4 meters.",
+      structureCard: `
+        <div class="telemetry-badge">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-mono text-green-400 font-bold flex items-center gap-1.5"><i class="bi bi-geo-alt"></i> NEO-6M GEOSPATIAL FIX</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● 3D DGPS LOCKED</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">LATITUDE</span><span class="text-white font-bold">12.9675° N</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">LONGITUDE</span><span class="text-white font-bold">79.9468° E</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ALTITUDE</span><span class="text-green-400 font-bold">36.4 m</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">DISTRICT</span><span class="text-[#C084FC] font-bold">Sriperumbudur</span></div>
+          </div>
+        </div>
+      `
+    };
+  }
+
+  // 6. DEFAULT FALLBACK
+  return {
+    type: 'fallback',
+    calibrationSteps: [
+      "Querying AURA embedded sensor bus...",
+      "Scanning all hardware telemetry channels...",
+      "Telemetry frame compiled."
+    ],
+    spokenResponse: "Accessing AURA hardware sensors... All subsystems online. Please ask about piezoelectric vibration tap sounds, ultrasonic person detection, or GPS coordinates and altitude.",
+    structureCard: null
+  };
+}
+
+// ════════════════════════════════════════════════════════
+//  TYPEWRITER EFFECT
+// ════════════════════════════════════════════════════════
+let _typeInterval=null;
+
+function typewrite(targetEl, text, onDone){
+  clearInterval(_typeInterval);
+  let i=0;
+  _typeInterval=setInterval(()=>{
+    i++;
+    targetEl.innerHTML = text.slice(0, i) + (i < text.length ? '<span class="cursor text-[#C084FC] ml-0.5">█</span>' : '');
+    if(i>=text.length){
+      clearInterval(_typeInterval);
+      onDone&&onDone();
+    }
+  }, 16);
+}
+
+function clearTerminal() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  ultrasonicScanCount = 0;
+  piezoScanCount = 0;
+  const body = document.getElementById('terminal-body');
+  body.innerHTML = `
+    <div class="flex gap-3 items-start">
+      <div class="w-6 h-6 rounded-full bg-[#C084FC]/20 text-[#C084FC] flex items-center justify-center text-xs flex-shrink-0 mt-0.5 font-bold">A</div>
+      <div class="text-sm text-white/80 leading-relaxed">
+        Terminal buffer reset. All sensors in standby. Speak or type your request.
+      </div>
+    </div>
+  `;
+  setPhase('idle');
+}
+
+// ════════════════════════════════════════════════════════
+//  PROGRESSIVE CONNECTING ANIMATION & EXECUTION FLOW
+// ════════════════════════════════════════════════════════
+let busy=false;
+
+function executeQuery(q, onComplete) {
+  if(busy) return;
+  const inputEl=document.getElementById('ai-input');
+  inputEl.value='';
+  const body=document.getElementById('terminal-body');
+
+  // Cancel previous speech
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  stopMic();
+
+  const intent = classifyIntent(q);
+
+  if (intent.type === 'clear') {
+    clearTerminal();
+    return;
+  }
+
+  // 1. Render User Message
+  const userDiv=document.createElement('div');
+  userDiv.className = 'flex gap-3 items-start justify-end';
+  userDiv.innerHTML = `
+    <div class="bg-[#C084FC]/15 border border-[#C084FC]/30 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-lg text-sm leading-relaxed">
+      ${q}
+    </div>
+    <div class="w-6 h-6 rounded-full bg-white/20 text-white flex items-center justify-center text-xs flex-shrink-0 mt-1 font-bold">U</div>
+  `;
+  body.appendChild(userDiv);
+  body.scrollTop=body.scrollHeight;
+
+  busy=true;
+  document.getElementById('send-btn').style.opacity='0.4';
+  inputEl.disabled=true;
+
+  const steps = intent.calibrationSteps;
+
+  // 2. Render Connecting & Calibration Steps in UI
+  const aiDiv=document.createElement('div');
+  aiDiv.className = 'flex gap-3 items-start';
+  aiDiv.innerHTML = `
+    <div class="w-6 h-6 rounded-full bg-[#C084FC]/20 text-[#C084FC] flex items-center justify-center text-xs flex-shrink-0 mt-1 font-bold">A</div>
+    <div class="w-full max-w-xl flex flex-col gap-2">
+      <!-- Live Connecting Progress HUD -->
+      <div id="calibration-box" class="bg-black/50 border border-amber-400/30 rounded-xl p-3 text-xs font-mono text-amber-300">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-bold flex items-center gap-1.5"><i class="bi bi-cpu animate-spin"></i> HARDWARE HANDSHAKE IN PROGRESS</span>
+          <span id="step-count" class="text-[10px] text-amber-400/70">STEP 1/${steps.length}</span>
+        </div>
+        <div id="step-log" class="text-white/80 text-[11px] leading-snug">Connecting to sensor bus...</div>
+      </div>
+      <!-- Final Text & Telemetry Card -->
+      <div id="response-content" class="bg-white/[0.04] border border-white/10 text-white/90 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed hidden">
+        <div id="typed-text"></div>
+        <div id="telemetry-structure"></div>
+      </div>
+    </div>
+  `;
+  body.appendChild(aiDiv);
+  body.scrollTop=body.scrollHeight;
+
+  setPhase('thinking', 'CONNECTING TO SENSORS & ANALYZING...');
+
+  const calibBox = aiDiv.querySelector('#calibration-box');
+  const stepCount = aiDiv.querySelector('#step-count');
+  const stepLog = aiDiv.querySelector('#step-log');
+  const respContent = aiDiv.querySelector('#response-content');
+  const typedText = aiDiv.querySelector('#typed-text');
+  const telemStruct = aiDiv.querySelector('#telemetry-structure');
+
+  // Step through calibration animation with realistic loading duration
+  let curStep = 0;
+  const stepInterval = setInterval(() => {
+    if (curStep < steps.length) {
+      stepCount.textContent = `STEP ${curStep + 1}/${steps.length}`;
+      stepLog.innerHTML = `<span class="text-amber-400">▸</span> ${steps[curStep]}`;
+      body.scrollTop=body.scrollHeight;
+      curStep++;
+    } else {
+      clearInterval(stepInterval);
+      
+      calibBox.className = 'bg-black/30 border border-green-500/30 rounded-xl p-2 text-xs font-mono text-green-400 flex items-center justify-between';
+      calibBox.innerHTML = `
+        <span class="flex items-center gap-1.5 font-bold"><i class="bi bi-check-circle-fill"></i> HARDWARE DATA ACQUIRED</span>
+        <span class="text-[10px] text-white/40">LATENCY 110ms</span>
+      `;
+
+      respContent.classList.remove('hidden');
+      
+      const spokenText = intent.spokenResponse;
+      
+      if (intent.structureCard) {
+        telemStruct.innerHTML = intent.structureCard;
+      }
+
+      setPhase('speaking', 'AURA IS TRANSMITTING SENSOR TELEMETRY...');
+      speakText(spokenText, () => {
+        // Voice speech finished
+      });
+
+      typewrite(typedText, spokenText, () => {
+        setPhase('idle');
+        busy=false;
+        document.getElementById('send-btn').style.opacity='1';
+        inputEl.disabled=false;
+        body.scrollTop=body.scrollHeight;
+        onComplete && onComplete();
+      });
+    }
+  }, 480);
+}
+
+function handleSend(){
+  const inputEl=document.getElementById('ai-input');
+  const q=inputEl.value.trim();
+  if(!q) return;
+  executeQuery(q);
+}
+
+// ════════════════════════════════════════════════════════
+//  SPEECH RECOGNITION (AUTO-LISTENING)
+// ════════════════════════════════════════════════════════
+let recognition = null;
+let isRecording = false;
+let capturedTranscript = '';
+let silenceTimer = null;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRec();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    isRecording = true;
+    capturedTranscript = '';
+    
+    const btn = document.getElementById('mic-btn');
+    btn.classList.add('mic-recording');
+    document.getElementById('mic-icon').className = 'bi bi-stop-circle-fill text-sm';
+    document.getElementById('mic-btn-text').textContent = 'Listening (Tap to Stop)';
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        capturedTranscript = event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    const currentText = capturedTranscript || interim;
+    document.getElementById('ai-input').value = currentText;
+
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (isRecording) {
+        try { recognition.stop(); } catch(e) {}
+      }
+    }, 1100);
+  };
+
+  recognition.onerror = (event) => {
+    console.warn('Speech Recognition error:', event.error);
+    stopMic();
+  };
+
+  recognition.onend = () => {
+    clearTimeout(silenceTimer);
+    stopMic();
+    const finalQuery = (capturedTranscript || document.getElementById('ai-input').value).trim();
+    if (finalQuery && !busy) {
+      executeQuery(finalQuery);
+    }
+  };
+}
+
+function startMic() {
+  if (!recognition || isRecording || busy) return;
+  try {
+    recognition.start();
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function handleMicClick() {
+  if (!recognition) {
+    alert("Speech Recognition is not supported on this browser. Please use Chrome or Edge, or type directly into the input.");
+    return;
+  }
+  if (isRecording) {
+    try {
+      recognition.stop();
+    } catch (e) {
+      stopMic();
+    }
+  } else {
+    startMic();
+  }
+}
+
+function stopMic() {
+  isRecording = false;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('mic-recording');
+  document.getElementById('mic-icon').className = 'bi bi-mic-fill text-sm';
+  document.getElementById('mic-btn-text').textContent = 'Tap Mic to Speak';
+}
+
+// Auto-start microphone on load
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { startMic(); }, 600);
+});
+window.addEventListener('click', () => {
+  if (!isRecording && !busy && !window._auSpeaking) {
+    startMic();
+  }
+}, { once: true });
+
+document.getElementById('ai-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleSend();
+});
+</script>
+</body>
+</html>
