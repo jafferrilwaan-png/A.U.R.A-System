@@ -54,7 +54,6 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 // --- MAIN APP COMPONENT ---
 export default function App() {
   const [loading, setLoading] = useState(true);
-  const [preloadProgress, setPreloadProgress] = useState(0);
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
@@ -63,157 +62,180 @@ export default function App() {
   
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
   const scrollFractionRef = useRef(0);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
 
-  // SCROLLYTELLING CANVAS ENGINE & HIGH-PERFORMANCE PRELOADER
+  // Fast Cinematic Splash Loader
   useEffect(() => {
-    const frameCount = 311;
-    const currentFrame = (index: number) => `high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
-    const images: HTMLImageElement[] = new Array(frameCount);
-    imagesRef.current = images;
-
-    let loadedCount = 0;
-    const isMobile = window.innerWidth < 640;
-    const step = isMobile ? 2 : 1;
-    const targetPreloadCount = Math.floor(frameCount / step);
-
-    const onImageLoaded = () => {
-      loadedCount++;
-      const progress = Math.min(100, Math.round((loadedCount / targetPreloadCount) * 100));
-      setPreloadProgress(progress);
-
-      if (progress >= 85) {
-        setTimeout(() => {
-          setLoading(false);
-          setTimeout(() => setEntranceComplete(true), 200);
-        }, 300);
-      }
-    };
-
-    // Preload frames in parallel streams
-    for (let i = 1; i <= frameCount; i += step) {
-      const img = new Image();
-      img.src = currentFrame(i);
-      images[i - 1] = img;
-      if (img.complete) {
-        onImageLoaded();
-      } else {
-        img.onload = () => {
-          img.decode?.().catch(() => {});
-          onImageLoaded();
-        };
-        img.onerror = () => onImageLoaded();
-      }
-    }
-
-    // Safety fallback timeout to never trap the user
-    const safetyTimer = setTimeout(() => {
-      setPreloadProgress(100);
+    const timer = setTimeout(() => {
       setLoading(false);
       setTimeout(() => setEntranceComplete(true), 200);
-    }, 2800);
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, []);
 
+  // SCROLLYTELLING CANVAS ENGINE (ULTRA-OPTIMIZED 60 FPS STREAMING)
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return () => clearTimeout(safetyTimer);
+    if (!canvas) return;
     const context = canvas.getContext('2d', { alpha: false });
-    if (!context) return () => clearTimeout(safetyTimer);
+    if (!context) return;
+
+    const frameCount = 293;
+    const currentFrame = (index: number) => `/high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
+    const images: HTMLImageElement[] = new Array(frameCount);
+    let lastDrawnImage: HTMLImageElement | null = null;
+    let currentPlayhead = 1;
+    let targetPlayhead = 1;
+    let lastRenderedIndex = -1;
+    let animationFrameId: number;
+
+    const loadFrame = (index: number) => {
+      if (index < 1 || index > frameCount || images[index - 1]) return;
+      const img = new Image();
+      img.src = currentFrame(index);
+      images[index - 1] = img;
+      return img;
+    };
+
+    // 1. Instantly load Frame 1
+    const firstImg = loadFrame(1);
+    if (firstImg) {
+      firstImg.onload = () => {
+        lastDrawnImage = firstImg;
+        resizeAndDraw();
+      };
+    }
+
+    // 2. Fast Keyframe Anchor Pass (every 4th frame: 1, 5, 9, 13...) for instant responsiveness
+    let keyframeIndex = 1;
+    const loadKeyframes = () => {
+      for (let i = 0; i < 8 && keyframeIndex <= frameCount; i++, keyframeIndex += 4) {
+        loadFrame(keyframeIndex);
+      }
+      if (keyframeIndex <= frameCount) {
+        setTimeout(loadKeyframes, 15);
+      } else {
+        // 3. Fill remaining in-between frames smoothly in background
+        loadRemainingFrames(2);
+      }
+    };
+    setTimeout(loadKeyframes, 50);
+
+    const loadRemainingFrames = (start: number) => {
+      let idx = start;
+      const step = () => {
+        for (let i = 0; i < 10 && idx <= frameCount; i++, idx++) {
+          loadFrame(idx);
+        }
+        if (idx <= frameCount) {
+          setTimeout(step, 25);
+        }
+      };
+      step();
+    };
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
+      
+      // Request immediate surrounding neighborhood for instant scrubbing
+      for (let offset = -4; offset <= 4; offset++) {
+        loadFrame(index + offset);
+      }
+
       let img = images[index - 1];
-      if (!img || !img.complete) {
-        for (let offset = 1; offset < 10; offset++) {
-          const prev = images[Math.max(0, index - 1 - offset)];
-          if (prev && prev.complete) { img = prev; break; }
+
+      // Bi-directional nearest loaded frame search
+      if (!img || !img.complete || img.naturalWidth === 0) {
+        for (let offset = 1; offset <= 60; offset++) {
+          const prev = images[index - 1 - offset];
+          if (prev && prev.complete && prev.naturalWidth > 0) { img = prev; break; }
+          const next = images[index - 1 + offset];
+          if (next && next.complete && next.naturalWidth > 0) { img = next; break; }
         }
       }
-      if (!img || !img.complete) img = images[0];
-      if (!img || !img.complete) return;
+      if (!img || !img.complete || img.naturalWidth === 0) {
+        img = lastDrawnImage || images[0];
+      }
+      if (!img || !img.complete || img.naturalWidth === 0) return;
 
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      lastDrawnImage = img;
 
-      // --- WATERMARK ASSASSINATION ---
       const sx = 0;
       const sy = 0;
-      const sWidth = img.width * 0.90;  
-      const sHeight = img.height * 0.88; 
+      const sWidth = img.naturalWidth * 0.90;  
+      const sHeight = img.naturalHeight * 0.88; 
 
-      // Calculate perfect cover fit ratios based on the NEW cleanly cropped dimensions
       const hRatio = canvas.width / sWidth;
       const vRatio = canvas.height / sHeight;
       const ratio = Math.max(hRatio, vRatio);
 
       const dWidth = sWidth * ratio;
       const dHeight = sHeight * ratio;
-      
       const dy = (canvas.height - dHeight) / 2;
       
-      // On mobile, pan from left to center as user scrolls
       const isMobile = window.innerWidth < 640;
-      let dx = 0;
+      let dx = (canvas.width - dWidth) / 2;
       if (isMobile) {
         const centerDx = (canvas.width - dWidth) / 2;
-        // scrollFraction goes from 0 to ~1
         const progress = Math.min(1, Math.max(0, scrollFractionRef.current));
         dx = progress * centerDx;
-      } else {
-        dx = (canvas.width - dWidth) / 2;
       }
 
       context.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
     };
 
     const resizeAndDraw = () => {
-      const isMobile = window.innerWidth < 640;
-      const dpr = isMobile ? 1.5 : Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = 'high';
-      drawFrame(Math.round(currentFrameIndex));
+      context.imageSmoothingQuality = 'medium';
+      drawFrame(Math.round(currentPlayhead));
     };
-
-    let targetFrameIndex = 1;
-    let currentFrameIndex = 1;
-    let lastRenderedIndex = -1;
-    let lastRenderTime = 0;
 
     const handleScroll = () => {
       const html = document.documentElement;
-      const fraction = html.scrollTop / (html.scrollHeight - html.clientHeight);
+      const maxScroll = html.scrollHeight - html.clientHeight;
+      const fraction = maxScroll > 0 ? html.scrollTop / maxScroll : 0;
       scrollFractionRef.current = fraction;
-      targetFrameIndex = Math.max(1, Math.min(frameCount, fraction * frameCount));
+      targetPlayhead = Math.max(1, Math.min(frameCount, fraction * (frameCount - 1) + 1));
+      
+      // Proactively preload surrounding frame window
+      const center = Math.round(targetPlayhead);
+      for (let o = -6; o <= 6; o++) {
+        loadFrame(center + o);
+      }
     };
 
-    let animationFrameId: number;
-    const renderLoop = (timestamp: number) => {
-      const isMobile = window.innerWidth < 640;
-      const frameInterval = isMobile ? 24 : 16; 
-
-      if (timestamp - lastRenderTime >= frameInterval) {
-        currentFrameIndex += (targetFrameIndex - currentFrameIndex) * 0.18;
-        if (Math.abs(targetFrameIndex - currentFrameIndex) < 0.01) {
-          currentFrameIndex = targetFrameIndex;
-        }
-        const roundedIndex = Math.round(currentFrameIndex);
-        
-        // Hide canvas near footer seamlessly via direct DOM manipulation
-        if (canvas) {
-          canvas.style.opacity = scrollFractionRef.current > 0.94 ? "0" : "1";
-        }
-        if (videoRef.current) {
-          videoRef.current.style.opacity = scrollFractionRef.current > 0.94 ? "0.85" : "0";
-        }
-
-        // Redraw if index changed OR if we are on mobile and scrolling (dx depends on scroll)
-        if (roundedIndex !== lastRenderedIndex || (isMobile && Math.abs(targetFrameIndex - currentFrameIndex) > 0.1)) {
-          drawFrame(roundedIndex);
-          lastRenderedIndex = roundedIndex;
-        }
-        lastRenderTime = timestamp;
+    const renderLoop = () => {
+      // Natural 60 FPS Cinematic Video Easing Playhead
+      const delta = targetPlayhead - currentPlayhead;
+      if (Math.abs(delta) > 0.001) {
+        currentPlayhead += delta * 0.15;
+      } else {
+        currentPlayhead = targetPlayhead;
       }
+
+      const frameToDraw = Math.max(1, Math.min(frameCount, Math.round(currentPlayhead)));
+      if (frameToDraw !== lastRenderedIndex) {
+        drawFrame(frameToDraw);
+        lastRenderedIndex = frameToDraw;
+      }
+
+      // Manage canvas and video visibility/playback dynamically to preserve 100% GPU
+      const isNearFooter = scrollFractionRef.current > 0.94;
+      if (canvas) {
+        canvas.style.opacity = isNearFooter ? "0" : "1";
+      }
+      if (videoRef.current) {
+        videoRef.current.style.opacity = isNearFooter ? "0.85" : "0";
+        if (isNearFooter) {
+          if (videoRef.current.paused) videoRef.current.play().catch(() => {});
+        } else {
+          if (!videoRef.current.paused) videoRef.current.pause();
+        }
+      }
+
       animationFrameId = requestAnimationFrame(renderLoop);
     };
 
@@ -221,7 +243,7 @@ export default function App() {
     window.addEventListener('resize', resizeAndDraw);
     
     resizeAndDraw();
-    renderLoop(0);
+    renderLoop();
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -260,23 +282,6 @@ export default function App() {
     return () => observer.disconnect();
   }, []);
 
-  const useSectionScroll = (ref: React.RefObject<HTMLDivElement | null>) => {
-    const { scrollYProgress } = useScroll({
-      target: ref,
-      offset: ["start end", "end start"]
-    });
-    const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
-    const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [30, 0, 0, -30]);
-    return { opacity, y };
-  };
-
-  const heroScroll = useSectionScroll(heroRef);
-  const problemScroll = useSectionScroll(problemRef);
-  const missionScroll = useSectionScroll(missionRef);
-  const techScroll = useSectionScroll(techRef);
-  const telemetryScroll = useSectionScroll(telemetryRef);
-  const teamScroll = useSectionScroll(teamRef);
-
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     setMobileMenuOpen(false);
     ref.current?.scrollIntoView({ behavior: 'smooth' });
@@ -285,12 +290,11 @@ export default function App() {
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
-      {/* --- SCROLLYTELLING CANVAS --- */}
+      {/* --- SCROLLYTELLING CANVAS (HARDWARE ACCELERATED DIRECT BLIT) --- */}
       <canvas 
         ref={canvasRef} 
-        className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-700"
+        className="fixed top-0 left-0 w-screen h-screen pointer-events-none transition-opacity duration-500"
         style={{ 
-          filter: "contrast(1.08) saturate(1.1)",
           zIndex: 0,
           willChange: "transform, opacity"
         }}
@@ -345,29 +349,10 @@ export default function App() {
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-                className="w-[260px] sm:w-[320px] flex flex-col gap-2 items-center mt-2"
-              >
-                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden p-[1px] border border-white/10 shadow-[0_0_10px_rgba(192,132,252,0.2)]">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-[#9333EA] via-[#C084FC] to-cyan-400 shadow-[0_0_12px_#C084FC]"
-                    style={{ width: `${preloadProgress}%` }}
-                    transition={{ ease: "easeOut" }}
-                  />
-                </div>
-                <div className="flex justify-between w-full text-[10px] sm:text-xs text-white/70 font-mono tracking-widest uppercase">
-                  <span>PRELOADING FRAMES</span>
-                  <span className="text-[#C084FC] font-bold">{preloadProgress}%</span>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="text-xs sm:text-sm font-bold tracking-[0.25em] text-flowing-purple border border-[#9333EA]/50 px-5 py-1.5 rounded-lg font-display bg-black/40 backdrop-blur-md"
+                className="text-sm sm:text-xl font-bold tracking-[0.3em] text-flowing-purple border border-[#9333EA]/50 px-5 py-2 rounded-lg font-display bg-black/40 backdrop-blur-md"
               >
-                {preloadProgress >= 85 ? "SYSTEM READY" : "INITIALIZING NODE"}
+                SYSTEM ONLINE
               </motion.div>
             </div>
           </motion.div>
@@ -500,8 +485,7 @@ export default function App() {
             </span>
           </div>
 
-          <motion.div 
-            style={heroScroll}
+          <div 
             className="max-w-4xl flex flex-col gap-5 sm:gap-6 text-left bg-transparent"
           >
             <h1 className="font-black leading-[1.02] sm:leading-[0.98] tracking-tight text-[clamp(32px,8vw,76px)] uppercase text-flowing-purple font-display drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
@@ -512,12 +496,12 @@ export default function App() {
             <p className="max-w-2xl text-base sm:text-lg text-white font-normal leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
               A.U.R.A. maps active void spaces, acoustic signatures, and structural collapse zones into a single real-time tactical intelligence layer.
             </p>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- SECTION 2: PROBLEM / CRISIS SECTION --- */}
         <section ref={problemRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
-          <motion.div style={problemScroll} className="max-w-5xl mx-auto w-full bg-transparent">
+          <div className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
               <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
                 CRITICAL VECTOR
@@ -526,7 +510,11 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl">
+              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+                {/* Ambient Glass AURA Background Watermark */}
+                <div className="absolute -top-4 -right-2 text-[64px] sm:text-[80px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                  AURA
+                </div>
                 <GlowingEffect
                   spread={45}
                   glow={true}
@@ -534,7 +522,7 @@ export default function App() {
                   proximity={80}
                   inactiveZone={0.01}
                 />
-                <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
+                <div className="relative z-10 flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
                   <div>
                     <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
                     <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
@@ -545,7 +533,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl">
+              <div className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl md:p-3 bg-[#080b12]/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+                {/* Ambient Glass AURA Background Watermark */}
+                <div className="absolute -top-4 -right-2 text-[64px] sm:text-[80px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                  AURA
+                </div>
                 <GlowingEffect
                   spread={45}
                   glow={true}
@@ -553,7 +545,7 @@ export default function App() {
                   proximity={80}
                   inactiveZone={0.01}
                 />
-                <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
+                <div className="relative z-10 flex h-full flex-col justify-between overflow-hidden rounded-xl p-6 sm:p-7">
                   <div>
                     <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
                     <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
@@ -564,12 +556,12 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- SECTION 2.5: MISSION & HUMAN COST TRAGEDY --- */}
         <section ref={missionRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
-          <motion.div style={missionScroll} className="max-w-5xl mx-auto w-full bg-transparent">
+          <div className="max-w-5xl mx-auto w-full bg-transparent">
             <div className="mb-10 sm:mb-12 border-b border-white/20 pb-4 sm:pb-6">
               <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
                 THE HUMAN COST & OUR MISSION
@@ -578,26 +570,41 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8 items-center text-left">
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
-                <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80,000+</span>
-                <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
-                <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
+              <div className="relative overflow-hidden border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
+                <div className="absolute -top-3 -right-2 text-[56px] sm:text-[72px] font-black font-display tracking-tighter text-[#C084FC]/[0.07] pointer-events-none select-none z-0 leading-none">
+                  AURA
+                </div>
+                <div className="relative z-10">
+                  <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80,000+</span>
+                  <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Lives Lost Annually</p>
+                  <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Lost under building collapses globally, where lack of real-time cavity search mappings delays responders.</p>
+                </div>
               </div>
 
-              <div className="border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
-                <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80%</span>
-                <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
-                <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
+              <div className="relative overflow-hidden border-l-4 border-[#9333EA] pl-4 sm:pl-6 py-3 bg-[#0a0d14]/60 backdrop-blur-sm rounded-r-xl shadow-lg">
+                <div className="absolute -top-3 -right-2 text-[56px] sm:text-[72px] font-black font-display tracking-tighter text-[#C084FC]/[0.07] pointer-events-none select-none z-0 leading-none">
+                  AURA
+                </div>
+                <div className="relative z-10">
+                  <span className="text-4xl sm:text-5xl font-extrabold text-flowing-purple block mb-1 font-display">80%</span>
+                  <p className="text-xs text-white uppercase tracking-widest font-extrabold font-display drop-shadow-sm">Preventable Deaths</p>
+                  <p className="text-xs sm:text-sm text-white/90 mt-2 font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">Of deaths post-collapse are due to suffocation or dynamic shifting, occurring because victims cannot be located within the crucial 72-hour window.</p>
+                </div>
               </div>
 
-              <div className="md:col-span-1 border-t md:border-t-0 md:border-l border-white/20 md:pl-8 pt-4 md:pt-0">
-                <span className="text-[#C084FC] text-xs font-bold uppercase tracking-widest block mb-2 font-display drop-shadow-sm">MISSION STATEMENT</span>
-                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-light italic drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
-                  "Our mission is absolute: Zero unmapped survivors. By translating seismic acoustics into immediate locational coordinates, A.U.R.A. ensures that no life remains buried in silence."
-                </p>
+              <div className="relative overflow-hidden md:col-span-1 border-t md:border-t-0 md:border-l border-white/20 md:pl-8 pt-4 md:pt-0">
+                <div className="absolute -top-3 -right-2 text-[56px] sm:text-[72px] font-black font-display tracking-tighter text-[#C084FC]/[0.07] pointer-events-none select-none z-0 leading-none">
+                  AURA
+                </div>
+                <div className="relative z-10">
+                  <span className="text-[#C084FC] text-xs font-bold uppercase tracking-widest block mb-2 font-display drop-shadow-sm">MISSION STATEMENT</span>
+                  <p className="text-sm sm:text-base text-white/90 leading-relaxed font-light italic drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
+                    "Our mission is absolute: Zero unmapped survivors. By translating seismic acoustics into immediate locational coordinates, A.U.R.A. ensures that no life remains buried in silence."
+                  </p>
+                </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- SECTION 3: TECH ARCHITECTURE --- */}
@@ -607,7 +614,7 @@ export default function App() {
             <span className="text-[20vw] font-black tracking-[0.15em] text-[#C084FC] font-display">AURA</span>
           </div>
 
-          <motion.div style={techScroll} className="max-w-7xl mx-auto w-full bg-transparent relative z-10">
+          <div className="max-w-7xl mx-auto w-full bg-transparent relative z-10">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6 sm:pb-8">
               <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
                 SYSTEM FLOW
@@ -622,7 +629,11 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl bg-[#0a0d14]/75 backdrop-blur-md flex flex-col justify-between min-h-[160px] text-left shadow-lg group">
+                <div key={idx} className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl bg-[#0a0d14]/75 backdrop-blur-md flex flex-col justify-between min-h-[160px] text-left shadow-lg group overflow-hidden">
+                  {/* Ambient Glass AURA Background Watermark */}
+                  <div className="absolute -top-3 -right-2 text-[52px] sm:text-[68px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                    AURA
+                  </div>
                   <GlowingEffect
                     spread={35}
                     glow={true}
@@ -640,12 +651,12 @@ export default function App() {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- SECTION 4: TELEMETRY & MODELS --- */}
         <section ref={telemetryRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent overflow-hidden">
-          <motion.div style={telemetryScroll} className="max-w-7xl mx-auto w-full bg-transparent">
+          <div className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-10 sm:mb-16 border-b border-white/20 pb-6">
               <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
                 LIVE TELEMETRY
@@ -659,71 +670,99 @@ export default function App() {
                 <Terminal title="esp32_aura_node.ino — ESP32 DevKit V1" />
               </div>
 
-              {/* Right Column: Model Images with 3D Pin Interaction */}
+              {/* Right Column: Model Images with Scroll-Driven 3D Sideways Animations */}
               <div className="flex flex-col gap-6 w-full">
-                {/* Model 1 */}
-                <PinContainer
-                  title="Tunnel Cavity Scan"
-                  href="/high_res_frames/frame-100.jpg"
+                {/* Model 1: Glides in sideways from right with 3D tilt on scroll */}
+                <motion.div
+                  initial={{ opacity: 0, x: 50, rotateY: -12, scale: 0.95 }}
+                  whileInView={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
+                  viewport={{ margin: "-40px", once: true }}
+                  transition={{ duration: 0.65, ease: "easeOut" }}
+                  className="w-full"
                 >
-                  <div className="flex flex-col text-left">
-                    <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
-                      <img 
-                        src="high_res_frames/frame-100.jpg" 
-                        alt="Subsurface model scan phase 1" 
-                        className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
-                        }}
-                      />
+                  <PinContainer
+                    title="Tunnel Cavity Scan"
+                    href="/high_res_frames/frame-100.jpg"
+                  >
+                    <div className="relative flex flex-col text-left overflow-hidden">
+                      {/* Ambient Glass AURA Background Watermark */}
+                      <div className="absolute -top-2 -right-1 text-[48px] sm:text-[60px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                        AURA
+                      </div>
+                      <div className="relative z-10">
+                        <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
+                          <img 
+                            src="/high_res_frames/frame-100.jpg" 
+                            alt="Subsurface model scan phase 1" 
+                            className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
+                            }}
+                          />
+                        </div>
+                        <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                          MODEL PROFILE 01
+                        </span>
+                        <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                          Tunnel Cavity Scan
+                        </h4>
+                        <p className="text-[11px] text-white/80 leading-snug font-normal">
+                          Maps structural cavities and returns subterranean safety margins.
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
-                      MODEL PROFILE 01
-                    </span>
-                    <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
-                      Tunnel Cavity Scan
-                    </h4>
-                    <p className="text-[11px] text-white/80 leading-snug font-normal">
-                      Maps structural cavities and returns subterranean safety margins.
-                    </p>
-                  </div>
-                </PinContainer>
+                  </PinContainer>
+                </motion.div>
 
-                {/* Model 2 */}
-                <PinContainer
-                  title="Void Isolation Map"
-                  href="/aura_hardware_architecture.jpg"
+                {/* Model 2: Glides in sequentially on next scroll */}
+                <motion.div
+                  initial={{ opacity: 0, x: 50, rotateY: -12, scale: 0.95 }}
+                  whileInView={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
+                  viewport={{ margin: "-40px", once: true }}
+                  transition={{ duration: 0.65, delay: 0.15, ease: "easeOut" }}
+                  className="w-full"
                 >
-                  <div className="flex flex-col text-left">
-                    <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
-                      <img 
-                        src="aura_hardware_architecture.jpg" 
-                        alt="Subsurface model scan phase 2" 
-                        className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
-                        }}
-                      />
+                  <PinContainer
+                    title="Void Isolation Map"
+                    href="/aura_hardware_architecture.jpg"
+                  >
+                    <div className="relative flex flex-col text-left overflow-hidden">
+                      {/* Ambient Glass AURA Background Watermark */}
+                      <div className="absolute -top-2 -right-1 text-[48px] sm:text-[60px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                        AURA
+                      </div>
+                      <div className="relative z-10">
+                        <div className="w-full h-[150px] sm:h-[170px] overflow-hidden rounded-lg mb-3 border border-white/10 bg-black/40">
+                          <img 
+                            src="/aura_hardware_architecture.jpg" 
+                            alt="Subsurface model scan phase 2" 
+                            className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
+                            }}
+                          />
+                        </div>
+                        <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                          MODEL PROFILE 02
+                        </span>
+                        <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                          Void Isolation Map
+                        </h4>
+                        <p className="text-[11px] text-white/80 leading-snug font-normal">
+                          Highlights internal structures to locate survivors.
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
-                      MODEL PROFILE 02
-                    </span>
-                    <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
-                      Void Isolation Map
-                    </h4>
-                    <p className="text-[11px] text-white/80 leading-snug font-normal">
-                      Highlights internal structures to locate survivors.
-                    </p>
-                  </div>
-                </PinContainer>
+                  </PinContainer>
+                </motion.div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- SECTION 5: TEAM GRID --- */}
         <section ref={teamRef} className="min-h-screen w-full flex flex-col justify-center px-5 sm:px-12 py-16 sm:py-24 bg-transparent">
-          <motion.div style={teamScroll} className="max-w-7xl mx-auto w-full bg-transparent">
+          <div className="max-w-7xl mx-auto w-full bg-transparent">
             <div className="text-center mb-12 sm:mb-16">
               <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#C084FC]/15 border border-[#C084FC]/40 text-[#C084FC] text-[11px] font-extrabold tracking-[0.2em] uppercase mb-3 font-display shadow-[0_0_15px_rgba(192,132,252,0.35)]">
                 COLLABORATIVE ARCHITECTURE
@@ -768,7 +807,7 @@ export default function App() {
                   name: "Giridhar K",
                   role: "UI/UX & Field Ops Lead",
                   img: "/giridhar.png",
-                  bio: "Designing tactical command dashboards for first responders in disaster zones.",
+                  bio: "Designing high-contrast tactical HUDs and ruggedized responder dashboards.",
                   linkedin: "https://www.linkedin.com/in/giridhar-k-b4bb40402/"
                 }
               ].map((member, idx) => (
@@ -777,45 +816,51 @@ export default function App() {
                   href={member.linkedin !== "#" ? member.linkedin : undefined}
                   target={member.linkedin !== "#" ? "_blank" : undefined}
                   rel="noreferrer"
-                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300 relative"
+                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300 relative overflow-hidden"
                 >
-                  <div className="w-full h-[190px] sm:h-[230px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/50 transition-all mb-3 relative shadow-xl bg-[#080B10]">
-                    <AsciiImage
-                      image={member.img}
-                      fit="cover"
-                      focusY={25}
-                      columns={70}
-                      colorMode="image"
-                      reveal={true}
-                      revealOptions={{ size: 65, softness: 12 }}
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    {/* Dark frosted-glass overlay for Bio reveal on hover */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px] pointer-events-none">
-                       <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                         {member.bio}
-                       </p>
-                       {member.linkedin !== "#" && (
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C084FC] pt-2 border-t border-white/10">
-                           <i className="bi bi-linkedin text-xs" />
-                           View LinkedIn <i className="bi bi-arrow-up-right text-[9px]" />
-                         </div>
-                       )}
+                  {/* Ambient Glass AURA Background Watermark */}
+                  <div className="absolute -top-1 -right-1 text-[36px] sm:text-[48px] font-black font-display tracking-tighter text-[#C084FC]/[0.06] pointer-events-none select-none z-0 leading-none">
+                    AURA
+                  </div>
+                  <div className="relative z-10 w-full">
+                    <div className="w-full h-[190px] sm:h-[230px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/50 transition-all mb-3 relative shadow-xl bg-[#080B10]">
+                      <AsciiImage
+                        image={member.img}
+                        fit="cover"
+                        focusY={25}
+                        columns={70}
+                        colorMode="image"
+                        reveal={true}
+                        revealOptions={{ size: 65, softness: 12 }}
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      {/* Dark frosted-glass overlay for Bio reveal on hover */}
+                      <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px] pointer-events-none">
+                         <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                           {member.bio}
+                         </p>
+                         {member.linkedin !== "#" && (
+                           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C084FC] pt-2 border-t border-white/10">
+                             <i className="bi bi-linkedin text-xs" />
+                             View LinkedIn <i className="bi bi-arrow-up-right text-[9px]" />
+                           </div>
+                         )}
+                      </div>
                     </div>
+                    
+                    <div className="w-full flex items-center justify-between gap-1 mb-0.5">
+                      <h3 className="text-xs sm:text-base font-bold text-flowing-purple tracking-tight uppercase font-display drop-shadow-md truncate"><ScrambleText text={member.name} /></h3>
+                      {member.linkedin !== "#" && (
+                        <i className="bi bi-linkedin text-xs text-[#C084FC] opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
                   </div>
-                  
-                  <div className="w-full flex items-center justify-between gap-1 mb-0.5">
-                    <h3 className="text-xs sm:text-base font-bold text-flowing-purple tracking-tight uppercase font-display drop-shadow-md truncate"><ScrambleText text={member.name} /></h3>
-                    {member.linkedin !== "#" && (
-                      <i className="bi bi-linkedin text-xs text-[#C084FC] opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                    )}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
                 </a>
               ))}
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* --- RIGHT-SIDE PAGE NUMBER HUD (01, 02, 03, 04, 05, 06) --- */}

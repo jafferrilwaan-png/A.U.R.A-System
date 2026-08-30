@@ -284,10 +284,12 @@ export default function AsciiImage(props: AsciiImageProps) {
             ctx.restore();
         }
 
-        function loop() {
+        let lastPaintTime = 0;
+        function loop(timestamp: number) {
             if (!alive) return;
-            if (isVisibleRef.current) {
+            if (isVisibleRef.current && timestamp - lastPaintTime >= 40) {
                 paint();
+                lastPaintTime = timestamp;
             }
             raf = requestAnimationFrame(loop);
         }
