@@ -56,6 +56,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
   const scrollFractionRef = useRef(0);
@@ -189,6 +190,9 @@ export default function App() {
         if (canvas) {
           canvas.style.opacity = scrollFractionRef.current > 0.94 ? "0" : "1";
         }
+        if (videoRef.current) {
+          videoRef.current.style.opacity = scrollFractionRef.current > 0.94 ? "0.85" : "0";
+        }
 
         // Redraw if index changed OR if we are on mobile and scrolling (dx depends on scroll)
         if (roundedIndex !== lastRenderedIndex || (isMobile && Math.abs(targetFrameIndex - currentFrameIndex) > 0.1)) {
@@ -281,6 +285,7 @@ export default function App() {
 
       {/* --- GALAXY VIDEO BACKGROUND --- */}
       <video
+        ref={videoRef}
         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
         autoPlay
         muted
@@ -289,7 +294,8 @@ export default function App() {
         className="fixed inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000"
         style={{ 
           zIndex: 0,
-          opacity: scrollFraction > 0.94 ? 0.85 : 0
+          opacity: 0,
+          willChange: "opacity"
         }}
       />
 
@@ -569,29 +575,7 @@ export default function App() {
             <div className="grid lg:grid-cols-3 gap-6 sm:gap-12 items-start">
               {/* Left Column: macOS Terminal with Interactive Telemetry */}
               <div className="lg:col-span-2">
-                <Terminal
-                  title="aura-field-node@rescue-01: ~ zsh"
-                  commands={[
-                    "npx shadcn@latest init",
-                    "npm install motion",
-                    "npx shadcn@latest add button card",
-                    "curl -s http://192.168.4.1/data | jq .",
-                  ]}
-                  outputs={{
-                    0: [
-                      "✔ Preflight checks passed.",
-                      "✔ Created components.json",
-                      "✔ Initialized A.U.R.A. node interface.",
-                    ],
-                    1: ["✔ added motion in 1.4s"],
-                    2: ["✔ Done. Installed tactical button and telemetry card."],
-                    3: [
-                      "{\n  \"status\": \"VOID_DETECTED\",\n  \"void_depth_cm\": 184.5,\n  \"lat\": 13.082712,\n  \"lng\": 80.270721,\n  \"uptime_ms\": 48210\n}",
-                    ],
-                  }}
-                  typingSpeed={35}
-                  delayBetweenCommands={1000}
-                />
+                <Terminal title="esp32_aura_node.ino — ESP32 DevKit V1" />
               </div>
 
               {/* Right Column: Model Images */}
@@ -964,7 +948,7 @@ export default function App() {
 
         {/* --- BACK TO TOP ARROW --- */}
         <AnimatePresence>
-          {scrollFraction > 0.1 && (
+          {activeSection > 0 && (
             <motion.button
               initial={{ opacity: 0, y: 20, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
