@@ -81,88 +81,91 @@ export default function App() {
 
     const frameCount = 293;
     const currentFrame = (index: number) => `/high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
-    const images: HTMLImageElement[] = new Array(frameCount);
-    let lastDrawnImage: HTMLImageElement | null = null;
+    const bitmaps: (ImageBitmap | HTMLImageElement | null)[] = new Array(frameCount).fill(null);
+    let lastDrawnImage: ImageBitmap | HTMLImageElement | null = null;
     let currentPlayhead = 1;
     let targetPlayhead = 1;
     let lastRenderedIndex = -1;
     let animationFrameId: number;
 
-    const loadFrame = (index: number) => {
-      if (index < 1 || index > frameCount || images[index - 1]) return;
-      const img = new Image();
-      img.src = currentFrame(index);
-      images[index - 1] = img;
-      return img;
+    const loadFrame = async (index: number) => {
+      if (index < 1 || index > frameCount || bitmaps[index - 1]) return;
+      try {
+        if ('createImageBitmap' in window) {
+          const res = await fetch(currentFrame(index));
+          const blob = await res.blob();
+          const bitmap = await createImageBitmap(blob);
+          bitmaps[index - 1] = bitmap;
+          if (index === 1 && !lastDrawnImage) {
+            lastDrawnImage = bitmap;
+            resizeAndDraw();
+          }
+          return bitmap;
+        } else {
+          const img = new Image();
+          img.src = currentFrame(index);
+          bitmaps[index - 1] = img;
+          img.onload = () => {
+            if (index === 1 && !lastDrawnImage) {
+              lastDrawnImage = img;
+              resizeAndDraw();
+            }
+          };
+          return img;
+        }
+      } catch {
+        const img = new Image();
+        img.src = currentFrame(index);
+        bitmaps[index - 1] = img;
+        return img;
+      }
     };
 
     // 1. Instantly load Frame 1
-    const firstImg = loadFrame(1);
-    if (firstImg) {
-      firstImg.onload = () => {
-        lastDrawnImage = firstImg;
-        resizeAndDraw();
-      };
-    }
+    loadFrame(1);
 
-    // 2. Fast Keyframe Anchor Pass (every 4th frame: 1, 5, 9, 13...) for instant responsiveness
-    let keyframeIndex = 1;
-    const loadKeyframes = () => {
-      for (let i = 0; i < 8 && keyframeIndex <= frameCount; i++, keyframeIndex += 4) {
-        loadFrame(keyframeIndex);
+    // 2. Fast background parallel loader
+    const streamFrames = async () => {
+      // Step A: Load every 4th keyframe anchor across entire sequence first
+      for (let i = 1; i <= frameCount; i += 4) {
+        loadFrame(i);
       }
-      if (keyframeIndex <= frameCount) {
-        setTimeout(loadKeyframes, 15);
-      } else {
-        // 3. Fill remaining in-between frames smoothly in background
-        loadRemainingFrames(2);
-      }
-    };
-    setTimeout(loadKeyframes, 50);
-
-    const loadRemainingFrames = (start: number) => {
-      let idx = start;
-      const step = () => {
-        for (let i = 0; i < 10 && idx <= frameCount; i++, idx++) {
-          loadFrame(idx);
+      // Step B: Fill in all remaining frames rapidly
+      setTimeout(() => {
+        for (let i = 2; i <= frameCount; i++) {
+          if (!bitmaps[i - 1]) loadFrame(i);
         }
-        if (idx <= frameCount) {
-          setTimeout(step, 25);
-        }
-      };
-      step();
+      }, 100);
     };
+    streamFrames();
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
       
-      // Request immediate surrounding neighborhood for instant scrubbing
-      for (let offset = -4; offset <= 4; offset++) {
-        loadFrame(index + offset);
-      }
-
-      let img = images[index - 1];
+      let img = bitmaps[index - 1];
 
       // Bi-directional nearest loaded frame search
-      if (!img || !img.complete || img.naturalWidth === 0) {
+      if (!img) {
         for (let offset = 1; offset <= 60; offset++) {
-          const prev = images[index - 1 - offset];
-          if (prev && prev.complete && prev.naturalWidth > 0) { img = prev; break; }
-          const next = images[index - 1 + offset];
-          if (next && next.complete && next.naturalWidth > 0) { img = next; break; }
+          const prev = bitmaps[index - 1 - offset];
+          if (prev) { img = prev; break; }
+          const next = bitmaps[index - 1 + offset];
+          if (next) { img = next; break; }
         }
       }
-      if (!img || !img.complete || img.naturalWidth === 0) {
-        img = lastDrawnImage || images[0];
-      }
-      if (!img || !img.complete || img.naturalWidth === 0) return;
+      if (!img) img = lastDrawnImage || bitmaps[0];
+      if (!img) return;
 
       lastDrawnImage = img;
 
+      const imgWidth = 'width' in img ? img.width : (img as HTMLImageElement).naturalWidth;
+      const imgHeight = 'height' in img ? img.height : (img as HTMLImageElement).naturalHeight;
+      if (!imgWidth || !imgHeight) return;
+
       const sx = 0;
       const sy = 0;
-      const sWidth = img.naturalWidth * 0.90;  
-      const sHeight = img.naturalHeight * 0.88; 
+      const sWidth = imgWidth * 0.90;  
+      const sHeight = imgHeight * 0.88; 
 
       const hRatio = canvas.width / sWidth;
       const vRatio = canvas.height / sHeight;
@@ -670,16 +673,10 @@ export default function App() {
                 <Terminal title="esp32_aura_node.ino — ESP32 DevKit V1" />
               </div>
 
-              {/* Right Column: Model Images with Scroll-Driven 3D Sideways Animations */}
+              {/* Right Column: Model Images (Interactive 3D on hover/touch) */}
               <div className="flex flex-col gap-6 w-full">
-                {/* Model 1: Glides in sideways from right with 3D tilt on scroll */}
-                <motion.div
-                  initial={{ opacity: 0, x: 50, rotateY: -12, scale: 0.95 }}
-                  whileInView={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
-                  viewport={{ margin: "-40px", once: true }}
-                  transition={{ duration: 0.65, ease: "easeOut" }}
-                  className="w-full"
-                >
+                {/* Model 1 */}
+                <div className="w-full">
                   <PinContainer
                     title="Tunnel Cavity Scan"
                     href="/high_res_frames/frame-100.jpg"
@@ -712,16 +709,10 @@ export default function App() {
                       </div>
                     </div>
                   </PinContainer>
-                </motion.div>
+                </div>
 
-                {/* Model 2: Glides in sequentially on next scroll */}
-                <motion.div
-                  initial={{ opacity: 0, x: 50, rotateY: -12, scale: 0.95 }}
-                  whileInView={{ opacity: 1, x: 0, rotateY: 0, scale: 1 }}
-                  viewport={{ margin: "-40px", once: true }}
-                  transition={{ duration: 0.65, delay: 0.15, ease: "easeOut" }}
-                  className="w-full"
-                >
+                {/* Model 2 */}
+                <div className="w-full">
                   <PinContainer
                     title="Void Isolation Map"
                     href="/aura_hardware_architecture.jpg"
@@ -754,7 +745,7 @@ export default function App() {
                       </div>
                     </div>
                   </PinContainer>
-                </motion.div>
+                </div>
               </div>
             </div>
           </div>
