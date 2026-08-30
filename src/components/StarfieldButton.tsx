@@ -307,7 +307,7 @@ export interface StarfieldButtonProps {
     };
     link?: string;
     transition?: Transition;
-    newTab?: boolean;
+    autoAnimate?: boolean;
     style?: React.CSSProperties;
     onClick?: (e: React.MouseEvent) => void;
     className?: string;
@@ -363,6 +363,7 @@ function __OriginkitBase_StarfieldButton(props: StarfieldButtonProps) {
         link = "",
         transition = { ease: [0.44, 0, 0.56, 1], type: "tween", delay: 0, duration: 0.6 },
         newTab = false,
+        autoAnimate = true,
         style,
         onClick,
         className = "",
@@ -503,7 +504,7 @@ function __OriginkitBase_StarfieldButton(props: StarfieldButtonProps) {
         return () => ro.disconnect();
     }, [rounded, ringInset, band.top, band.right, band.bottom, band.left]);
 
-    const reveal = useRef(0);
+    const reveal = useRef(autoAnimate ? 1 : 0);
     const revealCtrl = useRef<AnimationPlaybackControls | null>(null);
     const tickCtrl = useRef<AnimationPlaybackControls | null>(null);
     const reducedMotion = useReducedMotion();
@@ -711,10 +712,13 @@ function __OriginkitBase_StarfieldButton(props: StarfieldButtonProps) {
 
     const onEnter = () => {
         animateReveal(1);
+        scaleTo(1.04);
     };
 
     const onLeave = () => {
-        animateReveal(0);
+        if (!autoAnimate) {
+            animateReveal(0);
+        }
         scaleTo(1);
     };
 

@@ -4,6 +4,8 @@ import NeonBorder from "./components/NeonBorder";
 import AsciiImage from "./components/AsciiImage";
 import StarfieldButton from "./components/StarfieldButton";
 import Terminal from "./components/Terminal";
+import { PinContainer } from "./components/ui/3d-pin";
+import { BackgroundGradient } from "./components/ui/background-gradient";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -487,21 +489,25 @@ export default function App() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 sm:gap-10 text-left">
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 shadow-lg">
-                <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
-                <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
-                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-                  First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
-                </p>
-              </div>
+              <BackgroundGradient className="rounded-2xl p-5 sm:p-7 bg-[#0a0d14]/90 backdrop-blur-xl border border-white/10 shadow-2xl h-full flex flex-col justify-between">
+                <div>
+                  <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">CRITICAL WINDOW</span>
+                  <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">The Golden 72-Hour Window</h4>
+                  <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                    First responders face massive structural hazards in the initial 72 hours after collapse. Structural layout shifts make traditional tracking systems obsolete within minutes.
+                  </p>
+                </div>
+              </BackgroundGradient>
 
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#0a0d14]/70 backdrop-blur-md border border-white/10 shadow-lg">
-                <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
-                <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
-                <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
-                  Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
-                </p>
-              </div>
+              <BackgroundGradient className="rounded-2xl p-5 sm:p-7 bg-[#0a0d14]/90 backdrop-blur-xl border border-white/10 shadow-2xl h-full flex flex-col justify-between">
+                <div>
+                  <span className="text-[#C084FC] text-xs font-extrabold block mb-2 tracking-wider font-display drop-shadow-sm">TECHNOLOGY FAILURE</span>
+                  <h4 className="text-xl sm:text-2xl font-bold text-flowing-purple mb-2 sm:mb-3 font-display">Structural Blindspots</h4>
+                  <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+                    Traditional aerial scanners and thermal drones completely fail to scan beneath collapsed steel and dense concrete layers, leaving first responders entirely blind to hollow air pockets.
+                  </p>
+                </div>
+              </BackgroundGradient>
             </div>
           </motion.div>
         </section>
@@ -578,135 +584,69 @@ export default function App() {
                 <Terminal title="esp32_aura_node.ino — ESP32 DevKit V1" />
               </div>
 
-              {/* Right Column: Model Images */}
-              <div className="flex flex-col gap-6 sm:gap-8">
+              {/* Right Column: Model Images with 3D Pin Interaction */}
+              <div className="flex flex-col gap-10 sm:gap-14 pt-4">
                 {/* Model 1 */}
-                <motion.div
-                  variants={{
-                    hidden: { opacity: 0, y: 30 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: {
-                        staggerChildren: 0.1,
-                        delayChildren: 0.1
-                      }
-                    }
-                  }}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: false, amount: 0.2 }}
-                  className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group"
-                >
-                  <motion.div
-                    variants={{
-                      hidden: { opacity: 0, scale: 0.95 },
-                      visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } }
-                    }}
+                <div className="w-full flex items-center justify-center min-h-[240px]">
+                  <PinContainer
+                    title="Tunnel Cavity Scan"
+                    href="/high_res_frames/frame-100.jpg"
+                    className="w-[280px] sm:w-[320px] p-3"
                   >
-                    <img 
-                      src="high_res_frames/frame-100.jpg" 
-                      alt="Subsurface model scan phase 1" 
-                      className="w-full h-[160px] sm:h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
-                      onError={(e) => {
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
-                      }}
-                    />
-                  </motion.div>
-                  <div className="pt-3 text-left">
-                    <motion.span 
-                      variants={{
-                        hidden: { opacity: 0, x: -10 },
-                        visible: { opacity: 1, x: 0 }
-                      }}
-                      className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm"
-                    >
-                      MODEL PROFILE 01
-                    </motion.span>
-                    <motion.h4 
-                      variants={{
-                        hidden: { opacity: 0, y: 10 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                      className="text-base sm:text-lg font-bold text-flowing-purple mb-1 font-display"
-                    >
-                      Tunnel Cavity Scan
-                    </motion.h4>
-                    <motion.p 
-                      variants={{
-                        hidden: { opacity: 0, y: 10 },
-                        visible: { opacity: 0.9, y: 0 }
-                      }}
-                      className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]"
-                    >
-                      Maps structural cavities and returns safety margins.
-                    </motion.p>
-                  </div>
-                </motion.div>
+                    <div className="flex flex-col text-left">
+                      <div className="w-full h-[140px] sm:h-[160px] overflow-hidden rounded-lg mb-3 border border-white/10">
+                        <img 
+                          src="high_res_frames/frame-100.jpg" 
+                          alt="Subsurface model scan phase 1" 
+                          className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
+                          }}
+                        />
+                      </div>
+                      <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                        MODEL PROFILE 01
+                      </span>
+                      <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                        Tunnel Cavity Scan
+                      </h4>
+                      <p className="text-[11px] text-white/80 leading-snug font-normal">
+                        Maps structural cavities and returns subterranean safety margins.
+                      </p>
+                    </div>
+                  </PinContainer>
+                </div>
 
                 {/* Model 2 */}
-                <motion.div
-                  variants={{
-                    hidden: { opacity: 0, y: 30 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: {
-                        staggerChildren: 0.1,
-                        delayChildren: 0.1
-                      }
-                    }
-                  }}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: false, amount: 0.2 }}
-                  className="overflow-hidden border border-white/15 rounded-xl p-3 sm:p-4 bg-black/40 backdrop-blur-md group"
-                >
-                  <motion.div
-                    variants={{
-                      hidden: { opacity: 0, scale: 0.95 },
-                      visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } }
-                    }}
+                <div className="w-full flex items-center justify-center min-h-[240px]">
+                  <PinContainer
+                    title="Void Isolation Map"
+                    href="/aura_hardware_architecture.jpg"
+                    className="w-[280px] sm:w-[320px] p-3"
                   >
-                    <img 
-                      src="aura_hardware_architecture.jpg" 
-                      alt="Subsurface model scan phase 2" 
-                      className="w-full h-[160px] sm:h-[180px] object-cover rounded-lg group-hover:scale-[1.02] transition-all duration-300 shadow-2xl"
-                      onError={(e) => {
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
-                      }}
-                    />
-                  </motion.div>
-                  <div className="pt-3 text-left">
-                    <motion.span 
-                      variants={{
-                        hidden: { opacity: 0, x: -10 },
-                        visible: { opacity: 1, x: 0 }
-                      }}
-                      className="text-[#C084FC] text-xs font-extrabold block mb-1 font-display drop-shadow-sm"
-                    >
-                      MODEL PROFILE 02
-                    </motion.span>
-                    <motion.h4 
-                      variants={{
-                        hidden: { opacity: 0, y: 10 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                      className="text-base sm:text-lg font-bold text-flowing-purple mb-1 font-display"
-                    >
-                      Void Isolation Map
-                    </motion.h4>
-                    <motion.p 
-                      variants={{
-                        hidden: { opacity: 0, y: 10 },
-                        visible: { opacity: 0.9, y: 0 }
-                      }}
-                      className="text-xs text-white leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]"
-                    >
-                      Highlights internal structures to locate survivors.
-                    </motion.p>
-                  </div>
-                </motion.div>
+                    <div className="flex flex-col text-left">
+                      <div className="w-full h-[140px] sm:h-[160px] overflow-hidden rounded-lg mb-3 border border-white/10">
+                        <img 
+                          src="aura_hardware_architecture.jpg" 
+                          alt="Subsurface model scan phase 2" 
+                          className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
+                          }}
+                        />
+                      </div>
+                      <span className="text-[#C084FC] text-[10px] font-extrabold tracking-widest block mb-0.5 font-display drop-shadow-sm">
+                        MODEL PROFILE 02
+                      </span>
+                      <h4 className="text-sm sm:text-base font-bold text-flowing-purple mb-1 font-display">
+                        Void Isolation Map
+                      </h4>
+                      <p className="text-[11px] text-white/80 leading-snug font-normal">
+                        Highlights internal structures to locate survivors.
+                      </p>
+                    </div>
+                  </PinContainer>
+                </div>
               </div>
             </div>
           </motion.div>
