@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import NeonBorder from "./components/NeonBorder";
 import AsciiImage from "./components/AsciiImage";
 import StarfieldButton from "./components/StarfieldButton";
+import Terminal from "./components/Terminal";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -564,78 +565,31 @@ export default function App() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6 sm:gap-12 items-start">
-              {/* Left Column: Browser Mockup */}
-              <div className="lg:col-span-2 rounded-xl overflow-hidden border border-white/20 bg-black/85 shadow-2xl">
-                <div className="h-10 bg-white/10 border-b border-white/10 px-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                    <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                    <span className="w-3 h-3 rounded-full bg-[#27C93F]" />
-                  </div>
-                  <span className="text-xs text-white/80 font-mono select-none">telemetry_feed.py</span>
-                  <div className="w-12" />
-                </div>
-                
-                {/* Scroll-animated Python code */}
-                <motion.div
-                  variants={{
-                    hidden: { opacity: 0 },
-                    visible: {
-                      opacity: 1,
-                      transition: {
-                        staggerChildren: 0.04,
-                        delayChildren: 0.1
-                      }
-                    }
+              {/* Left Column: macOS Terminal with Interactive Telemetry */}
+              <div className="lg:col-span-2">
+                <Terminal
+                  title="aura-field-node@rescue-01: ~ zsh"
+                  commands={[
+                    "npx shadcn@latest init",
+                    "npm install motion",
+                    "npx shadcn@latest add button card",
+                    "curl -s http://192.168.4.1/data | jq .",
+                  ]}
+                  outputs={{
+                    0: [
+                      "✔ Preflight checks passed.",
+                      "✔ Created components.json",
+                      "✔ Initialized A.U.R.A. node interface.",
+                    ],
+                    1: ["✔ added motion in 1.4s"],
+                    2: ["✔ Done. Installed tactical button and telemetry card."],
+                    3: [
+                      "{\n  \"status\": \"VOID_DETECTED\",\n  \"void_depth_cm\": 184.5,\n  \"lat\": 13.082712,\n  \"lng\": 80.270721,\n  \"uptime_ms\": 48210\n}",
+                    ],
                   }}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: false, amount: 0.1 }}
-                  className="p-4 sm:p-8 overflow-x-auto text-[11px] sm:text-xs md:text-sm text-white font-mono leading-relaxed select-text font-medium text-left"
-                >
-                  {[
-                    "import time",
-                    "import numpy as np",
-                    "",
-                    "class AuraTelemetry:",
-                    "    def __init__(self, sensor_frequency=18.4):",
-                    "        self.freq = sensor_frequency",
-                    "        self.active_voids = []",
-                    "",
-                    "    def scan_depth_anomalies(self):",
-                    "        # Scan subsurface telemetry mapping",
-                    "        anomalies = np.random.normal(3.42, 0.12, 10)",
-                    "        self.active_voids = [d for d in anomalies if d > 3.0]",
-                    "        return self.active_voids",
-                    "",
-                    "# Initiating realtime cavity parsing...",
-                    "aura = AuraTelemetry()",
-                    "while True:",
-                    "    voids = aura.scan_depth_anomalies()",
-                    "    print(f\"Sub-surface scan complete: {len(voids)} active cavities found.\")",
-                    "    time.sleep(1.0)"
-                  ].map((line, idx) => (
-                    <motion.div
-                      key={idx}
-                      variants={{
-                        hidden: { opacity: 0, x: -15, y: 5 },
-                        visible: {
-                          opacity: 1,
-                          x: 0,
-                          y: 0,
-                          transition: {
-                            type: "spring",
-                            damping: 20,
-                            stiffness: 150
-                          }
-                        }
-                      }}
-                      className="min-h-[1.5rem] whitespace-pre"
-                    >
-                      {line}
-                    </motion.div>
-                  ))}
-                </motion.div>
+                  typingSpeed={35}
+                  delayBetweenCommands={1000}
+                />
               </div>
 
               {/* Right Column: Model Images */}
