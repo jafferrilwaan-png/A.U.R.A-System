@@ -200,7 +200,7 @@
             <span class="text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">"Check piezoelectric vibrations"</span>
             <span class="text-[#C084FC] bg-[#C084FC]/10 px-2 py-0.5 rounded border border-[#C084FC]/20">"Use ultrasonic sensor"</span>
             <span class="text-green-400 bg-green-400/10 px-2 py-0.5 rounded border border-green-400/20">"What is GPS location & altitude"</span>
-            <span class="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">"How many units there"</span>
+            <span class="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">"How many units connected to pipeline"</span>
           </div>
         </div>
       </div>
@@ -223,7 +223,7 @@
         id="ai-input"
         class="ai-input"
         type="text"
-        placeholder="Say 'piezoelectric', 'ultrasonic sensor', 'GPS location', 'how many units'..."
+        placeholder="Say 'piezoelectric', 'ultrasonic sensor', 'GPS location', 'pipeline nodes'..."
         autocomplete="off"
       />
 
@@ -442,13 +442,13 @@ let ultrasonicScanCount = 0;
 let piezoScanCount = 0;
 
 // ════════════════════════════════════════════════════════
-//  STRICT PRIORITY CLASSIFIER ALGORITHM
+//  STRICT INTENT CLASSIFIER & PROJECT GUARDRAILS
 // ════════════════════════════════════════════════════════
 function classifyIntent(input) {
   const q = input.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
 
   // 1. CLEAR COMMAND
-  if (q.includes("clear") || q.includes("reset") || q.includes("close system") || q.includes("clear all")) {
+  if (q.includes("clear") || q.includes("reset") || q.includes("close system") || q.includes("clear all") || q.includes("close terminal")) {
     return {
       type: 'clear',
       calibrationSteps: ["Flushing system telemetry buffers...", "Resetting ADC registers...", "Standby state restored."],
@@ -457,26 +457,26 @@ function classifyIntent(input) {
     };
   }
 
-  // 2. UNIT COUNT COMMAND
-  if (q.includes("unit") || q.includes("units") || q.includes("how many") || q.includes("how much unit") || q.includes("node count") || q.includes("nodes")) {
+  // 2. PIPELINE & UNIT / NODE CONNECTION QUERY
+  if (q.includes("pipeline") || q.includes("unit") || q.includes("units") || q.includes("node") || q.includes("nodes") || q.includes("how many") || q.includes("active node") || q.includes("connected")) {
     return {
       type: 'units',
       calibrationSteps: [
-        "Broadcasting mesh beacon across local 2.4 GHz subnet...",
-        "Querying SX1262 LoRa swarm routing table...",
-        "Node telemetry handshake confirmed."
+        "Querying ESP32 pipeline socket connection at 192.168.4.1...",
+        "Validating telemetry data frames across mesh gateway...",
+        "Active node connection confirmed on pipeline stream."
       ],
-      spokenResponse: "Scanning local mesh telemetry network... There is currently one active AURA autonomous node deployed in this search sector. Node identifier: AURA-NODE-0x1A3F.",
+      spokenResponse: "Scanning pipeline telemetry network... Confirmed: 1 active AURA tactical node is currently connected to the pipeline telemetry stream at 192.168.4.1. Node identifier: AURA-NODE-0x1A3F.",
       structureCard: `
         <div class="telemetry-badge">
           <div class="flex items-center justify-between text-xs mb-2">
-            <span class="font-mono text-cyan-400 font-bold flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> ACTIVE SWARM NODES</span>
-            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● 1 NODE ACTIVE</span>
+            <span class="font-mono text-cyan-400 font-bold flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> PIPELINE TELEMETRY LINK</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● 1 ACTIVE NODE CONNECTED</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ACTIVE COUNT</span><span class="text-white font-bold">1 Unit</span></div>
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">NODE ID</span><span class="text-[#C084FC] font-bold">0x1A3F</span></div>
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">STATUS</span><span class="text-green-400 font-bold">Deploy Active</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">PIPELINE STATUS</span><span class="text-green-400 font-bold">Online / Linked</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ACTIVE NODE</span><span class="text-[#C084FC] font-bold">0x1A3F</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">IP ADDRESS</span><span class="text-white font-bold">192.168.4.1</span></div>
             <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">BATTERY</span><span class="text-white font-bold">94.2%</span></div>
           </div>
         </div>
@@ -484,22 +484,27 @@ function classifyIntent(input) {
     };
   }
 
-  // Token scoring
+  // Token scoring for hardware sensors
   let scorePiezo = 0;
   let scoreUltrasonic = 0;
   let scoreGps = 0;
+  let scoreGeneralProject = 0;
 
   // Piezo keywords
   const piezoKeys = ["piezo", "piezoelectric", "vibration", "vibrations", "seismograph", "seismic", "tap", "tapping", "knock", "knocking", "shakes", "shaking", "tremor", "ground"];
   piezoKeys.forEach(k => { if (q.includes(k)) scorePiezo += 10; });
 
   // Ultrasonic keywords
-  const ultraKeys = ["ultrasonic", "ultra", "sonic", "cavity", "proximity", "clearance", "obstacle", "person", "persons", "front", "object", "objects", "anyone", "someone", "ahead"];
+  const ultraKeys = ["ultrasonic", "ultra", "sonic", "cavity", "proximity", "clearance", "obstacle", "person", "persons", "front", "object", "objects", "anyone", "someone", "ahead", "void"];
   ultraKeys.forEach(k => { if (q.includes(k)) scoreUltrasonic += 10; });
 
   // GPS keywords
   const gpsKeys = ["gps", "location", "satellite", "satellites", "coordinate", "coordinates", "altitude", "height", "where", "district", "sriperumbudur", "position", "pinpoint", "lat", "lon", "heading"];
   gpsKeys.forEach(k => { if (q.includes(k)) scoreGps += 10; });
+
+  // General AURA Project keywords
+  const auraProjectKeys = ["aura", "project", "system", "hardware", "firmware", "rescue", "disaster", "rubble", "cssr", "survivor", "survivors", "sensor", "sensors", "team", "antigravity", "esp32"];
+  auraProjectKeys.forEach(k => { if (q.includes(k)) scoreGeneralProject += 5; });
 
   // 3. PIEZOELECTRIC
   if (scorePiezo > 0 && scorePiezo >= scoreUltrasonic && scorePiezo >= scoreGps) {
@@ -616,15 +621,29 @@ function classifyIntent(input) {
     };
   }
 
-  // 6. DEFAULT FALLBACK
+  // 6. GENERAL PROJECT QUERY
+  if (scoreGeneralProject > 0) {
+    return {
+      type: 'project',
+      calibrationSteps: [
+        "Accessing AURA sub-surface mission registry...",
+        "Querying team AntiGravity core specifications...",
+        "Response ready."
+      ],
+      spokenResponse: "AURA is an autonomous sub-surface life and cavity detection system by Team AntiGravity. I can provide telemetry on piezoelectric vibration sensing, ultrasonic void depth, and GPS coordinates.",
+      structureCard: null
+    };
+  }
+
+  // 7. OFF-TOPIC GUARDRAIL (ONLY ENGAGE WITH AURA PROJECT)
   return {
-    type: 'fallback',
+    type: 'offtopic',
     calibrationSteps: [
-      "Querying AURA embedded sensor bus...",
-      "Scanning all hardware telemetry channels...",
-      "Telemetry frame compiled."
+      "Analyzing semantic domain of user prompt...",
+      "Evaluating query against AURA mission boundaries...",
+      "Mission scope restriction active."
     ],
-    spokenResponse: "Accessing AURA hardware sensors... All subsystems online. Please ask about piezoelectric vibration tap sounds, ultrasonic person detection, or GPS coordinates and altitude.",
+    spokenResponse: "I only engage with AURA Project related information. You can ask me about sub-surface void detection, piezoelectric seismographs, ultrasonic sensors, GPS satellite coordinates, or pipeline node status.",
     structureCard: null
   };
 }

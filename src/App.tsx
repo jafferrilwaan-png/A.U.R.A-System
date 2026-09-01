@@ -766,7 +766,7 @@ export default function App() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {[
                 {
                   name: "Jaffer Rilwaan V",
@@ -802,6 +802,13 @@ export default function App() {
                   img: "/giridhar.png",
                   bio: "Designing high-contrast tactical HUDs and ruggedized responder dashboards.",
                   linkedin: "https://www.linkedin.com/in/giridhar-k-b4bb40402/"
+                },
+                {
+                  name: "NITYASHREE.V",
+                  role: "Embedded Power & QA Lead",
+                  img: "/nityashree.png",
+                  bio: "Designing energy-efficient power regulation and validating sub-surface embedded reliability.",
+                  linkedin: "https://www.linkedin.com/in/nityashree-vijayakumar-b00009426?utm_source=share_via&utm_content=profile&utm_medium=member_android"
                 }
               ].map((member, idx) => (
                 <a 
@@ -809,46 +816,46 @@ export default function App() {
                   href={member.linkedin !== "#" ? member.linkedin : undefined}
                   target={member.linkedin !== "#" ? "_blank" : undefined}
                   rel="noreferrer"
-                  className="flex flex-col items-start text-left p-3 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(192,132,252,0.15)] transition-all duration-300 relative overflow-hidden"
+                  className="flex flex-col items-start text-left p-4 rounded-2xl bg-[#0a0d14]/80 backdrop-blur-md border border-white/10 group cursor-pointer hover:border-[#C084FC]/50 hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(192,132,252,0.2)] transition-all duration-300 relative overflow-hidden"
                 >
                   {/* Ambient Glass AURA Background Watermark */}
-                  <div className="absolute -top-1 -right-1 text-[36px] sm:text-[48px] font-black font-display tracking-tighter text-[#C084FC]/[0.06] pointer-events-none select-none z-0 leading-none">
+                  <div className="absolute -top-2 -right-2 text-[48px] sm:text-[64px] font-black font-display tracking-tighter text-[#C084FC]/[0.05] pointer-events-none select-none z-0 leading-none">
                     AURA
                   </div>
                   <div className="relative z-10 w-full">
-                    <div className="w-full h-[190px] sm:h-[230px] rounded-lg overflow-hidden border border-white/10 group-hover:border-[#C084FC]/50 transition-all mb-3 relative shadow-xl bg-[#080B10]">
+                    <div className="w-full h-[250px] sm:h-[300px] rounded-xl overflow-hidden border border-white/10 group-hover:border-[#C084FC]/50 transition-all mb-4 relative shadow-xl bg-[#080B10]">
                       <AsciiImage
                         image={member.img}
                         fit="cover"
                         focusY={25}
-                        columns={70}
+                        columns={75}
                         colorMode="image"
                         reveal={true}
-                        revealOptions={{ size: 65, softness: 12 }}
+                        revealOptions={{ size: 70, softness: 14 }}
                         className="w-full h-full object-cover"
                       />
                       
                       {/* Dark frosted-glass overlay for Bio reveal on hover */}
-                      <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 backdrop-blur-[2px] pointer-events-none">
-                         <p className="text-[10px] sm:text-xs text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                      <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-5 backdrop-blur-[2px] pointer-events-none">
+                         <p className="text-xs sm:text-sm text-white/95 leading-relaxed font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                            {member.bio}
                          </p>
                          {member.linkedin !== "#" && (
-                           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C084FC] pt-2 border-t border-white/10">
-                             <i className="bi bi-linkedin text-xs" />
-                             View LinkedIn <i className="bi bi-arrow-up-right text-[9px]" />
+                           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#C084FC] pt-3 border-t border-white/10">
+                             <i className="bi bi-linkedin text-sm" />
+                             View LinkedIn <i className="bi bi-arrow-up-right text-[10px]" />
                            </div>
                          )}
                       </div>
                     </div>
                     
-                    <div className="w-full flex items-center justify-between gap-1 mb-0.5">
-                      <h3 className="text-xs sm:text-base font-bold text-flowing-purple tracking-tight uppercase font-display drop-shadow-md truncate"><ScrambleText text={member.name} /></h3>
+                    <div className="w-full flex items-center justify-between gap-1 mb-1">
+                      <h3 className="text-sm sm:text-lg font-bold text-flowing-purple tracking-tight uppercase font-display drop-shadow-md truncate"><ScrambleText text={member.name} /></h3>
                       {member.linkedin !== "#" && (
-                        <i className="bi bi-linkedin text-xs text-[#C084FC] opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                        <i className="bi bi-linkedin text-sm text-[#C084FC] opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                       )}
                     </div>
-                    <div className="text-[10px] sm:text-xs text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
+                    <div className="text-xs sm:text-sm text-white/80 tracking-wider uppercase font-semibold drop-shadow-sm">{member.role}</div>
                   </div>
                 </a>
               ))}
@@ -970,6 +977,13 @@ export default function App() {
                       <div className="flex gap-3 mt-1 text-xs">
                          <a href="https://www.linkedin.com/in/giridhar-k-b4bb40402/" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
                          <a href="/giridhar.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
+                      </div>
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="font-bold text-white text-[11px] uppercase tracking-wider">NITYASHREE.V</span>
+                      <div className="flex gap-3 mt-1 text-xs">
+                         <a href="https://www.linkedin.com/in/nityashree-vijayakumar-b00009426?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-linkedin" /> LinkedIn</a>
+                         <a href="/nityashree.png" target="_blank" rel="noreferrer" className="hover:text-[#C084FC] flex items-center gap-1"><i className="bi bi-image" /> Photo</a>
                       </div>
                    </div>
                 </div>
