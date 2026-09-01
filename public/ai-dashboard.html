@@ -200,7 +200,7 @@
             <span class="text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">"Check piezoelectric vibrations"</span>
             <span class="text-[#C084FC] bg-[#C084FC]/10 px-2 py-0.5 rounded border border-[#C084FC]/20">"Use ultrasonic sensor"</span>
             <span class="text-green-400 bg-green-400/10 px-2 py-0.5 rounded border border-green-400/20">"What is GPS location & altitude"</span>
-            <span class="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">"How many units connected to pipeline"</span>
+            <span class="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/20">"Check pipeline node status"</span>
           </div>
         </div>
       </div>
@@ -223,7 +223,7 @@
         id="ai-input"
         class="ai-input"
         type="text"
-        placeholder="Say 'piezoelectric', 'ultrasonic sensor', 'GPS location', 'pipeline nodes'..."
+        placeholder="Say 'piezoelectric', 'ultrasonic sensor', 'GPS location', 'pipeline status'..."
         autocomplete="off"
       />
 
@@ -457,27 +457,27 @@ function classifyIntent(input) {
     };
   }
 
-  // 2. PIPELINE & UNIT / NODE CONNECTION QUERY
-  if (q.includes("pipeline") || q.includes("unit") || q.includes("units") || q.includes("node") || q.includes("nodes") || q.includes("how many") || q.includes("active node") || q.includes("connected")) {
+  // 2. PIPELINE & UNIT / NODE CONNECTION QUERY — EXPLICITLY STATES NO ACTIVE NODE IS CONNECTED
+  if (q.includes("pipeline") || q.includes("unit") || q.includes("units") || q.includes("node") || q.includes("nodes") || q.includes("how many") || q.includes("active node") || q.includes("connected") || q.includes("network")) {
     return {
       type: 'units',
       calibrationSteps: [
-        "Querying ESP32 pipeline socket connection at 192.168.4.1...",
-        "Validating telemetry data frames across mesh gateway...",
-        "Active node connection confirmed on pipeline stream."
+        "Probing ESP32 pipeline socket connection...",
+        "Scanning mesh telemetry gateway on 192.168.4.1...",
+        "Telemetry pipeline status: Zero active nodes transmitting."
       ],
-      spokenResponse: "Scanning pipeline telemetry network... Confirmed: 1 active AURA tactical node is currently connected to the pipeline telemetry stream at 192.168.4.1. Node identifier: AURA-NODE-0x1A3F.",
+      spokenResponse: "Scanning pipeline telemetry network... Currently, no active node is connected to the pipeline. Awaiting node beacon uplink.",
       structureCard: `
         <div class="telemetry-badge">
           <div class="flex items-center justify-between text-xs mb-2">
-            <span class="font-mono text-cyan-400 font-bold flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> PIPELINE TELEMETRY LINK</span>
-            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/30">● 1 ACTIVE NODE CONNECTED</span>
+            <span class="font-mono text-amber-400 font-bold flex items-center gap-1.5"><i class="bi bi-diagram-3"></i> PIPELINE TELEMETRY STATUS</span>
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono text-[10px] font-bold border border-amber-500/30">● NO ACTIVE NODE CONNECTED</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">PIPELINE STATUS</span><span class="text-green-400 font-bold">Online / Linked</span></div>
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ACTIVE NODE</span><span class="text-[#C084FC] font-bold">0x1A3F</span></div>
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">IP ADDRESS</span><span class="text-white font-bold">192.168.4.1</span></div>
-            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">BATTERY</span><span class="text-white font-bold">94.2%</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">PIPELINE STATUS</span><span class="text-amber-400 font-bold">Awaiting Link</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">ACTIVE NODES</span><span class="text-red-400 font-bold">0 Units</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">GATEWAY</span><span class="text-white/60 font-bold">192.168.4.1</span></div>
+            <div class="p-2 rounded bg-black/40 border border-white/5"><span class="text-white/40 block text-[10px]">SECTOR</span><span class="text-[#C084FC] font-bold">Sector 4-B</span></div>
           </div>
         </div>
       `
@@ -766,9 +766,9 @@ function executeQuery(q, onComplete) {
     } else {
       clearInterval(stepInterval);
       
-      calibBox.className = 'bg-black/30 border border-green-500/30 rounded-xl p-2 text-xs font-mono text-green-400 flex items-center justify-between';
+      calibBox.className = 'bg-black/30 border border-amber-500/30 rounded-xl p-2 text-xs font-mono text-amber-400 flex items-center justify-between';
       calibBox.innerHTML = `
-        <span class="flex items-center gap-1.5 font-bold"><i class="bi bi-check-circle-fill"></i> HARDWARE DATA ACQUIRED</span>
+        <span class="flex items-center gap-1.5 font-bold"><i class="bi bi-info-circle-fill"></i> HARDWARE SCAN COMPLETE</span>
         <span class="text-[10px] text-white/40">LATENCY 110ms</span>
       `;
 
