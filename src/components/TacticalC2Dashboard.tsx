@@ -42,6 +42,10 @@ import AuraVoiceOrb from "./AuraVoiceOrb";
 export interface TelemetryPayload {
   card?: number | string;
   gas?: number;
+  gas_profile?: string; // "AMBIENT AIR" | "BIO-EFFLUENT/VOC" | "HUMAN RESPIRATION" | "HAZARDOUS / SMOKE"
+  co2_ppm?: number;
+  nh3_ppm?: string | number;
+  air_rating?: string; // "AIR: SAFE / CLEAR" | "AMMONIA / SWEAT" | "METABOLIC CO2" | "DANGER: TOXIC"
   radar?: number;
   seismic_peak?: number;
   acoustic_energy?: number;
@@ -987,7 +991,7 @@ Analyze this LIVE ESP32 search-and-rescue sensor telemetry:
 - Seismic Peak Velocity: ${telemetry.seismic_peak || 0} mm/s
 - Acoustic Energy: ${telemetry.acoustic_energy || 0} dB/Hz
 - MPU-6050 Structural Jerk: ${(telemetry.delta_jerk || 0).toFixed(2)} G
-- GPS Position: Lat ${telemetry.lat || 13.1067}, Lng ${telemetry.lng || 79.9477} (${telemetry.sats || 0} Sats, Fix: ${telemetry.gps_locked ? "LOCKED" : "SEARCHING"})
+- GPS Position: Lat ${telemetry.lat || 12.9665}, Lng ${telemetry.lng || 79.9450} (${telemetry.sats || 0} Sats, Fix: ${telemetry.gps_locked ? "LOCKED" : "SEARCHING"})
 - Edge Node Classification: ${telemetry.ai_classification || "UNKNOWN"}
 - Edge Estimated Depth: ${telemetry.ai_depth_meters || 3.2} meters
 

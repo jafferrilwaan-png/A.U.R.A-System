@@ -215,12 +215,21 @@ export default function AuraVoiceOrb({
         const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
         let res;
         try {
-          res = await fetch(endpoint, { signal: controller.signal });
+          res = await fetch(endpoint, { 
+            signal: controller.signal,
+            headers: { "ngrok-skip-browser-warning": "true" }
+          });
           if ((!res || !res.ok) && endpoint.startsWith("/")) {
-            res = await fetch(`http://${nodeIp}/api/telemetry`, { signal: controller.signal });
+            res = await fetch(`http://${nodeIp}/api/telemetry`, { 
+              signal: controller.signal,
+              headers: { "ngrok-skip-browser-warning": "true" }
+            });
           }
         } catch {
-          res = await fetch(`http://${nodeIp}/api/telemetry`, { signal: controller.signal });
+          res = await fetch(`http://${nodeIp}/api/telemetry`, { 
+            signal: controller.signal,
+            headers: { "ngrok-skip-browser-warning": "true" }
+          });
         }
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -245,7 +254,7 @@ export default function AuraVoiceOrb({
     };
 
     pollTelemetry();
-    const interval = setInterval(pollTelemetry, 800);
+    const interval = setInterval(pollTelemetry, 300);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -280,20 +289,29 @@ export default function AuraVoiceOrb({
       try {
         res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          },
           body: JSON.stringify(payload)
         });
         if ((!res || !res.ok) && endpoint.startsWith("/")) {
           res = await fetch(`http://${nodeIp}/api/telemetry`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true"
+            },
             body: JSON.stringify(payload)
           });
         }
       } catch {
         res = await fetch(`http://${nodeIp}/api/telemetry`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          },
           body: JSON.stringify(payload)
         });
       }
@@ -570,7 +588,7 @@ export default function AuraVoiceOrb({
     const seismicPeak = (rawSeismic >= 2147483000 || rawSeismic < 0 || isNaN(rawSeismic)) ? 0 : rawSeismic;
     const radarDepthStr = telemetry.ai_depth_meters !== undefined ? `${Number(telemetry.ai_depth_meters).toFixed(1)}m` : "Scanning Strata";
     const cityStr = telemetry.city || "Chennai";
-    const gpsCoords = (telemetry.lat && telemetry.lng) ? `${telemetry.lat}°, ${telemetry.lng}°` : "13.1067° N, 79.9477° E";
+    const gpsCoords = (telemetry.lat && telemetry.lng) ? `${telemetry.lat}°, ${telemetry.lng}°` : "12.9665° N, 79.9450° E";
     const satsCount = telemetry.sats || 0;
 
     let aiReply: string | null = null;
@@ -599,6 +617,10 @@ Live Hardware & Bio-Acoustic Telemetry:
 - Vital Pulse Cadence: ${heartbeatBpm ? `${heartbeatBpm} BPM confirmed biological heart pulse` : "No stable periodic pulse locked"}
 - Biological Presence: ${telemetry.ai_biological ? "CONFIRMED POSITIVE" : "NEGATIVE / SCANNING"}
 - Combustible Gas: ${gasPpm} PPM (${gasPpm > 400 ? "HAZARD" : "Safe/Nominal"})
+- Gas Profile: ${telemetry.gas_profile || "AMBIENT AIR"}
+- Metabolic CO2: ${telemetry.co2_ppm || gasPpm} PPM
+- Bio-VOC / Ammonia (NH3): ${telemetry.nh3_ppm || "0.0"} PPM
+- Air Quality Rating: ${telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR")}
 - Seismic Activity / Tapping: ${seismicPeak} mm/s
 - Hardware Beacon: Level ${effectiveBuzzer} (${effectiveBuzzer === 0 ? "Muted" : `${effectiveBuzzer * 15 + 70} dB`})
 - Node Coordinates: ${cityStr} (${gpsCoords})
@@ -666,14 +688,14 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
               break;
             }
           }
-        } catch (e) {
-          console.warn(`Model ${modelToTry} fetch error:`, e);
+        } catch (err) {
+          console.warn(`Model ${modelToTry} attempt failed:`, err);
         }
       }
 
       if (!aiReply) {
-        aiReply = `I received your query: "${rawQuery}". All AURA systems are active.`;
-        successfulModelName = "AURA Neural Engine";
+        aiReply = "Telemetry synchronized. Atmospheric and subterranean bio-acoustic monitors are running on node.";
+        successfulModelName = "AURA Offline Engine";
       }
     }
 
@@ -698,17 +720,26 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       q.includes("human") ||
       q.includes("person") ||
       q.includes("sound") ||
+      q.includes("co2") ||
+      q.includes("ammonia") ||
+      q.includes("air") ||
       q.includes("heartbeat");
+
+    const gasProf = telemetry.gas_profile || "AMBIENT AIR";
+    const gasColor = gasProf.includes("HAZARD") || gasProf.includes("SMOKE") ? "#EF4444" : gasProf.includes("RESPIRATION") || gasProf.includes("VOC") ? "#F59E0B" : "#10B981";
 
     const telemetryCard: ChatMessage["telemetryCard"] | undefined = isHwInquiry
       ? {
-          title: "LIVE ESP32 BIO-ACOUSTIC TELEMETRY AUDIT",
+          title: "LIVE ESP32 BIO-ACOUSTIC & MULTI-GAS AUDIT",
           metrics: [
             { label: "AI Neural Engine", value: `${successfulModelName.split("/").pop()} (Live)`, color: "#10B981" },
             { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
+            { label: "Gas Profile", value: gasProf, color: gasColor },
+            { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
+            { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
+            { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
             { label: "Acoustic Depth", value: String(telemetry.sound_depth_cat || "Sweeping Strata"), color: "#00C2FF" },
             { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
-            { label: "Gas Sensor", value: `${gasPpm} PPM`, color: gasPpm > 400 ? "#EF4444" : "#10B981" },
             { label: "Radar Depth", value: radarDepthStr, color: "#00C2FF" },
             { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
             { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }
@@ -1075,11 +1106,11 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
                                 <div 
                                   key={j} 
                                   onClick={isGps ? () => {
-                                    let targetLat = 13.1067;
-                                    let targetLng = 79.9477;
+                                    let targetLat = 12.9665;
+                                    let targetLng = 79.9450;
                                     if (telemetry.gps_source === "HIGH_ACCURACY_GPS" && telemetry.lat && telemetry.lat !== 0) {
                                       targetLat = telemetry.lat;
-                                      targetLng = telemetry.lng ?? 79.9477;
+                                      targetLng = telemetry.lng ?? 79.9450;
                                     }
                                     window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
                                   } : undefined}

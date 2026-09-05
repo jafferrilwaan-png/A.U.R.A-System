@@ -100,7 +100,10 @@ export default function SubterraneanTheatreMap({
           try {
             const res = await fetch(endpoint, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true"
+              },
               body: JSON.stringify({
                 lat: latitude,
                 lng: longitude,
@@ -110,7 +113,10 @@ export default function SubterraneanTheatreMap({
             if ((!res || !res.ok) && endpoint.startsWith("/")) {
               await fetch(`http://${nodeIp}/api/telemetry`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                  "Content-Type": "application/json",
+                  "ngrok-skip-browser-warning": "true"
+                },
                 body: JSON.stringify({
                   lat: latitude,
                   lng: longitude,
@@ -121,7 +127,10 @@ export default function SubterraneanTheatreMap({
           } catch {
             await fetch(`http://${nodeIp}/api/telemetry`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true"
+              },
               body: JSON.stringify({
                 lat: latitude,
                 lng: longitude,
@@ -148,9 +157,9 @@ export default function SubterraneanTheatreMap({
       (err) => {
         console.warn("Geolocation prompt error:", err);
         setIsSyncingGps(false);
-        // Fallback to telemetry coordinates or Chennai Hub so map still opens
-        const fallbackLat = telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067;
-        const fallbackLng = telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477;
+        // Fallback to Sriperumbudur Bus Stand coordinates
+        const fallbackLat = telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 12.9665;
+        const fallbackLng = telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9450;
         setGpsData({
           lat: fallbackLat,
           lng: fallbackLng,
@@ -163,21 +172,21 @@ export default function SubterraneanTheatreMap({
     );
   };
 
-  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur)
+  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur Bus Stand)
   const handleOpenGoogleMaps = (e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
-    let targetLat = 13.1067;
-    let targetLng = 79.9477;
+    let targetLat = 12.9665;
+    let targetLng = 79.9450;
 
     if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
       targetLat = gpsData.lat;
       targetLng = gpsData.lng;
     } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
       targetLat = telemetry.lat;
-      targetLng = telemetry.lng ?? 79.9477;
+      targetLng = telemetry.lng ?? 79.9450;
     }
 
-    // Direct Google Maps pin with satellite terrain mode pointing to Sriperumbudur
+    // Direct Google Maps pin with satellite terrain mode pointing to Sriperumbudur Bus Stand
     const mapsUrl = `https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`;
     window.open(mapsUrl, "_blank", "noopener,noreferrer");
   };
@@ -191,6 +200,27 @@ export default function SubterraneanTheatreMap({
 
   const rawGas = Number(telemetry.gas || 0);
   const gasPpm = (rawGas >= 2147483000 || rawGas < 0 || isNaN(rawGas)) ? 0 : rawGas;
+
+  // Multi-Gas & Bio-Effluent Analytics (v14.6)
+  const rawGasProfile = telemetry.gas_profile || (gasPpm > 400 ? "HAZARDOUS / SMOKE" : gasPpm > 250 ? "HUMAN RESPIRATION" : "AMBIENT AIR");
+  const isGasHazard = rawGasProfile.includes("HAZARD") || rawGasProfile.includes("SMOKE") || gasPpm > 400;
+  const isGasRespiration = rawGasProfile.includes("RESPIRATION") || rawGasProfile.includes("VOC") || (gasPpm > 250 && !isGasHazard);
+  
+  const gasProfileColor = isGasHazard 
+    ? "bg-red-500/20 text-red-400 border-red-500/40" 
+    : isGasRespiration 
+    ? "bg-amber-400/20 text-amber-300 border-amber-400/40" 
+    : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+
+  const rawAirRating = telemetry.air_rating || (isGasHazard ? "DANGER: TOXIC" : isGasRespiration ? "METABOLIC CO2" : "AIR: SAFE / CLEAR");
+  const airRatingBadge = isGasHazard
+    ? "bg-red-500/20 text-red-400 border-red-500/40"
+    : isGasRespiration
+    ? "bg-amber-400/20 text-amber-400 border-amber-400/40"
+    : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
+
+  const co2Ppm = telemetry.co2_ppm ?? gasPpm;
+  const nh3Ppm = telemetry.nh3_ppm ?? (gasPpm > 300 ? "1.4" : "0.0");
 
   const isRadarLocked = isConnected && telemetry.radar === 1;
   const isBiological = isConnected && Boolean(telemetry.ai_biological);
@@ -535,30 +565,39 @@ export default function SubterraneanTheatreMap({
             </div>
           </div>
 
-          {/* 4. AIR QUALITY & PIPELINE */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-white/55">Atmosphere</span>
-              <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${
-                gasPpm > 400 ? "bg-red-500/20 text-red-400" : "bg-amber-400/15 text-amber-400"
-              }`}>
-                <Wind className="w-3.5 h-3.5" />
-              </div>
+          {/* 4. ATMOSPHERIC & BIO-GAS ANALYSIS CARD */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5 col-span-2 md:col-span-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-white/75 truncate">Atmosphere & Bio-Gas</span>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border truncate tracking-wider ${airRatingBadge}`}>
+                {rawAirRating}
+              </span>
             </div>
 
             <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-bold tracking-tight text-white">
-                  {gasPpm}
-                </span>
-                <span className="text-xs font-normal text-white/50">PPM</span>
-                <span className={`text-xs font-semibold ml-1 ${gasPpm > 400 ? "text-red-400" : "text-amber-400"}`}>
-                  {gasPpm > 400 ? "Alert" : "Nominal"}
+              <div className="flex items-baseline justify-between gap-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold tracking-tight text-white">
+                    {gasPpm}
+                  </span>
+                  <span className="text-xs font-normal text-white/50">PPM</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border tracking-wider ${gasProfileColor}`}>
+                  {rawGasProfile}
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 mt-1">
-                MQ-4 Methane Sensor
-              </p>
+
+              {/* Sub-metrics: CO2 and Ammonia / VOC */}
+              <div className="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-white/10 text-[10px] font-mono">
+                <div className="flex flex-col">
+                  <span className="text-white/40">METABOLIC CO2</span>
+                  <span className="font-bold text-amber-300">{co2Ppm} PPM</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white/40">AMMONIA & VOC</span>
+                  <span className="font-bold text-sky-400">{nh3Ppm} PPM</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -676,11 +715,11 @@ export default function SubterraneanTheatreMap({
             {/* Modal Body: Embedded Interactive Map */}
             <div className="p-4 sm:p-5 flex flex-col gap-4">
               <div className="relative w-full h-72 sm:h-80 rounded-2xl overflow-hidden border border-white/15 shadow-inner bg-black/60">
-                {/* Always show map — defaults to Sriperumbudur (13.1067°N, 79.9477°E) when no hardware GPS lock */}
+                {/* Always show map — defaults to Sriperumbudur Bus Stand (12.9665°N, 79.9450°E) when no hardware GPS lock */}
                 <iframe
                   title="Tactical GPS Map"
                   className="w-full h-full border-none filter contrast-125 brightness-90"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(gpsData?.lng ?? 79.9477) - 0.008}%2C${(gpsData?.lat ?? 13.1067) - 0.008}%2C${(gpsData?.lng ?? 79.9477) + 0.008}%2C${(gpsData?.lat ?? 13.1067) + 0.008}&layer=mapnik&marker=${gpsData?.lat ?? 13.1067}%2C${gpsData?.lng ?? 79.9477}`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(gpsData?.lng ?? 79.9450) - 0.008}%2C${(gpsData?.lat ?? 12.9665) - 0.008}%2C${(gpsData?.lng ?? 79.9450) + 0.008}%2C${(gpsData?.lat ?? 12.9665) + 0.008}&layer=mapnik&marker=${gpsData?.lat ?? 12.9665}%2C${gpsData?.lng ?? 79.9450}`}
                 />
 
                 {/* Radar Targeting Reticle Overlay on Map */}
@@ -696,11 +735,11 @@ export default function SubterraneanTheatreMap({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">LATITUDE</span>
-                  <span className="font-bold text-cyan-400">{(gpsData?.lat ?? telemetry.lat ?? 13.1067).toFixed(6)}°</span>
+                  <span className="font-bold text-cyan-400">{(gpsData?.lat ?? telemetry.lat ?? 12.9665).toFixed(6)}°</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">LONGITUDE</span>
-                  <span className="font-bold text-cyan-400">{(gpsData?.lng ?? telemetry.lng ?? 79.9477).toFixed(6)}°</span>
+                  <span className="font-bold text-cyan-400">{(gpsData?.lng ?? telemetry.lng ?? 79.9450).toFixed(6)}°</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">PRECISION ACCURACY</span>
@@ -724,14 +763,14 @@ export default function SubterraneanTheatreMap({
                 </button>
 
                 {(() => {
-                  let targetLat = 13.1067;
-                  let targetLng = 79.9477;
+                  let targetLat = 12.9665;
+                  let targetLng = 79.9450;
                   if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
                     targetLat = gpsData.lat;
                     targetLng = gpsData.lng;
                   } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
                     targetLat = telemetry.lat;
-                    targetLng = telemetry.lng ?? 79.9477;
+                    targetLng = telemetry.lng ?? 79.9450;
                   }
                   return (
                     <a
