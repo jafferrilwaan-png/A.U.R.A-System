@@ -95,9 +95,10 @@ export default function SubterraneanTheatreMap({
 
         // Dispatches exact GPS signal to the ESP32 hardware register
         try {
-          const endpoint = nodeIp === "172.21.169.16" ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+          const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+          const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
           try {
-            await fetch(endpoint, {
+            const res = await fetch(endpoint, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -106,6 +107,17 @@ export default function SubterraneanTheatreMap({
                 city: "EXACT GPS SYNC"
               })
             });
+            if ((!res || !res.ok) && endpoint.startsWith("/")) {
+              await fetch(`http://${nodeIp}/api/telemetry`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  lat: latitude,
+                  lng: longitude,
+                  city: "EXACT GPS SYNC"
+                })
+              });
+            }
           } catch {
             await fetch(`http://${nodeIp}/api/telemetry`, {
               method: "POST",

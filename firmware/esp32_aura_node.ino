@@ -605,6 +605,7 @@ void handleTelemetry() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
 
   #if ARDUINOJSON_VERSION_MAJOR >= 7
     JsonDocument doc;
@@ -663,6 +664,7 @@ void handleConfigPost() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
 
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
@@ -700,6 +702,7 @@ void handleOptions() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
   server.send(204);
 }
 

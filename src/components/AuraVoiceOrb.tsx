@@ -211,10 +211,14 @@ export default function AuraVoiceOrb({
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
-        const endpoint = nodeIp === "172.21.169.16" ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+        const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+        const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
         let res;
         try {
           res = await fetch(endpoint, { signal: controller.signal });
+          if ((!res || !res.ok) && endpoint.startsWith("/")) {
+            res = await fetch(`http://${nodeIp}/api/telemetry`, { signal: controller.signal });
+          }
         } catch {
           res = await fetch(`http://${nodeIp}/api/telemetry`, { signal: controller.signal });
         }
@@ -270,7 +274,8 @@ export default function AuraVoiceOrb({
     if (updates.overdrive !== undefined) setIsOverdrive(updates.overdrive);
 
     try {
-      const endpoint = nodeIp === "172.21.169.16" ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+      const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
       let res;
       try {
         res = await fetch(endpoint, {
@@ -278,6 +283,13 @@ export default function AuraVoiceOrb({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
+        if ((!res || !res.ok) && endpoint.startsWith("/")) {
+          res = await fetch(`http://${nodeIp}/api/telemetry`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
       } catch {
         res = await fetch(`http://${nodeIp}/api/telemetry`, {
           method: "POST",
@@ -285,7 +297,7 @@ export default function AuraVoiceOrb({
           body: JSON.stringify(payload)
         });
       }
-      return res && res.ok;
+      return Boolean(res && res.ok);
     } catch (err) {
       console.error("Failed to update ESP32 hardware register:", err);
       return false;
