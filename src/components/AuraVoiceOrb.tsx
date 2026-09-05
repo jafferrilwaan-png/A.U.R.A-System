@@ -557,7 +557,7 @@ export default function AuraVoiceOrb({
     const rawSeismic = Number(telemetry.seismic_peak || 0);
     const seismicPeak = (rawSeismic >= 2147483000 || rawSeismic < 0 || isNaN(rawSeismic)) ? 0 : rawSeismic;
     const radarDepthStr = telemetry.ai_depth_meters !== undefined ? `${Number(telemetry.ai_depth_meters).toFixed(1)}m` : "Scanning Strata";
-    const cityStr = telemetry.city || "Sriperumbudur";
+    const cityStr = telemetry.city || "Chennai";
     const gpsCoords = (telemetry.lat && telemetry.lng) ? `${telemetry.lat}°, ${telemetry.lng}°` : "13.1067° N, 79.9477° E";
     const satsCount = telemetry.sats || 0;
 
@@ -1057,14 +1057,29 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
                             {m.telemetryCard.title}
                           </span>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {m.telemetryCard.metrics.map((met, j) => (
-                              <div key={j} className="p-2 rounded bg-white/5 border border-white/5">
-                                <span className="text-[10px] text-white/50 block">{met.label}</span>
-                                <span className="font-bold text-sm" style={{ color: met.color || "#fff" }}>
-                                  {met.value}
-                                </span>
-                              </div>
-                            ))}
+                            {m.telemetryCard.metrics.map((met, j) => {
+                              const isGps = met.label === "Precise GPS";
+                              return (
+                                <div 
+                                  key={j} 
+                                  onClick={isGps ? () => {
+                                    const targetLat = telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067;
+                                    const targetLng = telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477;
+                                    window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
+                                  } : undefined}
+                                  className={`p-2 rounded bg-white/5 border border-white/5 ${isGps ? "cursor-pointer hover:border-cyan-400/60 hover:bg-cyan-500/10 transition-all select-none" : ""}`}
+                                  title={isGps ? "Touch to open location on Google Maps" : undefined}
+                                >
+                                  <span className="text-[10px] text-white/50 flex items-center justify-between">
+                                    <span>{met.label}</span>
+                                    {isGps && <span className="text-cyan-400 text-[10px] font-bold">Maps ↗</span>}
+                                  </span>
+                                  <span className="font-bold text-sm" style={{ color: met.color || "#fff" }}>
+                                    {met.value}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

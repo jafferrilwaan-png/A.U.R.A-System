@@ -142,7 +142,7 @@ export default function SubterraneanTheatreMap({
         setGpsData({
           lat: fallbackLat,
           lng: fallbackLng,
-          city: telemetry.city || "Sriperumbudur",
+          city: telemetry.city || "Chennai",
           syncedAt: new Date().toLocaleTimeString()
         });
         setIsMapModalOpen(true);
@@ -613,10 +613,16 @@ export default function SubterraneanTheatreMap({
             </button>
           </div>
 
-          {/* Clean Location Tag */}
-          <div className="flex items-center gap-1.5 text-xs text-white/60 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10">
-            <Satellite className="w-3.5 h-3.5 text-[#10B981]" />
-            <span>{hasGpsFix ? `${telemetry.city || "Sriperumbudur"} • ${telemetry.lat?.toFixed(3)}°, ${telemetry.lng?.toFixed(3)}°` : "Sriperumbudur • 13.107°, 79.948°"}</span>
+          {/* Clean Location Tag (Touch opens Google Maps directly at target / Sriperumbudur) */}
+          <div 
+            onClick={handleOpenGoogleMaps}
+            onTouchEnd={handleOpenGoogleMaps}
+            className="flex items-center gap-1.5 text-xs text-white/70 hover:text-cyan-300 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-cyan-400/40 transition-all cursor-pointer select-none group"
+            title="Touch to open target location on Google Maps"
+          >
+            <Satellite className="w-3.5 h-3.5 text-[#10B981] group-hover:text-cyan-400 transition-colors" />
+            <span>{hasGpsFix ? `${telemetry.city || "Chennai"} • ${telemetry.lat?.toFixed(3)}°, ${telemetry.lng?.toFixed(3)}°` : "Chennai • 13.083°, 80.271°"}</span>
+            <span className="text-[10px] text-cyan-400 font-medium ml-1 group-hover:translate-x-0.5 transition-transform">↗</span>
           </div>
 
         </div>
@@ -707,17 +713,21 @@ export default function SubterraneanTheatreMap({
                   <span>{isSyncingGps ? "Acquiring..." : "Re-sync High Precision GPS"}</span>
                 </button>
 
-                {gpsData && (
-                  <a
-                    href={`https://www.google.com/maps?q=${gpsData.lat},${gpsData.lng}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-white/15"
-                  >
-                    <span>Open in Google Maps</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/60" />
-                  </a>
-                )}
+                {(() => {
+                  const targetLat = gpsData?.lat ?? (telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067);
+                  const targetLng = gpsData?.lng ?? (telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477);
+                  return (
+                    <a
+                      href={`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-white/15"
+                    >
+                      <span>Open in Google Maps</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-white/60" />
+                    </a>
+                  );
+                })()}
               </div>
             </div>
 
