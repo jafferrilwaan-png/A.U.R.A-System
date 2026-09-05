@@ -617,7 +617,7 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       // Waterfall candidate models tested and verified working 100% on OpenRouter
       const candidateModels = Array.from(
         new Set([
-          primaryModel,
+          aiModel,
           "google/gemini-2.5-flash",
           "meta-llama/llama-3.3-70b-instruct",
           "deepseek/deepseek-chat",
@@ -632,7 +632,7 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
           const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${activeKey}`,
+              "Authorization": `Bearer ${apiKey}`,
               "Content-Type": "application/json",
               "HTTP-Referer": window.location.origin,
               "X-Title": "AURA AI C2"
