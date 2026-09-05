@@ -52,6 +52,9 @@ export interface TelemetryPayload {
   human_scent_ppm?: number | string;
   human_scent_detected?: boolean;
   human_scent_label?: string;
+  // v14.13 Acoustic Spectrum & Seismic Tap Properties
+  acoustic_spectrum?: string; // "LOUD VOICE/SHOUT" | "HUMAN SPEECH/BREATH" | "FAINT SUB-AUDIBLE" | "AMBIENT NOISE FLOOR"
+  tap_count?: number;
   radar?: number;
   seismic_peak?: number;
   acoustic_energy?: number;
@@ -877,7 +880,7 @@ export function GeospatialLocalizationCard({
 // ══════════════════════════════════════════════════════════════════════════════
 export default function TacticalC2Dashboard({
   onExit,
-  initialNodeIp = "172.21.169.16",
+  initialNodeIp = "all-suits-report.loca.lt",
   apiKey: propApiKey = ""
 }: TacticalC2Props) {
   // ── Node & Telemetry State ──
@@ -930,6 +933,8 @@ export default function TacticalC2Dashboard({
     radar: 0,
     seismic_peak: 0,
     acoustic_energy: 0,
+    acoustic_spectrum: "NOISE FLOOR NORMAL",
+    tap_count: 0,
     ai_status: "CONNECTING...",
     ai_classification: "AWAITING SENSORS",
     ai_biological: false,
@@ -945,16 +950,32 @@ export default function TacticalC2Dashboard({
     ip: initialNodeIp
   });
 
-  // ── 300ms High-Frequency Ingestion Poller ──
+  // ── 300ms High-Frequency Ingestion Poller (LocalTunnel / Direct Node) ──
   useEffect(() => {
     let isMounted = true;
     const interval = setInterval(async () => {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
-        const res = await fetch(`http://${nodeIp}/api/telemetry`, {
+        
+        let targetUrl = "https://all-suits-report.loca.lt/api/telemetry";
+        if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+          if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
+            targetUrl = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
+          } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
+            targetUrl = `https://${nodeIp}/api/telemetry`;
+          } else {
+            targetUrl = `http://${nodeIp}/api/telemetry`;
+          }
+        }
+
+        const res = await fetch(targetUrl, {
           signal: controller.signal,
-          headers: { Accept: "application/json" }
+          headers: { 
+            "Accept": "application/json",
+            "Bypass-Tunnel-Reminder": "true",
+            "ngrok-skip-browser-warning": "true"
+          }
         });
         clearTimeout(timeoutId);
 
@@ -1547,6 +1568,16 @@ Respond in STRICT JSON ONLY:
                   <span className="text-[#94A3B8]">Acoustic Energy:</span>
                   <span className="text-[#10B981] font-bold">{isConnected ? `${telemetry.acoustic_energy} dB/Hz` : "0 dB/Hz"}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8]">Spectrum Classification:</span>
+                  <span className="text-[#F59E0B] font-bold truncate max-w-[140px]" title={telemetry.acoustic_spectrum || "NOISE FLOOR NORMAL"}>
+                    {isConnected ? (telemetry.acoustic_spectrum || "NOISE FLOOR NORMAL") : "OFFLINE"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#94A3B8]">Seismic Taps (Piezo):</span>
+                  <span className="text-[#38BDF8] font-bold">{isConnected ? `${telemetry.tap_count ?? 0} TAPS` : "0 TAPS"}</span>
+                </div>
               </div>
 
               {/* Right: AI Consensus Diagnostic */}
@@ -1741,16 +1772,16 @@ Respond in STRICT JSON ONLY:
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="text-[#94A3B8] block mb-1.5 font-bold">TARGET NODE IP ADDRESS</label>
+                <label className="text-[#94A3B8] block mb-1.5 font-bold">TARGET NODE IP / LOCALTUNNEL URL</label>
                 <input
                   type="text"
                   value={tempIp}
                   onChange={(e) => setTempIp(e.target.value)}
                   className="w-full bg-[#08090D] border border-[#1E2433] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#06B6D4]"
-                  placeholder="172.21.169.16"
+                  placeholder="all-suits-report.loca.lt"
                 />
                 <span className="text-[10px] text-[#64748B] block mt-1">
-                  Default: 172.21.169.16 · Hotspot: OPPO Reno13 5G r24x
+                  Default: all-suits-report.loca.lt (LocalTunnel) or 172.21.169.16
                 </span>
               </div>
 

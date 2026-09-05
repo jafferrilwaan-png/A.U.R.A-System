@@ -143,7 +143,7 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "172.21.169.16"
+  nodeIp = "all-suits-report.loca.lt"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("voice");
@@ -198,7 +198,7 @@ export default function AuraVoiceOrb({
     }
   ]);
 
-  // Live robust hardware telemetry poller (Zero fake fallback data, 3.5s timeout for ESP32)
+  // Live robust hardware telemetry poller (Direct LocalTunnel Connection with Bypass Headers)
   useEffect(() => {
     if (isPollingPaused) {
       setIsConnected(false);
@@ -211,24 +211,46 @@ export default function AuraVoiceOrb({
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
-        const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-        const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+
+        let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
+        if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+          if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
+            endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
+          } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
+            endpoint = `https://${nodeIp}/api/telemetry`;
+          } else {
+            endpoint = `http://${nodeIp}/api/telemetry`;
+          }
+        }
+
         let res;
         try {
           res = await fetch(endpoint, { 
             signal: controller.signal,
-            headers: { "ngrok-skip-browser-warning": "true" }
+            headers: { 
+              "Accept": "application/json",
+              "Bypass-Tunnel-Reminder": "true",
+              "ngrok-skip-browser-warning": "true" 
+            }
           });
-          if ((!res || !res.ok) && endpoint.startsWith("/")) {
-            res = await fetch(`http://${nodeIp}/api/telemetry`, { 
+          if (!res || !res.ok) {
+            res = await fetch("https://all-suits-report.loca.lt/api/telemetry", { 
               signal: controller.signal,
-              headers: { "ngrok-skip-browser-warning": "true" }
+              headers: { 
+                "Accept": "application/json",
+                "Bypass-Tunnel-Reminder": "true",
+                "ngrok-skip-browser-warning": "true" 
+              }
             });
           }
         } catch {
-          res = await fetch(`http://${nodeIp}/api/telemetry`, { 
+          res = await fetch("https://all-suits-report.loca.lt/api/telemetry", { 
             signal: controller.signal,
-            headers: { "ngrok-skip-browser-warning": "true" }
+            headers: { 
+              "Accept": "application/json",
+              "Bypass-Tunnel-Reminder": "true",
+              "ngrok-skip-browser-warning": "true" 
+            }
           });
         }
         clearTimeout(timeoutId);
@@ -283,33 +305,45 @@ export default function AuraVoiceOrb({
     if (updates.overdrive !== undefined) setIsOverdrive(updates.overdrive);
 
     try {
-      const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-      const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+      let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
+      if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+        if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
+          endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
+        } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
+          endpoint = `https://${nodeIp}/api/telemetry`;
+        } else {
+          endpoint = `http://${nodeIp}/api/telemetry`;
+        }
+      }
+
       let res;
       try {
         res = await fetch(endpoint, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
+            "Bypass-Tunnel-Reminder": "true",
             "ngrok-skip-browser-warning": "true"
           },
           body: JSON.stringify(payload)
         });
-        if ((!res || !res.ok) && endpoint.startsWith("/")) {
-          res = await fetch(`http://${nodeIp}/api/telemetry`, {
+        if (!res || !res.ok) {
+          res = await fetch("https://all-suits-report.loca.lt/api/telemetry", {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
+              "Bypass-Tunnel-Reminder": "true",
               "ngrok-skip-browser-warning": "true"
             },
             body: JSON.stringify(payload)
           });
         }
       } catch {
-        res = await fetch(`http://${nodeIp}/api/telemetry`, {
+        res = await fetch("https://all-suits-report.loca.lt/api/telemetry", {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
+            "Bypass-Tunnel-Reminder": "true",
             "ngrok-skip-browser-warning": "true"
           },
           body: JSON.stringify(payload)
@@ -586,6 +620,7 @@ export default function AuraVoiceOrb({
     const gasPpm = (rawGas >= 2147483000 || rawGas < 0 || isNaN(rawGas)) ? 0 : rawGas;
     const rawSeismic = Number(telemetry.seismic_peak || 0);
     const seismicPeak = (rawSeismic >= 2147483000 || rawSeismic < 0 || isNaN(rawSeismic)) ? 0 : rawSeismic;
+    const micRms = Number(telemetry.acoustic_energy || 0);
     const radarDepthStr = telemetry.ai_depth_meters !== undefined ? `${Number(telemetry.ai_depth_meters).toFixed(1)}m` : "Scanning Strata";
     const cityStr = telemetry.city || "Chennai";
     const gpsCoords = (telemetry.lat && telemetry.lng) ? `${telemetry.lat}°, ${telemetry.lng}°` : "12.9665° N, 79.9450° E";
@@ -603,7 +638,6 @@ export default function AuraVoiceOrb({
       const soundClass = telemetry.sound_classification || (telemetry.ai_classification ?? "Ambient");
       const soundDepthCat = telemetry.sound_depth_cat || (radarDepthStr !== "Scanning Strata" ? `Subterranean (${radarDepthStr})` : "Scanning Strata");
       const heartbeatBpm = telemetry.heartbeat_detected ? telemetry.heartbeat_bpm : null;
-      const micRms = telemetry.acoustic_energy || 0;
       const micFreq = telemetry.mic_freq_hz || 0;
 
       const isAskingForBio = /(\b(human|person|people|survivor|someone|anybody|voice|breathing|sound|heartbeat|bpm|pulse|alive|deep|depth|nearby|trapped)\b)/i.test(q);
@@ -613,6 +647,7 @@ export default function AuraVoiceOrb({
         ? `You are A.U.R.A. Intelligence, analyzing real-time tactical bio-acoustic telemetry from subterranean node ${nodeIp}.
 Live Hardware & Bio-Acoustic Telemetry:
 - Acoustic Sound: ${soundClass} (${micRms} RMS energy, ${micFreq} Hz frequency)
+- Acoustic Spectrum: ${telemetry.acoustic_spectrum || (micRms > 60 ? "LOUD VOICE/SHOUT" : micRms > 30 ? "HUMAN SPEECH/BREATH" : "AMBIENT NOISE FLOOR")}
 - Acoustic Sound Depth: ${soundDepthCat} (Radar Echo Depth: ${radarDepthStr})
 - Vital Pulse Cadence: ${heartbeatBpm ? `${heartbeatBpm} BPM confirmed biological heart pulse` : "No stable periodic pulse locked"}
 - Biological Presence: ${telemetry.ai_biological ? "CONFIRMED POSITIVE" : "NEGATIVE / SCANNING"}
@@ -621,7 +656,7 @@ Live Hardware & Bio-Acoustic Telemetry:
 - Metabolic CO2: ${telemetry.co2_ppm || gasPpm} PPM
 - Bio-VOC / Ammonia (NH3): ${telemetry.nh3_ppm || "0.0"} PPM
 - Air Quality Rating: ${telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR")}
-- Seismic Activity / Tapping: ${seismicPeak} mm/s
+- Seismic Activity / Tapping: ${seismicPeak} mm/s (Tap Count: ${telemetry.tap_count || 0})
 - Hardware Beacon: Level ${effectiveBuzzer} (${effectiveBuzzer === 0 ? "Muted" : `${effectiveBuzzer * 15 + 70} dB`})
 - Node Coordinates: ${cityStr} (${gpsCoords})
 
@@ -723,10 +758,21 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       q.includes("co2") ||
       q.includes("ammonia") ||
       q.includes("air") ||
+      q.includes("tap") ||
+      q.includes("spectrum") ||
       q.includes("heartbeat");
 
     const gasProf = telemetry.gas_profile || "AMBIENT AIR";
     const gasColor = gasProf.includes("HAZARD") || gasProf.includes("SMOKE") ? "#EF4444" : gasProf.includes("RESPIRATION") || gasProf.includes("VOC") ? "#F59E0B" : "#10B981";
+
+    const acousticSpec = telemetry.acoustic_spectrum || (micRms > 60 ? "LOUD VOICE/SHOUT" : micRms > 30 ? "HUMAN SPEECH/BREATH" : micRms > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL");
+    const acousticSpecColor = acousticSpec.includes("LOUD") || acousticSpec.includes("SHOUT") 
+      ? "#F43F5E" 
+      : acousticSpec.includes("SPEECH") || acousticSpec.includes("BREATH") 
+      ? "#F59E0B" 
+      : acousticSpec.includes("FAINT") || acousticSpec.includes("SUB-AUDIBLE")
+      ? "#38BDF8"
+      : "#10B981";
 
     const telemetryCard: ChatMessage["telemetryCard"] | undefined = isHwInquiry
       ? {
@@ -734,6 +780,8 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
           metrics: [
             { label: "AI Neural Engine", value: `${successfulModelName.split("/").pop()} (Live)`, color: "#10B981" },
             { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
+            { label: "Acoustic Spectrum", value: acousticSpec, color: acousticSpecColor },
+            { label: "Seismic Taps", value: `${telemetry.tap_count ?? 0} Taps (${seismicPeak} mm/s)`, color: (telemetry.tap_count ?? 0) > 0 ? "#F59E0B" : "#00C2FF" },
             { label: "Gas Profile", value: gasProf, color: gasColor },
             { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
             { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },

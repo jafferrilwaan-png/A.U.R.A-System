@@ -42,7 +42,7 @@ interface SubterraneanTheatreMapProps {
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "172.21.169.16",
+  nodeIp = "all-suits-report.loca.lt",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -96,13 +96,23 @@ export default function SubterraneanTheatreMap({
 
         // Dispatches exact GPS signal to the ESP32 hardware register
         try {
-          const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-          const endpoint = (isLocalhost && nodeIp === "172.21.169.16") ? "/api/telemetry" : `http://${nodeIp}/api/telemetry`;
+          let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
+          if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+            if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
+              endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
+            } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
+              endpoint = `https://${nodeIp}/api/telemetry`;
+            } else {
+              endpoint = `http://${nodeIp}/api/telemetry`;
+            }
+          }
+
           try {
             const res = await fetch(endpoint, {
               method: "POST",
               headers: { 
                 "Content-Type": "application/json",
+                "Bypass-Tunnel-Reminder": "true",
                 "ngrok-skip-browser-warning": "true"
               },
               body: JSON.stringify({
@@ -111,11 +121,12 @@ export default function SubterraneanTheatreMap({
                 city: "EXACT GPS SYNC"
               })
             });
-            if ((!res || !res.ok) && endpoint.startsWith("/")) {
-              await fetch(`http://${nodeIp}/api/telemetry`, {
+            if (!res || !res.ok) {
+              await fetch("https://all-suits-report.loca.lt/api/telemetry", {
                 method: "POST",
                 headers: { 
                   "Content-Type": "application/json",
+                  "Bypass-Tunnel-Reminder": "true",
                   "ngrok-skip-browser-warning": "true"
                 },
                 body: JSON.stringify({
@@ -126,10 +137,11 @@ export default function SubterraneanTheatreMap({
               });
             }
           } catch {
-            await fetch(`http://${nodeIp}/api/telemetry`, {
+            await fetch("https://all-suits-report.loca.lt/api/telemetry", {
               method: "POST",
               headers: { 
                 "Content-Type": "application/json",
+                "Bypass-Tunnel-Reminder": "true",
                 "ngrok-skip-browser-warning": "true"
               },
               body: JSON.stringify({
@@ -217,6 +229,31 @@ export default function SubterraneanTheatreMap({
   const humanScentDetected = Boolean(telemetry.human_scent_detected || (telemetry.ai_biological && gasPpm > 200) || (telemetry.nh3_ppm && Number(telemetry.nh3_ppm) > 0.5));
   const humanScentLabel = telemetry.human_scent_label || (humanScentDetected ? (gasPpm > 300 ? "SWEAT & BREATH VOC" : "METABOLIC AMMONIA") : "NO HUMAN SCENT");
   const humanScentPpm = telemetry.human_scent_ppm ?? telemetry.nh3_ppm ?? (humanScentDetected ? "1.8" : "0.0");
+
+  // v14.13 Acoustic Spectrum & Seismic Tap Matrix
+  const acousticSpectrum = telemetry.acoustic_spectrum || (acousticDb > 75 ? "LOUD VOICE/SHOUT" : acousticDb > 35 ? "HUMAN SPEECH/BREATH" : acousticDb > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL");
+  const tapCount = Number(telemetry.tap_count ?? 0);
+
+  // Dynamic Audio Intensity Gradients and Badges (v14.13)
+  const isLoudVoice = acousticSpectrum.includes("LOUD") || acousticSpectrum.includes("SHOUT") || acousticDb > 75;
+  const isHumanSpeech = acousticSpectrum.includes("SPEECH") || acousticSpectrum.includes("BREATH") || (acousticDb > 35 && !isLoudVoice);
+  const isSubAudible = acousticSpectrum.includes("FAINT") || acousticSpectrum.includes("SUB-AUDIBLE") || (acousticDb > 15 && !isHumanSpeech && !isLoudVoice);
+
+  const acousticEnergyGradient = isLoudVoice
+    ? "from-rose-500/25 via-red-500/15 to-red-600/30 border-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.25)] text-rose-300"
+    : isHumanSpeech
+    ? "from-amber-500/25 via-yellow-500/15 to-yellow-600/25 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.25)] text-amber-300"
+    : isSubAudible
+    ? "from-cyan-500/20 via-sky-500/15 to-blue-600/25 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.25)] text-cyan-300"
+    : "from-emerald-500/15 via-teal-500/10 to-teal-600/20 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-300";
+
+  const acousticBadgeBg = isLoudVoice
+    ? "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse"
+    : isHumanSpeech
+    ? "bg-amber-400/20 text-amber-300 border-amber-400/40"
+    : isSubAudible
+    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+    : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
 
   const isRadarLocked = isConnected && telemetry.radar === 1;
   const isBiological = isConnected && Boolean(telemetry.ai_biological);
@@ -462,8 +499,8 @@ export default function SubterraneanTheatreMap({
           </div>
         </div>
 
-        {/* ROW 2: CORE TELEMETRY METRIC TILES (5 Distinct Luxury Cards, Pure Responsive Layout) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-white">
+        {/* ROW 2: CORE TELEMETRY METRIC TILES (6 Distinct Luxury Cards, Pure Responsive Layout) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-white">
           
           {/* 1. ACOUSTIC BEACON CARD */}
           <div 
@@ -586,7 +623,7 @@ export default function SubterraneanTheatreMap({
           </div>
 
           {/* 5. HUMAN BIO-SCENT DETECTOR CARD (Live Glowing Indicator Badge) */}
-          <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 col-span-2 md:col-span-1 ${
+          <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 ${
             humanScentDetected
               ? "bg-emerald-500/[0.09] hover:bg-emerald-500/[0.15] border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
               : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10 hover:border-white/20"
@@ -621,6 +658,42 @@ export default function SubterraneanTheatreMap({
                 <p className={`text-[11px] font-semibold tracking-wide truncate ${humanScentDetected ? "text-emerald-400" : "text-white/40"}`}>
                   {humanScentLabel}
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 6. ACOUSTIC SPECTRUM & SEISMIC TAP MATRIX CARD (v14.13) */}
+          <div className={`p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br ${acousticEnergyGradient} border transition-all flex flex-col justify-between gap-2.5`}>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-white/80 truncate flex items-center gap-1.5">
+                <Mic className="w-3.5 h-3.5" />
+                <span>Acoustic Matrix</span>
+              </span>
+              {/* Live acoustic energy level badge with dynamic color gradients reflecting audio intensity */}
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border tracking-wider flex items-center gap-1 ${acousticBadgeBg}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isLoudVoice || isHumanSpeech ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
+                <span>{acousticDb.toFixed(0)} dB</span>
+              </span>
+            </div>
+
+            <div>
+              {/* Prominently displayed real-time acoustic_spectrum classification string */}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider">Classification</span>
+                <span className="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight truncate" title={acousticSpectrum}>
+                  {acousticSpectrum}
+                </span>
+              </div>
+
+              {/* Dynamic Live Tap Counter widget updating dynamically on physical impacts from ESP32 piezo sensor */}
+              <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-white/60">Seismic Taps:</span>
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold ${tapCount > 0 ? "bg-amber-400/25 text-amber-300 border border-amber-400/40 animate-pulse" : "bg-white/5 text-white/60 border border-white/10"}`}>
+                    {tapCount}
+                  </span>
+                </div>
+                <span className="text-[9px] text-white/40 font-mono">PIEZO LIVE</span>
               </div>
             </div>
           </div>
