@@ -880,7 +880,7 @@ export function GeospatialLocalizationCard({
 // ══════════════════════════════════════════════════════════════════════════════
 export default function TacticalC2Dashboard({
   onExit,
-  initialNodeIp = "all-suits-report.loca.lt",
+  initialNodeIp = "famous-meals-brake.loca.lt",
   apiKey: propApiKey = ""
 }: TacticalC2Props) {
   // ── Node & Telemetry State ──
@@ -958,8 +958,8 @@ export default function TacticalC2Dashboard({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
         
-        let targetUrl = "https://all-suits-report.loca.lt/api/telemetry";
-        if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+        let targetUrl = "https://famous-meals-brake.loca.lt/api/telemetry";
+        if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             targetUrl = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
           } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -1778,10 +1778,10 @@ Respond in STRICT JSON ONLY:
                   value={tempIp}
                   onChange={(e) => setTempIp(e.target.value)}
                   className="w-full bg-[#08090D] border border-[#1E2433] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#06B6D4]"
-                  placeholder="all-suits-report.loca.lt"
+                  placeholder="famous-meals-brake.loca.lt"
                 />
                 <span className="text-[10px] text-[#64748B] block mt-1">
-                  Default: all-suits-report.loca.lt (LocalTunnel) or 172.21.169.16
+                  Default: famous-meals-brake.loca.lt (LocalTunnel) or 172.21.169.16
                 </span>
               </div>
 

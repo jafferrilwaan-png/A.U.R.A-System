@@ -43,7 +43,7 @@ interface SettingsPageProps {
 export default function SettingsPage({
   telemetry,
   isConnected,
-  nodeIp = "all-suits-report.loca.lt",
+  nodeIp = "famous-meals-brake.loca.lt",
   buzzerLevel,
   frequencyKhz,
   isOverdrive,

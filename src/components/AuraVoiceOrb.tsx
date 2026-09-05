@@ -143,7 +143,7 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "all-suits-report.loca.lt"
+  nodeIp = "famous-meals-brake.loca.lt"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("voice");
@@ -212,8 +212,8 @@ export default function AuraVoiceOrb({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-        let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
-        if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+        let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
+        if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
           } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -234,7 +234,7 @@ export default function AuraVoiceOrb({
             }
           });
           if (!res || !res.ok) {
-            res = await fetch("https://all-suits-report.loca.lt/api/telemetry", { 
+            res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", { 
               signal: controller.signal,
               headers: { 
                 "Accept": "application/json",
@@ -244,7 +244,7 @@ export default function AuraVoiceOrb({
             });
           }
         } catch {
-          res = await fetch("https://all-suits-report.loca.lt/api/telemetry", { 
+          res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", { 
             signal: controller.signal,
             headers: { 
               "Accept": "application/json",
@@ -305,8 +305,8 @@ export default function AuraVoiceOrb({
     if (updates.overdrive !== undefined) setIsOverdrive(updates.overdrive);
 
     try {
-      let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
-      if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+      let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
+      if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
         if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
           endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
         } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -328,7 +328,7 @@ export default function AuraVoiceOrb({
           body: JSON.stringify(payload)
         });
         if (!res || !res.ok) {
-          res = await fetch("https://all-suits-report.loca.lt/api/telemetry", {
+          res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
@@ -339,7 +339,7 @@ export default function AuraVoiceOrb({
           });
         }
       } catch {
-        res = await fetch("https://all-suits-report.loca.lt/api/telemetry", {
+        res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",

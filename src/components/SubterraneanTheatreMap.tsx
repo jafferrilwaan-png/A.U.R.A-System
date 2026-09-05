@@ -42,7 +42,7 @@ interface SubterraneanTheatreMapProps {
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "all-suits-report.loca.lt",
+  nodeIp = "famous-meals-brake.loca.lt",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -96,8 +96,8 @@ export default function SubterraneanTheatreMap({
 
         // Dispatches exact GPS signal to the ESP32 hardware register
         try {
-          let endpoint = "https://all-suits-report.loca.lt/api/telemetry";
-          if (nodeIp && nodeIp !== "all-suits-report.loca.lt") {
+          let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
+          if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
             if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
               endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
             } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -122,7 +122,7 @@ export default function SubterraneanTheatreMap({
               })
             });
             if (!res || !res.ok) {
-              await fetch("https://all-suits-report.loca.lt/api/telemetry", {
+              await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
                 method: "POST",
                 headers: { 
                   "Content-Type": "application/json",
@@ -137,7 +137,7 @@ export default function SubterraneanTheatreMap({
               });
             }
           } catch {
-            await fetch("https://all-suits-report.loca.lt/api/telemetry", {
+            await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
               method: "POST",
               headers: { 
                 "Content-Type": "application/json",
