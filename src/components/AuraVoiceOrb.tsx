@@ -1075,8 +1075,12 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
                                 <div 
                                   key={j} 
                                   onClick={isGps ? () => {
-                                    const targetLat = telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067;
-                                    const targetLng = telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477;
+                                    let targetLat = 13.1067;
+                                    let targetLng = 79.9477;
+                                    if (telemetry.gps_source === "HIGH_ACCURACY_GPS" && telemetry.lat && telemetry.lat !== 0) {
+                                      targetLat = telemetry.lat;
+                                      targetLng = telemetry.lng ?? 79.9477;
+                                    }
                                     window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
                                   } : undefined}
                                   className={`p-2 rounded bg-white/5 border border-white/5 ${isGps ? "cursor-pointer hover:border-cyan-400/60 hover:bg-cyan-500/10 transition-all select-none" : ""}`}

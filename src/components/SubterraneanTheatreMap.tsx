@@ -163,23 +163,21 @@ export default function SubterraneanTheatreMap({
     );
   };
 
-  // Open Target Location Directly in Google Maps
+  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur)
   const handleOpenGoogleMaps = (e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
-    const targetLat = gpsData?.lat ?? (telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067);
-    const targetLng = gpsData?.lng ?? (telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477);
+    let targetLat = 13.1067;
+    let targetLng = 79.9477;
 
-    // Announce via Speech Synthesis
-    if ("speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance("Opening target location in Google Maps.");
-        utter.rate = 1.1;
-        window.speechSynthesis.speak(utter);
-      } catch (err) {}
+    if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
+      targetLat = gpsData.lat;
+      targetLng = gpsData.lng;
+    } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
+      targetLat = telemetry.lat;
+      targetLng = telemetry.lng ?? 79.9477;
     }
 
-    // Direct Google Maps pin with satellite terrain mode
+    // Direct Google Maps pin with satellite terrain mode pointing to Sriperumbudur
     const mapsUrl = `https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`;
     window.open(mapsUrl, "_blank", "noopener,noreferrer");
   };
@@ -726,8 +724,15 @@ export default function SubterraneanTheatreMap({
                 </button>
 
                 {(() => {
-                  const targetLat = gpsData?.lat ?? (telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 13.1067);
-                  const targetLng = gpsData?.lng ?? (telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9477);
+                  let targetLat = 13.1067;
+                  let targetLng = 79.9477;
+                  if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
+                    targetLat = gpsData.lat;
+                    targetLng = gpsData.lng;
+                  } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
+                    targetLat = telemetry.lat;
+                    targetLng = telemetry.lng ?? 79.9477;
+                  }
                   return (
                     <a
                       href={`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`}

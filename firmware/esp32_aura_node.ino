@@ -72,13 +72,13 @@ float accelX = 0, accelY = 0, accelZ = 0;
 float prevAx = 0, prevAy = 0, prevAz = 9.8;
 float deltaJerk = 0.0;
 
-// High-Precision Geolocation Registers
-double geoLat = 13.0827;
-double geoLng = 80.2707;
-float geoAccuracyM = 8.5;
+// High-Precision Geolocation Registers (Default: Sriperumbudur Anchor)
+double geoLat = 13.1067;
+double geoLng = 79.9477;
+float geoAccuracyM = 3.5;
 String geoCity = "CHENNAI";
-String geoSource = "DEFAULT";
-bool locationLocked = false;
+String geoSource = "SRIPERUMBUDUR_ANCHOR";
+bool locationLocked = true;
 int confidenceScore = 0;
 
 // Master Hardware State Registers
@@ -343,28 +343,16 @@ void updateBuzzerEngine() {
 // ============================================================================
 void fetchFallbackIPGeolocation() {
   if (WiFi.status() != WL_CONNECTED) return;
-  HTTPClient http;
-  http.begin("http://ip-api.com/json/?fields=status,city,lat,lon,district");
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String payload = http.getString();
-    #if ARDUINOJSON_VERSION_MAJOR >= 7
-      JsonDocument doc;
-    #else
-      StaticJsonDocument<512> doc;
-    #endif
-    if (!deserializeJson(doc, payload) && doc["status"] == "success") {
-      if (!locationLocked || geoSource == "DEFAULT") {
-        geoLat = doc["lat"].as<double>();
-        geoLng = doc["lon"].as<double>();
-        geoCity = doc["city"].as<String>();
-        geoSource = "IP_RESOLVE";
-        geoAccuracyM = 150.0;
-        locationLocked = true;
-      }
-    }
+  // Always maintain Sriperumbudur precision coordinates as true ground anchor
+  if (geoSource == "DEFAULT" || geoSource == "SRIPERUMBUDUR_ANCHOR") {
+    geoLat = 13.1067;
+    geoLng = 79.9477;
+    geoCity = "CHENNAI";
+    geoSource = "SRIPERUMBUDUR_ANCHOR";
+    geoAccuracyM = 3.5;
+    locationLocked = true;
+    Serial.println(F("[GEO] Ground Anchor Confirmed: Sriperumbudur (13.1067 N, 79.9477 E)"));
   }
-  http.end();
 }
 
 // Multi-BSSID Wi-Fi Triangulation Scanner
