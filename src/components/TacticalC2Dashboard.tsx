@@ -46,6 +46,12 @@ export interface TelemetryPayload {
   co2_ppm?: number;
   nh3_ppm?: string | number;
   air_rating?: string; // "AIR: SAFE / CLEAR" | "AMMONIA / SWEAT" | "METABOLIC CO2" | "DANGER: TOXIC"
+  // v14.7 Dual-Gas Architecture Properties
+  env_gas_ppm?: number;
+  env_air_status?: string;
+  human_scent_ppm?: number | string;
+  human_scent_detected?: boolean;
+  human_scent_label?: string;
   radar?: number;
   seismic_peak?: number;
   acoustic_energy?: number;

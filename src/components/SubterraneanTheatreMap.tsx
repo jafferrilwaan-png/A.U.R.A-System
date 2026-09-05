@@ -18,7 +18,8 @@ import {
   Navigation,
   ExternalLink,
   X,
-  Heart
+  Heart,
+  User
 } from "lucide-react";
 
 interface SubterraneanTheatreMapProps {
@@ -201,26 +202,21 @@ export default function SubterraneanTheatreMap({
   const rawGas = Number(telemetry.gas || 0);
   const gasPpm = (rawGas >= 2147483000 || rawGas < 0 || isNaN(rawGas)) ? 0 : rawGas;
 
-  // Multi-Gas & Bio-Effluent Analytics (v14.6)
-  const rawGasProfile = telemetry.gas_profile || (gasPpm > 400 ? "HAZARDOUS / SMOKE" : gasPpm > 250 ? "HUMAN RESPIRATION" : "AMBIENT AIR");
-  const isGasHazard = rawGasProfile.includes("HAZARD") || rawGasProfile.includes("SMOKE") || gasPpm > 400;
-  const isGasRespiration = rawGasProfile.includes("RESPIRATION") || rawGasProfile.includes("VOC") || (gasPpm > 250 && !isGasHazard);
-  
-  const gasProfileColor = isGasHazard 
+  // v14.7 Dual-Gas Architecture Telemetry
+  const envGasPpm = telemetry.env_gas_ppm ?? gasPpm;
+  const envAirStatus = telemetry.env_air_status || (envGasPpm > 400 ? "HAZARDOUS / SMOKE" : envGasPpm > 250 ? "ELEVATED CO2" : "AIR: SAFE / CLEAR");
+  const isEnvHazard = envAirStatus.includes("HAZARD") || envAirStatus.includes("SMOKE") || envGasPpm > 400;
+  const isEnvElevated = envAirStatus.includes("CO2") || envAirStatus.includes("ELEVATED") || (envGasPpm > 250 && !isEnvHazard);
+  const envStatusColor = isEnvHazard 
     ? "bg-red-500/20 text-red-400 border-red-500/40" 
-    : isGasRespiration 
+    : isEnvElevated 
     ? "bg-amber-400/20 text-amber-300 border-amber-400/40" 
     : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
 
-  const rawAirRating = telemetry.air_rating || (isGasHazard ? "DANGER: TOXIC" : isGasRespiration ? "METABOLIC CO2" : "AIR: SAFE / CLEAR");
-  const airRatingBadge = isGasHazard
-    ? "bg-red-500/20 text-red-400 border-red-500/40"
-    : isGasRespiration
-    ? "bg-amber-400/20 text-amber-400 border-amber-400/40"
-    : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
-
-  const co2Ppm = telemetry.co2_ppm ?? gasPpm;
-  const nh3Ppm = telemetry.nh3_ppm ?? (gasPpm > 300 ? "1.4" : "0.0");
+  // Human Bio-Scent Detector (v14.7)
+  const humanScentDetected = Boolean(telemetry.human_scent_detected || (telemetry.ai_biological && gasPpm > 200) || (telemetry.nh3_ppm && Number(telemetry.nh3_ppm) > 0.5));
+  const humanScentLabel = telemetry.human_scent_label || (humanScentDetected ? (gasPpm > 300 ? "SWEAT & BREATH VOC" : "METABOLIC AMMONIA") : "NO HUMAN SCENT");
+  const humanScentPpm = telemetry.human_scent_ppm ?? telemetry.nh3_ppm ?? (humanScentDetected ? "1.8" : "0.0");
 
   const isRadarLocked = isConnected && telemetry.radar === 1;
   const isBiological = isConnected && Boolean(telemetry.ai_biological);
@@ -466,8 +462,8 @@ export default function SubterraneanTheatreMap({
           </div>
         </div>
 
-        {/* ROW 2: CORE TELEMETRY METRIC TILES (4 Spacious Cards, Pure Luxury Typography) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-white">
+        {/* ROW 2: CORE TELEMETRY METRIC TILES (5 Distinct Luxury Cards, Pure Responsive Layout) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-white">
           
           {/* 1. ACOUSTIC BEACON CARD */}
           <div 
@@ -565,38 +561,66 @@ export default function SubterraneanTheatreMap({
             </div>
           </div>
 
-          {/* 4. ATMOSPHERIC & BIO-GAS ANALYSIS CARD */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5 col-span-2 md:col-span-1">
+          {/* 4. ENVIRONMENTAL GAS & AIR QUALITY CARD */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold text-white/75 truncate">Atmosphere & Bio-Gas</span>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border truncate tracking-wider ${airRatingBadge}`}>
-                {rawAirRating}
+              <span className="text-xs font-semibold text-white/75 truncate">Environmental Gas</span>
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isEnvHazard ? "bg-red-500/20 text-red-400" : isEnvElevated ? "bg-amber-400/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                <Wind className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold tracking-tight text-white">
+                  {envGasPpm}
+                </span>
+                <span className="text-xs font-normal text-white/50">PPM</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border truncate tracking-wider ${envStatusColor}`}>
+                  {envAirStatus}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. HUMAN BIO-SCENT DETECTOR CARD (Live Glowing Indicator Badge) */}
+          <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 col-span-2 md:col-span-1 ${
+            humanScentDetected
+              ? "bg-emerald-500/[0.09] hover:bg-emerald-500/[0.15] border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
+              : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10 hover:border-white/20"
+          }`}>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-white/75 truncate flex items-center gap-1">
+                <User className={`w-3.5 h-3.5 ${humanScentDetected ? "text-emerald-400" : "text-white/50"}`} />
+                <span>Bio-Scent</span>
+              </span>
+              {/* Glowing Live Indicator Badge */}
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-1.5 transition-all ${
+                humanScentDetected
+                  ? "bg-emerald-500/25 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse"
+                  : "bg-white/5 text-white/40 border-white/10"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${humanScentDetected ? "bg-emerald-400 animate-ping" : "bg-white/30"}`} />
+                <span>{humanScentDetected ? "LOCKED" : "SCANNING"}</span>
               </span>
             </div>
 
             <div>
               <div className="flex items-baseline justify-between gap-1">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-bold tracking-tight text-white">
-                    {gasPpm}
+                  <span className={`text-xl font-bold tracking-tight ${humanScentDetected ? "text-emerald-300" : "text-white"}`}>
+                    {humanScentPpm}
                   </span>
                   <span className="text-xs font-normal text-white/50">PPM</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border tracking-wider ${gasProfileColor}`}>
-                  {rawGasProfile}
-                </span>
+                <span className="text-[10px] text-white/40 font-mono">SWEAT/AMMONIA</span>
               </div>
-
-              {/* Sub-metrics: CO2 and Ammonia / VOC */}
-              <div className="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-white/10 text-[10px] font-mono">
-                <div className="flex flex-col">
-                  <span className="text-white/40">METABOLIC CO2</span>
-                  <span className="font-bold text-amber-300">{co2Ppm} PPM</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-white/40">AMMONIA & VOC</span>
-                  <span className="font-bold text-sky-400">{nh3Ppm} PPM</span>
-                </div>
+              <div className="mt-2 pt-2 border-t border-white/10">
+                <p className={`text-[11px] font-semibold tracking-wide truncate ${humanScentDetected ? "text-emerald-400" : "text-white/40"}`}>
+                  {humanScentLabel}
+                </p>
               </div>
             </div>
           </div>
