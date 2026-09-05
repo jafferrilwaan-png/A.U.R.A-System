@@ -223,22 +223,9 @@ export default function NeonBorder(props: Props) {
         let lap = 0;
         let corner = 0;
         let stepT = 0;
-        let isVisible = true;
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((e) => {
-                isVisible = e.isIntersecting;
-            });
-        }, { threshold: 0.05 });
-
-        if (rootRef.current) observer.observe(rootRef.current);
+        let isRunning = false;
 
         const frame = (now: number) => {
-            if (!isVisible) {
-                raf = requestAnimationFrame(frame);
-                return;
-            }
-
             const dt = Math.min(0.04, Math.max(0, (now - last) / 1000));
             last = now;
             const p = live.current;
@@ -287,10 +274,37 @@ export default function NeonBorder(props: Props) {
 
             raf = requestAnimationFrame(frame);
         };
-        raf = requestAnimationFrame(frame);
+
+        const startLoop = () => {
+            if (!isRunning) {
+                isRunning = true;
+                last = performance.now();
+                raf = requestAnimationFrame(frame);
+            }
+        };
+
+        const stopLoop = () => {
+            if (isRunning) {
+                isRunning = false;
+                cancelAnimationFrame(raf);
+            }
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting) {
+                    startLoop();
+                } else {
+                    stopLoop();
+                }
+            });
+        }, { threshold: 0.05 });
+
+        if (rootRef.current) observer.observe(rootRef.current);
+        startLoop();
 
         return () => {
-            cancelAnimationFrame(raf);
+            stopLoop();
             observer.disconnect();
         };
     }, []);
@@ -354,6 +368,8 @@ export default function NeonBorder(props: Props) {
                     inset: 0,
                     overflow: "visible",
                     pointerEvents: "none",
+                    transform: "translate3d(0, 0, 0)",
+                    backfaceVisibility: "hidden",
                     "--arc": buildArc(start, borderSize, size.w, size.h, color),
                 } as React.CSSProperties
             }

@@ -65,19 +65,37 @@ export function Terminal({
   title = "esp32_aura_node.ino — ESP32 DevKit V1",
   className = "",
 }: TerminalProps) {
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
   const [visibleLineCount, setVisibleLineCount] = useState(0);
   const [copied, setCopied] = useState(false);
-  const codeContainerRef = useRef<HTMLDivElement>(null);
 
-  // Progressive streaming of ESP32 firmware code lines
   useEffect(() => {
-    if (visibleLineCount < ESP32_FIRMWARE_LINES.length) {
+    const el = terminalRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Progressive streaming of ESP32 firmware code lines once visible
+  useEffect(() => {
+    if (inView && visibleLineCount < ESP32_FIRMWARE_LINES.length) {
       const timer = setTimeout(() => {
         setVisibleLineCount((prev) => prev + 1);
-      }, 50);
+      }, 40);
       return () => clearTimeout(timer);
     }
-  }, [visibleLineCount]);
+  }, [inView, visibleLineCount]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(ESP32_FIRMWARE_LINES.join("\n"));
@@ -87,7 +105,8 @@ export function Terminal({
 
   return (
     <div
-      className={`w-full rounded-2xl overflow-hidden border border-white/15 bg-[#06080e]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(192,132,252,0.1)] font-mono text-left select-text ${className}`}
+      ref={terminalRef}
+      className={`w-full rounded-2xl overflow-hidden border border-white/15 bg-[#06080e]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_30px_rgba(192,132,252,0.1)] font-mono text-left select-text gpu-layer ${className}`}
     >
       {/* macOS Title Bar */}
       <div className="h-11 px-4 bg-gradient-to-r from-[#101420] via-[#0d101a] to-[#101420] border-b border-white/10 flex items-center justify-between select-none">

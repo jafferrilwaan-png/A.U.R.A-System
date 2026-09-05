@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bumblebee Robot Transformers Human Alliance
+* source:	https://sketchfab.com/3d-models/bumblebee-robot-transformers-human-alliance-119ac044a97d48f0a1c150653de93aa6
+* author:	Kairi DC2 (https://sketchfab.com/spritetrap)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bumblebee Robot Transformers Human Alliance" (https://sketchfab.com/3d-models/bumblebee-robot-transformers-human-alliance-119ac044a97d48f0a1c150653de93aa6) by Kairi DC2 (https://sketchfab.com/spritetrap) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

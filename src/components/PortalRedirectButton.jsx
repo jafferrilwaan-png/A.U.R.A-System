@@ -1,4 +1,5 @@
-﻿import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import ArchCorridor from "./ArchCorridor"
 
@@ -45,13 +46,21 @@ function DottedButton({ onClick }) {
   )
 }
 
-export default function PortalRedirectButton() {
+export default function PortalRedirectButton({ onEnterC2 }) {
   const [isWarping, setIsWarping] = useState(false)
 
   const handleLaunch = () => {
     setIsWarping(true)
+    document.body.style.overflow = "hidden"
+
     setTimeout(() => {
-      window.location.href = "/ai-dashboard.html"
+      document.body.style.overflow = ""
+      setIsWarping(false)
+      if (onEnterC2) {
+        onEnterC2()
+      } else {
+        window.location.hash = "#c2"
+      }
     }, 2200)
   }
 
@@ -71,70 +80,82 @@ export default function PortalRedirectButton() {
       {/* The Dotted Offset Button */}
       <DottedButton onClick={handleLaunch} />
 
-      {/* FULL-PAGE IMMERSIVE ARCH CORRIDOR WARP MODAL */}
-      <AnimatePresence>
-        {isWarping && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 99999,
-              background: "#000",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {/* 3D Arch Corridor Animation */}
-            <ArchCorridor speed={14} glow={28} near="#C084FC" far="#38BDF8" twist={24} arches={18} cornerRadius={40} />
-
-            {/* Glowing HUD Center Overlay */}
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none",
-              background: "radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%)",
-            }}>
+      {/* FULL-PAGE IMMERSIVE ARCH CORRIDOR WARP MODAL (Portal to document.body) */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isWarping && (
               <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="text-center font-mono"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: "100vw",
+                  height: "100vh",
+                  zIndex: 9999999,
+                  background: "#000",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}
               >
-                <div className="text-xl sm:text-3xl font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(192,132,252,0.8)]">
-                  QUANTUM LINK ESTABLISHED
-                </div>
-                <div className="text-xs sm:text-sm text-[#38BDF8] mt-3 tracking-widest animate-pulse">
-                  CONNECTING TO AURA-NODE-0x1A3F (192.168.4.1)...
-                </div>
-                <div className="text-[11px] text-white/50 mt-2 tracking-wider">
-                  REDIRECTING TO HARDWARE DASHBOARD...
-                </div>
+                {/* 3D Arch Corridor Animation */}
+                <ArchCorridor speed={14} glow={28} near="#C084FC" far="#38BDF8" twist={24} arches={18} cornerRadius={40} />
 
-                <div className="flex gap-2 justify-center mt-6">
-                  {[0, 1, 2, 3, 4].map(i => (
-                    <motion.div
-                      key={i}
-                      animate={{ scale: [1, 1.6, 1], opacity: [0.3, 1, 0.3] }}
-                      transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
-                      className="w-2.5 h-2.5 rounded-full bg-[#C084FC]"
-                    />
-                  ))}
+                {/* Glowing HUD Center Overlay */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    pointerEvents: "none",
+                    background: "radial-gradient(circle, transparent 40%, rgba(0,0,0,0.85) 100%)",
+                  }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-center font-mono"
+                  >
+                    <div className="text-xl sm:text-3xl font-black text-white tracking-widest uppercase drop-shadow-[0_0_20px_rgba(192,132,252,0.8)]">
+                      QUANTUM LINK ESTABLISHED
+                    </div>
+                    <div className="text-xs sm:text-sm text-[#38BDF8] mt-3 tracking-widest animate-pulse">
+                      CONNECTING TO AURA-NODE-172.21.169.16...
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-2 tracking-wider">
+                      INITIALIZING TACTICAL C2 DUAL-CORE HUB...
+                    </div>
+
+                    <div className="flex gap-2 justify-center mt-6">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <motion.div
+                          key={i}
+                          animate={{ scale: [1, 1.6, 1], opacity: [0.3, 1, 0.3] }}
+                          transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
+                          className="w-2.5 h-2.5 rounded-full bg-[#C084FC]"
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
                 </div>
               </motion.div>
-            </div>
-          </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   )
 }

@@ -6,8 +6,10 @@ import StarfieldButton from "./components/StarfieldButton";
 import Terminal from "./components/Terminal";
 import { PinContainer } from "./components/ui/3d-pin";
 import { GlowingEffect } from "./components/ui/glowing-effect";
+import Lenis from "lenis";
 // @ts-ignore
 import PortalRedirectButton from "./components/PortalRedirectButton";
+import AuraVoiceOrb from "./components/AuraVoiceOrb";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -15,6 +17,10 @@ function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { class
     <img 
       src="/aura_logo.jpg" 
       alt="A.U.R.A. Logo" 
+      width={40}
+      height={40}
+      loading="lazy"
+      decoding="async"
       className={className}
       style={{ objectPosition: "center" }}
     />
@@ -55,6 +61,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
+  const [activeView, setActiveView] = useState<'overview' | 'c2'>('overview');
   const [loading, setLoading] = useState(true);
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -65,6 +72,20 @@ export default function App() {
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
   const scrollFractionRef = useRef(0);
 
+  // Synchronize active view with URL hash (#c2)
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#c2') {
+        setActiveView('c2');
+      } else if (!window.location.hash || window.location.hash === '#overview') {
+        setActiveView('overview');
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
   // Fast Cinematic Splash Loader
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -74,7 +95,41 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // SCROLLYTELLING CANVAS ENGINE (ULTRA-OPTIMIZED 60 FPS STREAMING)
+  // LENIS SMOOTH INERTIAL SCROLL ENGINE (60/120 FPS FLUID EXPERIENCE)
+  useEffect(() => {
+    if (activeView !== 'overview') return;
+
+    const lenis = new Lenis({
+      duration: 1.15,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1.0,
+      touchMultiplier: 1.5,
+      infinite: false,
+    });
+
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
+    const handleLenisScroll = (e: any) => {
+      const fraction = e.progress ?? (e.scroll / (e.limit || 1));
+      scrollFractionRef.current = Math.max(0, Math.min(1, fraction));
+    };
+    lenis.on('scroll', handleLenisScroll);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
+  }, [activeView]);
+
+  // SCROLLYTELLING CANVAS ENGINE (BUTTERY-SMOOTH 60/120 FPS ZERO-LAG PREFETCH)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -83,89 +138,76 @@ export default function App() {
 
     const frameCount = 293;
     const currentFrame = (index: number) => `/high_res_frames/frame-${index.toString().padStart(3, '0')}.jpg`;
-    const bitmaps: (ImageBitmap | HTMLImageElement | null)[] = new Array(frameCount).fill(null);
-    let lastDrawnImage: ImageBitmap | HTMLImageElement | null = null;
+    
+    // Fast memory array of HTMLImageElements
+    const images: (HTMLImageElement | null)[] = new Array(frameCount).fill(null);
+    // Uint8Array for instant O(1) in-flight tracking (prevents duplicate network requests!)
+    const requested = new Uint8Array(frameCount + 1);
+
+    let lastDrawnImage: HTMLImageElement | null = null;
     let currentPlayhead = 1;
     let targetPlayhead = 1;
     let lastRenderedIndex = -1;
     let animationFrameId: number;
+    let wasNearFooter = false;
 
-    const loadFrame = async (index: number) => {
-      if (index < 1 || index > frameCount || bitmaps[index - 1]) return;
-      try {
-        if ('createImageBitmap' in window) {
-          const res = await fetch(currentFrame(index));
-          const blob = await res.blob();
-          const bitmap = await createImageBitmap(blob);
-          bitmaps[index - 1] = bitmap;
-          if (index === 1 && !lastDrawnImage) {
-            lastDrawnImage = bitmap;
-            resizeAndDraw();
-          }
-          return bitmap;
-        } else {
-          const img = new Image();
-          img.src = currentFrame(index);
-          bitmaps[index - 1] = img;
-          img.onload = () => {
-            if (index === 1 && !lastDrawnImage) {
-              lastDrawnImage = img;
-              resizeAndDraw();
-            }
-          };
-          return img;
+    const loadFrame = (index: number) => {
+      if (index < 1 || index > frameCount || requested[index]) return;
+      requested[index] = 1;
+
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        images[index - 1] = img;
+        if (!lastDrawnImage && index === 1) {
+          lastDrawnImage = img;
+          resizeAndDraw();
         }
-      } catch {
-        const img = new Image();
-        img.src = currentFrame(index);
-        bitmaps[index - 1] = img;
-        return img;
-      }
+      };
+      img.src = currentFrame(index);
     };
 
-    // 1. Instantly load Frame 1
-    loadFrame(1);
+    // 1. Immediately request the first 12 frames for an instant start
+    for (let i = 1; i <= 12; i++) {
+      loadFrame(i);
+    }
 
-    // 2. Fast background parallel loader
-    const streamFrames = async () => {
-      // Step A: Load every 4th keyframe anchor across entire sequence first
-      for (let i = 1; i <= frameCount; i += 4) {
-        loadFrame(i);
+    // 2. Smooth background stream: gradually pre-fetch frames without clogging the network pipe
+    let streamIdx = 13;
+    const streamTimer = setInterval(() => {
+      if (streamIdx <= frameCount) {
+        // Load in clusters of 2 every 50ms (40 frames/sec)
+        loadFrame(streamIdx);
+        loadFrame(streamIdx + 1);
+        streamIdx += 2;
+      } else {
+        clearInterval(streamTimer);
       }
-      // Step B: Fill in all remaining frames rapidly
-      setTimeout(() => {
-        for (let i = 2; i <= frameCount; i++) {
-          if (!bitmaps[i - 1]) loadFrame(i);
-        }
-      }, 100);
-    };
-    streamFrames();
+    }, 50);
 
     const drawFrame = (index: number) => {
       if (index > frameCount || index <= 0) return;
       
-      let img = bitmaps[index - 1];
+      let img = images[index - 1];
 
-      // Bi-directional nearest loaded frame search
+      // Fast bi-directional search for the nearest loaded frame
       if (!img) {
-        for (let offset = 1; offset <= 60; offset++) {
-          const prev = bitmaps[index - 1 - offset];
+        for (let offset = 1; offset <= 35; offset++) {
+          const prev = images[index - 1 - offset];
           if (prev) { img = prev; break; }
-          const next = bitmaps[index - 1 + offset];
+          const next = images[index - 1 + offset];
           if (next) { img = next; break; }
         }
       }
-      if (!img) img = lastDrawnImage || bitmaps[0];
+      if (!img) img = lastDrawnImage || images[0];
       if (!img) return;
 
       lastDrawnImage = img;
 
-      const imgWidth = 'width' in img ? img.width : (img as HTMLImageElement).naturalWidth;
-      const imgHeight = 'height' in img ? img.height : (img as HTMLImageElement).naturalHeight;
+      const imgWidth = img.naturalWidth || 1920;
+      const imgHeight = img.naturalHeight || 1080;
       if (!imgWidth || !imgHeight) return;
 
-      const sx = 0;
-      const sy = 0;
       const sWidth = imgWidth * 0.90;  
       const sHeight = imgHeight * 0.88; 
 
@@ -185,7 +227,7 @@ export default function App() {
         dx = progress * centerDx;
       }
 
-      context.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+      context.drawImage(img, 0, 0, sWidth, sHeight, dx, dy, dWidth, dHeight);
     };
 
     const resizeAndDraw = () => {
@@ -198,25 +240,38 @@ export default function App() {
       drawFrame(Math.round(currentPlayhead));
     };
 
+    // Lightweight passive scroll fallback
     const handleScroll = () => {
       const html = document.documentElement;
       const maxScroll = html.scrollHeight - html.clientHeight;
       const fraction = maxScroll > 0 ? html.scrollTop / maxScroll : 0;
-      scrollFractionRef.current = fraction;
-      targetPlayhead = Math.max(1, Math.min(frameCount, fraction * (frameCount - 1) + 1));
-      
-      // Proactively preload surrounding frame window
-      const center = Math.round(targetPlayhead);
-      for (let o = -6; o <= 6; o++) {
-        loadFrame(center + o);
-      }
+      scrollFractionRef.current = Math.max(0, Math.min(1, fraction));
     };
 
     const renderLoop = () => {
-      // Natural 60 FPS Cinematic Video Easing Playhead
+      // Don't waste CPU/GPU cycles when tab is backgrounded
+      if (document.hidden) {
+        animationFrameId = requestAnimationFrame(renderLoop);
+        return;
+      }
+
+      // Synchronize target playhead directly from current scroll fraction
+      const fraction = scrollFractionRef.current;
+      targetPlayhead = Math.max(1, Math.min(frameCount, fraction * (frameCount - 1) + 1));
+
+      // Prioritize frames around current target playhead (look-ahead buffer)
+      const center = Math.round(targetPlayhead);
+      for (let o = -4; o <= 8; o++) {
+        const idx = center + o;
+        if (idx >= 1 && idx <= frameCount && !requested[idx]) {
+          loadFrame(idx);
+        }
+      }
+
+      // Responsive, snappy cinematic easing (0.32 speed)
       const delta = targetPlayhead - currentPlayhead;
       if (Math.abs(delta) > 0.001) {
-        currentPlayhead += delta * 0.15;
+        currentPlayhead += delta * 0.32;
       } else {
         currentPlayhead = targetPlayhead;
       }
@@ -227,17 +282,20 @@ export default function App() {
         lastRenderedIndex = frameToDraw;
       }
 
-      // Manage canvas and video visibility/playback dynamically to preserve 100% GPU
-      const isNearFooter = scrollFractionRef.current > 0.94;
-      if (canvas) {
-        canvas.style.opacity = isNearFooter ? "0" : "1";
-      }
-      if (videoRef.current) {
-        videoRef.current.style.opacity = isNearFooter ? "0.85" : "0";
-        if (isNearFooter) {
-          if (videoRef.current.paused) videoRef.current.play().catch(() => {});
-        } else {
-          if (!videoRef.current.paused) videoRef.current.pause();
+      // Manage canvas and video visibility ONLY when state changes to avoid style recalculations
+      const isNearFooter = fraction > 0.94;
+      if (isNearFooter !== wasNearFooter) {
+        wasNearFooter = isNearFooter;
+        if (canvas) {
+          canvas.style.opacity = isNearFooter ? "0" : "1";
+        }
+        if (videoRef.current) {
+          videoRef.current.style.opacity = isNearFooter ? "0.85" : "0";
+          if (isNearFooter) {
+            videoRef.current.play().catch(() => {});
+          } else {
+            videoRef.current.pause();
+          }
         }
       }
 
@@ -254,6 +312,7 @@ export default function App() {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', resizeAndDraw);
       cancelAnimationFrame(animationFrameId);
+      clearInterval(streamTimer);
     };
   }, []);
 
@@ -292,6 +351,17 @@ export default function App() {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  if (activeView === 'c2') {
+    return (
+      <AuraVoiceOrb
+        onBack={() => {
+          window.location.hash = '';
+          setActiveView('overview');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="bg-[#080B10] text-white selection:bg-[#C084FC] selection:text-black overflow-x-hidden min-h-screen relative font-sans tracking-normal leading-relaxed">
       
@@ -309,10 +379,10 @@ export default function App() {
       <video
         ref={videoRef}
         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4"
-        autoPlay
         muted
         loop
         playsInline
+        preload="none"
         className="fixed inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-1000"
         style={{ 
           zIndex: 0,
@@ -409,8 +479,23 @@ export default function App() {
               <button onClick={() => scrollToSection(teamRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Team" /></button>
             </div>
 
-            {/* Right: Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
+            {/* Right: C2 HUD Button, Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  window.location.hash = 'c2';
+                  setActiveView('c2');
+                }}
+                className="relative group px-3.5 py-1.5 rounded-full bg-[#C084FC]/15 hover:bg-[#C084FC]/25 border border-[#C084FC]/50 hover:border-[#C084FC] text-[#C084FC] hover:text-white text-[11px] font-black tracking-widest uppercase transition-all duration-200 shadow-[0_0_12px_rgba(192,132,252,0.3)] hover:shadow-[0_0_20px_rgba(192,132,252,0.6)] flex items-center gap-2 cursor-pointer"
+                title="Launch A.U.R.A. AI Voice & Hardware Terminal"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C084FC] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A855F7]"></span>
+                </span>
+                <span className="font-display">AI TERMINAL</span>
+              </button>
+
               <div className="hidden sm:block">
                 <StarfieldButton
                   label="REPOSITORY"
@@ -461,6 +546,17 @@ export default function App() {
             transition={{ duration: 0.2 }}
             className="fixed top-20 left-4 right-4 z-50 p-6 bg-[#05070a]/95 backdrop-blur-2xl border border-white/20 rounded-3xl md:hidden flex flex-col gap-4 text-center shadow-2xl"
           >
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                window.location.hash = 'c2';
+                setActiveView('c2');
+              }}
+              className="py-3 bg-[#C084FC]/20 hover:bg-[#C084FC]/30 border border-[#C084FC]/60 text-[#C084FC] font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 font-display shadow-[0_0_15px_rgba(192,132,252,0.3)]"
+            >
+              <span className="w-2 h-2 rounded-full bg-[#C084FC] animate-ping" />
+              ▶ A.U.R.A. AI VOICE TERMINAL
+            </button>
             <button onClick={() => scrollToSection(heroRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Hero</button>
             <button onClick={() => scrollToSection(problemRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Problem</button>
             <button onClick={() => scrollToSection(missionRef)} className="py-2 text-base font-bold uppercase tracking-wider text-white hover:text-[#C084FC] border-b border-white/10 font-display">Mission</button>
@@ -693,6 +789,10 @@ export default function App() {
                           <img 
                             src="/high_res_frames/frame-100.jpg" 
                             alt="Subsurface model scan phase 1" 
+                            width={360}
+                            height={170}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
                             onError={(e) => {
                               e.currentTarget.src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800";
@@ -729,6 +829,10 @@ export default function App() {
                           <img 
                             src="/aura_hardware_architecture.jpg" 
                             alt="Subsurface model scan phase 2" 
+                            width={360}
+                            height={170}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover rounded-lg group-hover/pin:scale-105 transition-transform duration-500 shadow-xl"
                             onError={(e) => {
                               e.currentTarget.src = "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=800";
@@ -911,7 +1015,12 @@ export default function App() {
 
         {/* --- PORTAL ENTRANCE TO AI CORE --- */}
         <section className="relative z-20 w-full max-w-7xl mx-auto px-4 mt-8">
-          <PortalRedirectButton />
+          <PortalRedirectButton 
+            onEnterC2={() => {
+              window.location.hash = 'c2';
+              setActiveView('c2');
+            }}
+          />
         </section>
 
         {/* --- FOOTER --- */}

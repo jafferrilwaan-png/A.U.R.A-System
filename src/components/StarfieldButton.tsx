@@ -654,25 +654,47 @@ function __OriginkitBase_StarfieldButton(props: StarfieldButtonProps) {
         applySize(face.clientWidth, face.clientHeight);
         placeLights(performance.now() / 1000);
 
-        if (reducedMotion) {
-            reveal.current = 0;
-            draw(ctx);
-        } else {
-            tickCtrl.current = animate(0, 1, {
-                duration: 1,
-                ease: "linear",
-                repeat: Infinity,
-                onUpdate: () => {
-                    draw(ctx);
-                    placeLights(performance.now() / 1000);
-                },
+        const startAnimation = () => {
+            if (reducedMotion) {
+                reveal.current = 0;
+                draw(ctx);
+                return;
+            }
+            if (!tickCtrl.current) {
+                tickCtrl.current = animate(0, 1, {
+                    duration: 1,
+                    ease: "linear",
+                    repeat: Infinity,
+                    onUpdate: () => {
+                        draw(ctx);
+                        placeLights(performance.now() / 1000);
+                    },
+                });
+            }
+        };
+
+        const stopAnimation = () => {
+            tickCtrl.current?.stop();
+            tickCtrl.current = null;
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((e) => {
+                if (e.isIntersecting) {
+                    startAnimation();
+                } else {
+                    stopAnimation();
+                }
             });
-        }
+        }, { threshold: 0.05 });
+
+        observer.observe(face);
+        startAnimation();
 
         return () => {
             ro.disconnect();
-            tickCtrl.current?.stop();
-            tickCtrl.current = null;
+            observer.disconnect();
+            stopAnimation();
         };
     }, [reducedMotion]);
 

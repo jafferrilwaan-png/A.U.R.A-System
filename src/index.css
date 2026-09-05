@@ -21,7 +21,36 @@ body {
 }
 
 html {
+  scroll-behavior: auto;
   scrollbar-width: none;
+}
+
+/* LENIS ULTRA-SMOOTH INERTIAL SCROLL ARCHITECTURE */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* GPU HARDWARE ACCELERATION UTILITIES */
+.gpu-layer {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 .font-display {
@@ -90,3 +119,65 @@ html {
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
   mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   CINEMATIC LIVING WALLPAPER & MOVING GIF-LIKE BACKGROUND ENGINE
+══════════════════════════════════════════════════════════════════════ */
+@keyframes tahoeLivingDrift {
+  0% {
+    transform: scale(1.05) translate3d(0%, 0%, 0) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.12) translate3d(-1.8%, -1.2%, 0) rotate(0.15deg);
+  }
+  50% {
+    transform: scale(1.08) translate3d(1.6%, -2%, 0) rotate(-0.2deg);
+  }
+  75% {
+    transform: scale(1.14) translate3d(-1.2%, 1.4%, 0) rotate(0.12deg);
+  }
+  100% {
+    transform: scale(1.05) translate3d(0%, 0%, 0) rotate(0deg);
+  }
+}
+
+.animate-tahoe-drift {
+  animation: tahoeLivingDrift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* FLOWING AURORA & AMBIENT ATMOSPHERIC LIGHT SHIMMER */
+@keyframes auroraSweepDrift {
+  0% {
+    transform: translate3d(-25%, -15%, 0) rotate(-3deg);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate3d(20%, 15%, 0) rotate(4deg);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(-25%, -15%, 0) rotate(-3deg);
+    opacity: 0.25;
+  }
+}
+
+.animate-aurora-sweep {
+  animation: auroraSweepDrift 20s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* SUBTLE ATMOSPHERIC PULSE */
+@keyframes liveBgPulse {
+  0%, 100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.animate-live-pulse {
+  animation: liveBgPulse 9s ease-in-out infinite;
+}
+
