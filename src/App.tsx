@@ -484,8 +484,23 @@ export default function App() {
             <button onClick={() => scrollToSection(teamRef)} className="hover:text-[#C084FC] transition-colors"><ScrambleText text="Team" /></button>
           </div>
 
-          {/* Right: C2 HUD Button, Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
+          {/* Right: Commander HUD, C2 HUD Button, Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <button
+              onClick={() => {
+                window.location.hash = 'mobile';
+                setActiveView('mobile');
+              }}
+              className="relative group px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 hover:text-white text-[10px] sm:text-[11px] font-black tracking-wider sm:tracking-widest uppercase transition-all duration-200 shadow-[0_0_12px_rgba(6,182,212,0.3)] hover:shadow-[0_0_20px_rgba(6,182,212,0.6)] flex items-center gap-1.5 sm:gap-2 cursor-pointer"
+              title="Launch A.U.R.A. v18.0 Mobile Commander Dashboard"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+              </span>
+              <span className="font-display whitespace-nowrap">COMMANDER</span>
+            </button>
+
             <button
               onClick={() => {
                 window.location.hash = 'c2';
@@ -550,6 +565,17 @@ export default function App() {
             transition={{ duration: 0.2 }}
             className="fixed top-16 sm:top-20 left-3 right-3 sm:left-6 sm:right-6 z-50 p-5 bg-[#05070a]/95 backdrop-blur-2xl border border-[#C084FC]/30 rounded-2xl md:hidden flex flex-col gap-3.5 text-center shadow-2xl"
           >
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                window.location.hash = 'mobile';
+                setActiveView('mobile');
+              }}
+              className="py-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/60 text-cyan-300 font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 font-display shadow-[0_0_15px_rgba(6,182,212,0.3)] text-xs"
+            >
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              ▶ MOBILE COMMANDER HUD (v18.0)
+            </button>
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
