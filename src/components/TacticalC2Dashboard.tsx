@@ -40,24 +40,35 @@ import AuraVoiceOrb from "./AuraVoiceOrb";
 
 // ─── TYPES & INTERFACES ───────────────────────────────────────────────────────
 export interface TelemetryPayload {
-  card?: number | string;
-  gas?: number;
-  gas_profile?: string; // "AMBIENT AIR" | "BIO-EFFLUENT/VOC" | "HUMAN RESPIRATION" | "HAZARDOUS / SMOKE"
-  co2_ppm?: number;
-  nh3_ppm?: string | number;
-  air_rating?: string; // "AIR: SAFE / CLEAR" | "AMMONIA / SWEAT" | "METABOLIC CO2" | "DANGER: TOXIC"
-  // v14.7 Dual-Gas Architecture Properties
+  survivor_count?: number;
+  depth_meters?: number | string;
+  range_meters?: number | string;
+  zone_color?: "GREEN" | "RED" | "WHITE" | "NONE" | string;
+  spatial_position?: string;
+  confidence?: number;
+  tap_count?: number;
+  seismic_peak?: number;
+  raw_piezo?: number;
+  acoustic_energy?: number;
+  acoustic_spectrum?: string; // "LOUD CRY / SHOUT" | "HUMAN SPEECH / VOCAL" | "FAINT BREATH / WHISPER" | "SILENCE / NOISE FLOOR" | string
+  radar?: number;
   env_gas_ppm?: number;
-  env_air_status?: string;
   human_scent_ppm?: number | string;
   human_scent_detected?: boolean;
   human_scent_label?: string;
-  // v14.13 Acoustic Spectrum & Seismic Tap Properties
-  acoustic_spectrum?: string; // "LOUD VOICE/SHOUT" | "HUMAN SPEECH/BREATH" | "FAINT SUB-AUDIBLE" | "AMBIENT NOISE FLOOR"
-  tap_count?: number;
-  radar?: number;
-  seismic_peak?: number;
-  acoustic_energy?: number;
+  delta_jerk?: number;
+  buzzer_mode?: number;
+  ai_status?: string;
+  ai_analysis?: string;
+  ip?: string;
+  // Extended / GPS / Legacy fields
+  card?: number | string;
+  gas?: number;
+  gas_profile?: string;
+  co2_ppm?: number;
+  nh3_ppm?: string | number;
+  air_rating?: string;
+  env_air_status?: string;
   mic_p2p?: number;
   mic_freq_hz?: number;
   sound_classification?: string;
@@ -65,23 +76,18 @@ export interface TelemetryPayload {
   sound_depth_m?: number | string;
   heartbeat_detected?: boolean;
   heartbeat_bpm?: number;
-  ai_status?: string;
   ai_classification?: string;
   ai_biological?: boolean;
   ai_depth_meters?: number;
-  depth_meters?: number;
   radar_dist_cm?: number;
   ai_action?: string;
-  confidence?: number;
   buzzer_level?: number;
-  delta_jerk?: number;
   lat?: number;
   lng?: number;
   accuracy_m?: number;
   gps_source?: string;
   sats?: number;
   gps_locked?: boolean;
-  ip?: string;
   city?: string;
 }
 
@@ -1013,7 +1019,8 @@ export default function TacticalC2Dashboard({
   const triggerAiInference = async () => {
     setIsInferring(true);
     try {
-      const depthCalc = telemetry.depth_meters || (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 2.5);
+      const rawD = telemetry.depth_meters !== undefined ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 2.5) : (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 2.5);
+      const depthCalc = Number(rawD || 2.5);
       const prompt = `You are A.U.R.A. Mission Command Tactical Search-and-Rescue AI.
 Analyze this REAL ESP32 hardware sensor telemetry to locate trapped survivors with 100% mathematical precision:
 - Combustible Gas / Air Quality: ${telemetry.gas || 0} PPM (${(telemetry.gas || 0) > 400 ? "HAZARDOUS" : "Breathable"})

@@ -467,20 +467,10 @@ export default function TopoContour(props: TopoContourProps) {
                 container.style.cursor = "grabbing";
 
                 pointerStartRef.current = { x: e.clientX, y: e.clientY };
-                rotStartRef.current = {
-                    x: sceneRef.current.targetRotation.x,
-                    y: sceneRef.current.targetRotation.y,
-                };
                 panStartRef.current = {
                     x: sceneRef.current.targetPan.x,
                     y: sceneRef.current.targetPan.y,
                 };
-
-                // Trigger manual localized pulse on click
-                const rect = container.getBoundingClientRect();
-                const normX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-                const normY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-                sceneRef.current.triggerDisturbance(0.75, normX, -normY, 40);
 
                 try {
                     container.setPointerCapture(e.pointerId);
@@ -492,23 +482,10 @@ export default function TopoContour(props: TopoContourProps) {
                 const dx = e.clientX - pointerStartRef.current.x;
                 const dy = e.clientY - pointerStartRef.current.y;
 
-                if (e.shiftKey || e.buttons === 2) {
-                    // Pan mode with Shift or Right Click
-                    const panSpeed = 0.003 * sceneRef.current.targetZoom;
-                    sceneRef.current.targetPan.x = panStartRef.current.x - dx * panSpeed;
-                    sceneRef.current.targetPan.y = panStartRef.current.y + dy * panSpeed;
-                } else {
-                    // 3D Orbit Rotate mode
-                    const rotSpeedX = 0.008;
-                    const rotSpeedY = 0.006;
-                    sceneRef.current.targetRotation.x = rotStartRef.current.x + dx * rotSpeedX;
-                    sceneRef.current.targetRotation.y = clamp(
-                        rotStartRef.current.y + dy * rotSpeedY,
-                        -1.0,
-                        1.1,
-                        0.25
-                    );
-                }
+                // Move / Pan across subterranean terrain coordinates seamlessly
+                const panSpeed = 0.0035 * sceneRef.current.targetZoom;
+                sceneRef.current.targetPan.x = panStartRef.current.x - dx * panSpeed;
+                sceneRef.current.targetPan.y = panStartRef.current.y + dy * panSpeed;
             };
 
             const handlePointerUp = (e: PointerEvent) => {
@@ -627,32 +604,23 @@ export default function TopoContour(props: TopoContourProps) {
                 ...style,
             }}
         >
-            {/* Quick 3D Interactive Floating HUD Controls Overlay */}
+            {/* Quick Interactive Floating HUD Controls Overlay */}
             {interactive && (
                 <div className="absolute bottom-3 right-3 z-30 flex items-center gap-1.5 pointer-events-auto opacity-75 group-hover:opacity-100 transition-opacity">
-                    {/* Manual Seismic Pulse Button */}
-                    <button
-                        onClick={handlePulse}
-                        className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black/95 text-[#00C2FF] border border-[#00C2FF]/40 hover:border-[#00C2FF] text-[10px] font-mono font-bold tracking-wider uppercase transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1 backdrop-blur-md"
-                        title="Inject seismic test disturbance"
-                    >
-                        <span>⚡ Seismic Pulse</span>
-                    </button>
-
-                    {/* Reset 3D View Button */}
+                    {/* Reset View Button */}
                     {hasMoved && (
                         <button
                             onClick={handleReset}
-                            className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black/95 text-white/80 hover:text-white border border-white/20 hover:border-[#C084FC] text-[10px] font-mono font-medium transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1 backdrop-blur-md"
-                            title="Reset 3D Map View"
+                            className="px-2.5 py-1 rounded-lg bg-black/75 hover:bg-black/95 text-white/80 hover:text-white border border-white/20 hover:border-[#00C2FF] text-[10px] font-mono font-medium transition-all cursor-pointer shadow-lg active:scale-95 flex items-center gap-1 backdrop-blur-md"
+                            title="Re-center Subterranean View"
                         >
-                            <span>↻ Center</span>
+                            <span>↻ Re-center</span>
                         </button>
                     )}
 
-                    {/* 3D Orbit Indicator Pill */}
+                    {/* Moveable Pan Indicator Pill */}
                     <span className="hidden sm:inline-flex px-2 py-1 rounded-lg bg-black/60 text-white/50 border border-white/10 text-[9px] font-mono backdrop-blur-md">
-                        {isInteracting ? "3D Rotating..." : "Drag: 3D Orbit • Scroll: Zoom"}
+                        {isInteracting ? "Moving Map..." : "Drag: Pan Map • Scroll: Zoom"}
                     </span>
                 </div>
             )}

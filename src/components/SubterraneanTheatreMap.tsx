@@ -19,8 +19,17 @@ import {
   ExternalLink,
   X,
   Heart,
-  User
+  User,
+  RefreshCw,
+  ShieldAlert
 } from "lucide-react";
+
+interface DispatchMessage {
+  id: string;
+  sender: "user" | "ai";
+  text: string;
+  actionTaken?: string;
+}
 
 interface SubterraneanTheatreMapProps {
   telemetry: TelemetryPayload;
@@ -68,6 +77,47 @@ export default function SubterraneanTheatreMap({
   } | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [isSyncingGps, setIsSyncingGps] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
+
+  // Dispatch hardware buzzer mode to ESP32 (0: Mute, 1: Beacon, 2: Chirp, 3: Siren, 4: Communicate Help)
+  const dispatchControlCommand = async (mode: number, label?: string) => {
+    setIsDispatching(true);
+    if (onSetBuzzerLevel) {
+      onSetBuzzerLevel(mode);
+    }
+    try {
+      let baseUrl = nodeIp || "192.168.43.145";
+      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+        baseUrl = baseUrl.includes("loca.lt") || baseUrl.includes("ngrok") ? `https://${baseUrl}` : `http://${baseUrl}`;
+      }
+      const endpoint = `${baseUrl}/api/control`;
+      const payload = { buzzer_mode: mode };
+      let res;
+      try {
+        res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Bypass-Tunnel-Reminder": "true"
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch {
+        res = await fetch(`${baseUrl}/api/telemetry`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Bypass-Tunnel-Reminder": "true"
+          },
+          body: JSON.stringify({ buzzer_level: mode, buzzer_mode: mode })
+        });
+      }
+    } catch (e) {
+      console.warn("Hardware control dispatch failed:", e);
+    } finally {
+      setIsDispatching(false);
+    }
+  };
 
   // Real Laptop GPS Sync with ESP32 Hardware Node
   const handleSyncLaptopGps = () => {
@@ -77,319 +127,350 @@ export default function SubterraneanTheatreMap({
     }
 
     setIsSyncingGps(true);
-
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
-        const accuracy = pos.coords.accuracy;
-
+      (pos) => {
         setGpsData({
-          lat: latitude,
-          lng: longitude,
-          accuracy,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
           city: "EXACT GPS SYNC",
           syncedAt: new Date().toLocaleTimeString()
         });
         setIsSyncingGps(false);
         setIsMapModalOpen(true);
-
-        // Dispatches exact GPS signal to the ESP32 hardware register
-        try {
-          let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
-          if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
-            if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
-              endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
-            } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
-              endpoint = `https://${nodeIp}/api/telemetry`;
-            } else {
-              endpoint = `http://${nodeIp}/api/telemetry`;
-            }
-          }
-
-          try {
-            const res = await fetch(endpoint, {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json",
-                "Bypass-Tunnel-Reminder": "true",
-                "ngrok-skip-browser-warning": "true"
-              },
-              body: JSON.stringify({
-                lat: latitude,
-                lng: longitude,
-                city: "EXACT GPS SYNC"
-              })
-            });
-            if (!res || !res.ok) {
-              await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
-                method: "POST",
-                headers: { 
-                  "Content-Type": "application/json",
-                  "Bypass-Tunnel-Reminder": "true",
-                  "ngrok-skip-browser-warning": "true"
-                },
-                body: JSON.stringify({
-                  lat: latitude,
-                  lng: longitude,
-                  city: "EXACT GPS SYNC"
-                })
-              });
-            }
-          } catch {
-            await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json",
-                "Bypass-Tunnel-Reminder": "true",
-                "ngrok-skip-browser-warning": "true"
-              },
-              body: JSON.stringify({
-                lat: latitude,
-                lng: longitude,
-                city: "EXACT GPS SYNC"
-              })
-            });
-          }
-        } catch (err) {
-          console.warn("Failed to dispatch GPS to ESP32 hardware register:", err);
-        }
-
-        // Voice announcement of the location
-        if ("speechSynthesis" in window) {
-          try {
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(
-              `Laptop GPS position locked. Latitude ${latitude.toFixed(4)}, Longitude ${longitude.toFixed(4)}. Signal dispatched to hardware node.`
-            );
-            utter.rate = 1.05;
-            window.speechSynthesis.speak(utter);
-          } catch (e) {}
-        }
       },
-      (err) => {
-        console.warn("Geolocation prompt error:", err);
+      () => {
         setIsSyncingGps(false);
-        // Fallback to Sriperumbudur Bus Stand coordinates
-        const fallbackLat = telemetry.lat && telemetry.lat !== 0 ? telemetry.lat : 12.9665;
-        const fallbackLng = telemetry.lng && telemetry.lng !== 0 ? telemetry.lng : 79.9450;
-        setGpsData({
-          lat: fallbackLat,
-          lng: fallbackLng,
-          city: telemetry.city || "Chennai",
-          syncedAt: new Date().toLocaleTimeString()
-        });
         setIsMapModalOpen(true);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 5000 }
     );
   };
 
-  // Persistent Last Active Target State (Anchored to Sriperumbudur Bus Stand / Last Live Target)
-  const [lastActiveTarget, setLastActiveTarget] = useState<{
-    lat: number;
-    lng: number;
-    depth: number;
-    classification: string;
-    city: string;
-    timestamp: string;
-  }>(() => {
-    try {
-      const saved = localStorage.getItem("aura_last_active_target");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.lat && parsed.lng) return parsed;
-      }
-    } catch {}
-    return {
-      lat: 12.9665,
-      lng: 79.9450,
-      depth: 2.5,
-      classification: "Sriperumbudur Strata Target",
-      city: "Chennai",
-      timestamp: "Sriperumbudur Target"
-    };
-  });
+  // Anchor Coordinates (Sriperumbudur / Chennai fallback)
+  const defaultLat = 12.9665;
+  const defaultLng = 79.9450;
+  const activeTargetLat = (telemetry.lat && telemetry.lat !== 0) ? telemetry.lat : (gpsData?.lat || defaultLat);
+  const activeTargetLng = (telemetry.lng && telemetry.lng !== 0) ? telemetry.lng : (gpsData?.lng || defaultLng);
 
-  // Whenever connected and receiving active telemetry coordinates or depth, update lastActiveTarget
-  useEffect(() => {
-    if (isConnected) {
-      const hasCoords = Boolean(telemetry.lat && telemetry.lat !== 0 && telemetry.lng && telemetry.lng !== 0);
-      const hasDepth = Boolean(telemetry.ai_depth_meters && telemetry.ai_depth_meters > 0);
-      if (hasCoords || hasDepth) {
-        const newTarget = {
-          lat: hasCoords ? Number(telemetry.lat) : lastActiveTarget.lat,
-          lng: hasCoords ? Number(telemetry.lng) : lastActiveTarget.lng,
-          depth: hasDepth ? Number((telemetry.ai_depth_meters || 2.5).toFixed(1)) : lastActiveTarget.depth,
-          classification: telemetry.ai_classification || telemetry.sound_classification || lastActiveTarget.classification,
-          city: telemetry.city || lastActiveTarget.city,
-          timestamp: new Date().toLocaleTimeString()
-        };
-        setLastActiveTarget(newTarget);
-        try {
-          localStorage.setItem("aura_last_active_target", JSON.stringify(newTarget));
-        } catch {}
-      }
-    }
-  }, [isConnected, telemetry.lat, telemetry.lng, telemetry.ai_depth_meters, telemetry.ai_classification, telemetry.sound_classification, telemetry.city]);
-
-  // Active coordinates (Live telemetry -> Laptop GPS sync -> Last active target -> Sriperumbudur 12.9665, 79.9450)
-  const activeTargetLat = (isConnected && telemetry.lat && telemetry.lat !== 0) 
-    ? Number(telemetry.lat) 
-    : (gpsData && gpsData.lat && gpsData.lat !== 0) 
-    ? Number(gpsData.lat) 
-    : Number(lastActiveTarget.lat || 12.9665);
-
-  const activeTargetLng = (isConnected && telemetry.lng && telemetry.lng !== 0) 
-    ? Number(telemetry.lng) 
-    : (gpsData && gpsData.lng && gpsData.lng !== 0) 
-    ? Number(gpsData.lng) 
-    : Number(lastActiveTarget.lng || 79.9450);
-
-  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur Bus Stand / Last Active Target)
-  const handleOpenGoogleMaps = (e?: React.MouseEvent | React.TouchEvent) => {
-    e?.stopPropagation();
-    const mapsUrl = `https://www.google.com/maps?q=${activeTargetLat},${activeTargetLng}&z=19&t=k`;
-    window.open(mapsUrl, "_blank", "noopener,noreferrer");
+  const handleOpenGoogleMaps = () => {
+    window.open(`https://www.google.com/maps?q=${activeTargetLat},${activeTargetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
   };
 
-  // Sanitize raw integers from ESP32 firmware
-  const rawAcoustic = Number(telemetry.acoustic_energy || 0);
-  const acousticDb = (rawAcoustic >= 2147483000 || rawAcoustic < 0 || isNaN(rawAcoustic)) ? 0 : rawAcoustic;
-
-  const rawSeismic = Number(telemetry.seismic_peak || 0);
-  const seismicPeak = (rawSeismic >= 2147483000 || rawSeismic < 0 || isNaN(rawSeismic)) ? 0 : rawSeismic;
-
-  const rawGas = Number(telemetry.gas || 0);
-  const gasPpm = (rawGas >= 2147483000 || rawGas < 0 || isNaN(rawGas)) ? 0 : rawGas;
-
-  // v14.7 Dual-Gas Architecture Telemetry
-  const envGasPpm = telemetry.env_gas_ppm ?? gasPpm;
-  const envAirStatus = telemetry.env_air_status || (envGasPpm > 400 ? "HAZARDOUS / SMOKE" : envGasPpm > 250 ? "ELEVATED CO2" : "AIR: SAFE / CLEAR");
-  const isEnvHazard = envAirStatus.includes("HAZARD") || envAirStatus.includes("SMOKE") || envGasPpm > 400;
-  const isEnvElevated = envAirStatus.includes("CO2") || envAirStatus.includes("ELEVATED") || (envGasPpm > 250 && !isEnvHazard);
-  const envStatusColor = isEnvHazard 
-    ? "bg-red-500/20 text-red-400 border-red-500/40" 
-    : isEnvElevated 
-    ? "bg-amber-400/20 text-amber-300 border-amber-400/40" 
-    : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40";
-
-  // Human Bio-Scent Detector (v14.7)
-  const humanScentDetected = Boolean(telemetry.human_scent_detected || (telemetry.ai_biological && gasPpm > 200) || (telemetry.nh3_ppm && Number(telemetry.nh3_ppm) > 0.5));
-  const humanScentLabel = telemetry.human_scent_label || (humanScentDetected ? (gasPpm > 300 ? "SWEAT & BREATH VOC" : "METABOLIC AMMONIA") : "NO HUMAN SCENT");
-  const humanScentPpm = telemetry.human_scent_ppm ?? telemetry.nh3_ppm ?? (humanScentDetected ? "1.8" : "0.0");
-
-  // v14.13 Acoustic Spectrum & Seismic Tap Matrix
-  const acousticSpectrum = telemetry.acoustic_spectrum || (acousticDb > 75 ? "LOUD VOICE/SHOUT" : acousticDb > 35 ? "HUMAN SPEECH/BREATH" : acousticDb > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL");
-  const tapCount = Number(telemetry.tap_count ?? 0);
-
-  // Dynamic Audio Intensity Gradients and Badges (v14.13)
-  const isLoudVoice = acousticSpectrum.includes("LOUD") || acousticSpectrum.includes("SHOUT") || acousticDb > 75;
-  const isHumanSpeech = acousticSpectrum.includes("SPEECH") || acousticSpectrum.includes("BREATH") || (acousticDb > 35 && !isLoudVoice);
-  const isSubAudible = acousticSpectrum.includes("FAINT") || acousticSpectrum.includes("SUB-AUDIBLE") || (acousticDb > 15 && !isHumanSpeech && !isLoudVoice);
-
-  const acousticEnergyGradient = isLoudVoice
-    ? "from-rose-500/25 via-red-500/15 to-red-600/30 border-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.25)] text-rose-300"
-    : isHumanSpeech
-    ? "from-amber-500/25 via-yellow-500/15 to-yellow-600/25 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.25)] text-amber-300"
-    : isSubAudible
-    ? "from-cyan-500/20 via-sky-500/15 to-blue-600/25 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.25)] text-cyan-300"
-    : "from-emerald-500/15 via-teal-500/10 to-teal-600/20 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-300";
-
-  const acousticBadgeBg = isLoudVoice
-    ? "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse"
-    : isHumanSpeech
-    ? "bg-amber-400/20 text-amber-300 border-amber-400/40"
-    : isSubAudible
-    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
-    : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-
-  const isRadarLocked = isConnected && telemetry.radar === 1;
-  const isBiological = isConnected && Boolean(telemetry.ai_biological);
+  // 1. Core Spatial & Multi-Person Calculations
+  const rawSurvivorCount = telemetry.survivor_count !== undefined 
+    ? Number(telemetry.survivor_count) 
+    : (telemetry.ai_biological ? 1 : 0);
   
-  // Real physical depth from hardware sensors only (Zero faking)
-  const primaryDepth = isConnected && telemetry.ai_depth_meters && telemetry.ai_depth_meters > 0 && telemetry.ai_depth_meters < 25
-    ? Number(telemetry.ai_depth_meters.toFixed(1))
-    : 0;
+  const rawDepth = telemetry.depth_meters !== undefined 
+    ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0)
+    : (telemetry.ai_depth_meters ?? 0);
+  
+  const rawRange = telemetry.range_meters !== undefined
+    ? (typeof telemetry.range_meters === "number" ? telemetry.range_meters : parseFloat(String(telemetry.range_meters)) || 0)
+    : (rawDepth > 0 ? Number((rawDepth * 1.25).toFixed(2)) : 0);
 
-  const displayDepth = isConnected && primaryDepth > 0 ? primaryDepth : Number(lastActiveTarget.depth || 2.5);
-
-  // Calm, stable, scientific color palette (NO random rainbow color cycling)
-  let primaryColor = "#00C2FF"; // Default crisp cyan tactical radar
-  let statusText = isConnected ? "Subterranean Radar Active" : "Last Active Target (Sriperumbudur)";
-  let statusSubtext = isConnected ? "Continuous strata echo sweep — All registers nominal" : `Target Locked: ${activeTargetLat.toFixed(4)}° N, ${activeTargetLng.toFixed(4)}° E • Tap for Google Maps`;
-
-  if (isBiological && primaryDepth > 0) {
-    primaryColor = "#10B981"; // Stable emerald for verified biological target
-    const formattedClass = telemetry.ai_classification
-      ? telemetry.ai_classification.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-      : "Biological Target";
-    statusText = `${formattedClass} (${primaryDepth.toFixed(1)}m)`;
-    const formattedAction = telemetry.ai_action
-      ? telemetry.ai_action.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-      : "Deploy Audio Probe";
-    statusSubtext = `Action: ${formattedAction} • Edge-AI Confidence: ${telemetry.confidence ?? 0}%`;
-  } else if (gasPpm > 400) {
-    primaryColor = "#EF4444"; // Warning red strictly for toxic gas threshold
-    statusText = `Atmospheric Alert (${gasPpm} PPM)`;
-    statusSubtext = "Methane concentration exceeds safety threshold";
-  } else if (isConnected && isRadarLocked) {
-    primaryColor = "#00C2FF";
-    statusText = "Subterranean Radar Locked";
-    statusSubtext = `Echo signature detected • Resonant strata reflection`;
+  // Dynamic Triage Color Zone Selection
+  let zoneColor = (telemetry.zone_color || "").toUpperCase();
+  if (!zoneColor || zoneColor === "AUTO") {
+    if (rawSurvivorCount > 0 || rawDepth > 0) {
+      if (rawDepth < 1.2) zoneColor = "GREEN";
+      else if (rawDepth <= 3.5) zoneColor = "RED";
+      else zoneColor = "WHITE";
+    } else {
+      zoneColor = "NONE";
+    }
   }
 
-  // Dynamic Real-time Disturbance Calculation from Live Hardware Telemetry
-  const lastTapRef = useRef<number>(telemetry.tap_count || 0);
+  let zoneConfig = {
+    badgeClass: "bg-zinc-800 text-zinc-400 border-zinc-700",
+    label: "ALL CLEAR / SCANNING",
+    glowColor: "#71717A"
+  };
+
+  if (zoneColor === "GREEN") {
+    zoneConfig = {
+      badgeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500",
+      label: "SURFACE / IMMEDIATE ACCESS (<1.2m)",
+      glowColor: "#10B981"
+    };
+  } else if (zoneColor === "RED") {
+    zoneConfig = {
+      badgeClass: "bg-rose-500/20 text-rose-400 border-rose-500 animate-pulse",
+      label: "DOWN / MID-DEBRIS CORE (1.2m - 3.5m)",
+      glowColor: "#F43F5E"
+    };
+  } else if (zoneColor === "WHITE") {
+    zoneConfig = {
+      badgeClass: "bg-slate-100 text-slate-900 border-white shadow-lg shadow-white/30",
+      label: "VERY DOWN / DEEP SUBTERRANEAN (3.5m - 6.0m+)",
+      glowColor: "#FFFFFF"
+    };
+  }
+
+  const spatialPosition = telemetry.spatial_position || (
+    zoneColor === "GREEN" ? "SURFACE AIR CAVITY / HIGH VIABILITY" :
+    zoneColor === "RED" ? "DOWN / MID-DEBRIS CORE VOID" :
+    zoneColor === "WHITE" ? "VERY DOWN / DEEP SUBTERRANEAN STRATA" :
+    "SEARCHING VOID SECTORS"
+  );
+
+  // 2. Acoustic & Seismic Vibration Matrix
+  const acousticSpectrum = telemetry.acoustic_spectrum || (
+    (telemetry.acoustic_energy || 0) > 60 ? "LOUD CRY / SHOUT" :
+    (telemetry.acoustic_energy || 0) > 30 ? "HUMAN SPEECH / VOCAL" :
+    (telemetry.acoustic_energy || 0) > 15 ? "FAINT BREATH / WHISPER" :
+    "SILENCE / NOISE FLOOR"
+  );
+
+  const acousticDb = Number(telemetry.acoustic_energy ?? 0);
+  const tapCount = Number(telemetry.tap_count ?? 0);
+  const rawPiezo = Number(telemetry.raw_piezo ?? (tapCount > 0 ? 1820 : 0));
+  const seismicPeak = Number(telemetry.seismic_peak ?? 0);
+
+  const humanScentPpm = typeof telemetry.human_scent_ppm === "number" ? telemetry.human_scent_ppm : parseFloat(String(telemetry.human_scent_ppm || "0")) || 0;
+  const humanScentDetected = Boolean(telemetry.human_scent_detected || humanScentPpm > 0.3);
+  const humanScentLabel = telemetry.human_scent_label || (humanScentDetected ? "SWEAT / AMMONIA VOC" : "ZERO DETECTABLE VOC");
+
+  const envGasPpm = Number(telemetry.env_gas_ppm ?? telemetry.gas ?? 0);
+
+  // Dynamic Disturbance Wave Effect from Live Hardware Signals
+  const lastTapRef = useRef<number>(tapCount);
   const [disturbanceValue, setDisturbanceValue] = useState<number>(0);
 
   useEffect(() => {
-    const currentTaps = telemetry.tap_count || 0;
-    const acousticEnergy = telemetry.acoustic_energy || 0;
-    const seismicSpike = telemetry.seismic_peak || 0;
-    const jerkSpike = telemetry.delta_jerk || 0;
-
     let targetDisturbance = 0;
-
-    // Tap shockwave spike
-    if (currentTaps > lastTapRef.current) {
+    if (tapCount > lastTapRef.current) {
       targetDisturbance = 1.0;
-      lastTapRef.current = currentTaps;
-    } else if (currentTaps > 0) {
+      lastTapRef.current = tapCount;
+    } else if (tapCount > 0) {
       targetDisturbance = 0.55;
     }
 
-    // Acoustic dB disturbance
-    if (acousticEnergy > 45) {
-      targetDisturbance = Math.max(targetDisturbance, Math.min(1.0, acousticEnergy / 70));
-    } else if (acousticEnergy > 25) {
+    if (acousticDb > 45) {
+      targetDisturbance = Math.max(targetDisturbance, Math.min(1.0, acousticDb / 70));
+    } else if (acousticDb > 25) {
       targetDisturbance = Math.max(targetDisturbance, 0.45);
     }
 
-    // Seismic tremor disturbance
-    if (seismicSpike > 3.0 || jerkSpike > 1.2) {
+    if (seismicPeak > 30 || (telemetry.delta_jerk || 0) > 1.0) {
       targetDisturbance = Math.max(targetDisturbance, 0.85);
     }
 
     if (targetDisturbance > 0) {
       setDisturbanceValue(targetDisturbance);
-      const timer = setTimeout(() => {
-        setDisturbanceValue(0);
-      }, 2400);
+      const timer = setTimeout(() => setDisturbanceValue(0), 2400);
       return () => clearTimeout(timer);
     }
-  }, [telemetry.tap_count, telemetry.acoustic_energy, telemetry.seismic_peak, telemetry.delta_jerk]);
+  }, [tapCount, acousticDb, seismicPeak, telemetry.delta_jerk]);
 
-  const hasGpsFix = isConnected && (Boolean(telemetry.gps_locked) || (Boolean(telemetry.lat) && telemetry.lat !== 0));
+  // 4. Tactical AI Dispatcher Chatbot Panel State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<DispatchMessage[]>([
+    {
+      id: "init-dispatcher",
+      sender: "ai",
+      text: "Tactical Dispatcher Online. Linked to ESP32 telemetry stream. You can query victim status or issue direct hardware control commands."
+    }
+  ]);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSendDispatcherQuery = async (queryText: string) => {
+    if (!queryText.trim()) return;
+    const q = queryText.trim();
+    const userMsg: DispatchMessage = { id: `usr-${Date.now()}`, sender: "user", text: q };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput("");
+
+    let reply = "";
+    let actionTaken = "";
+
+    // Command Parsing & Function Calling
+    if (/(communicate|help.*on.*way|coming|tell.*victim|signal.*help)/i.test(q)) {
+      await dispatchControlCommand(4, "COMMUNICATE");
+      actionTaken = "POST /api/control -> { buzzer_mode: 4 }";
+      reply = "Transmitting acoustic acknowledgment cadence (3-burst rescue pulse) to trapped survivors now.";
+    } else if (/(siren|evac|evacuation|alarm)/i.test(q)) {
+      await dispatchControlCommand(3, "EVAC SIREN");
+      actionTaken = "POST /api/control -> { buzzer_mode: 3 }";
+      reply = "Evacuation siren active (110 dB).";
+    } else if (/(chirp|rescue.*chirp)/i.test(q)) {
+      await dispatchControlCommand(2, "RESCUE CHIRP");
+      actionTaken = "POST /api/control -> { buzzer_mode: 2 }";
+      reply = "Engaged 98 dB resonant rescue chirp.";
+    } else if (/(beacon|locator)/i.test(q)) {
+      await dispatchControlCommand(1, "LOCATOR BEACON");
+      actionTaken = "POST /api/control -> { buzzer_mode: 1 }";
+      reply = "Locator beacon set to standard pulse (85 dB).";
+    } else if (/(mute|silence|turn.*off.*buzzer|stop.*sound)/i.test(q)) {
+      await dispatchControlCommand(0, "MUTE ALL");
+      actionTaken = "POST /api/control -> { buzzer_mode: 0 }";
+      reply = "Hardware buzzer muted.";
+    } else if (/(where|depth|how.*deep|range)/i.test(q)) {
+      reply = `Victims localized at depth ${rawDepth.toFixed(2)}m (Range: ${rawRange.toFixed(2)}m). Triage Zone: ${zoneColor} (${spatialPosition}).`;
+    } else if (/(alive|heartbeat|pulse|survivor|how.*many)/i.test(q)) {
+      reply = `${rawSurvivorCount} victim(s) identified. Acoustic signature: ${acousticSpectrum} (${acousticDb} dB). Bio-Scent: ${humanScentPpm} PPM (${humanScentLabel}).`;
+    } else {
+      reply = `Telemetry Lock: ${rawSurvivorCount} victim(s) at ${rawDepth.toFixed(2)}m (${spatialPosition}). Air quality: ${envGasPpm} PPM.`;
+    }
+
+    const aiMsg: DispatchMessage = {
+      id: `ai-${Date.now()}`,
+      sender: "ai",
+      text: reply,
+      actionTaken: actionTaken || undefined
+    };
+    setChatMessages((prev) => [...prev, aiMsg]);
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 50);
+  };
 
   return (
-    <div className="w-full flex flex-col gap-4 font-sans text-white">
-      {/* 3D TOPOGRAPHIC CONTOUR RADAR CANVAS - 3D INTERACTIVE & SEISMIC DISTURBANCE SHOCKWAVES */}
+    <div className="w-full flex flex-col gap-4 font-sans text-white max-w-7xl mx-auto pb-8">
+      
+      {/* ══════════════════════════════════════════════════════════════════════
+          1. CORE SPATIAL RESCUE HERO COMPONENT (TRIAGE BANNER)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div className="w-full rounded-3xl bg-[#070A10]/95 backdrop-blur-2xl border border-white/12 p-4 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.85)] flex flex-col gap-4 relative overflow-hidden">
+        
+        {/* Top Bar: Connection State & Hardware IP */}
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black tracking-widest text-[#C084FC] uppercase font-mono">
+              PROJECT A.U.R.A. COMMANDER
+            </span>
+            <span className="text-white/30">•</span>
+            <span className="text-[11px] font-mono text-white/70">
+              IP: <strong className="text-cyan-400 font-bold">{nodeIp}</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Real-time Reconnection Badge */}
+            {isConnected ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>LINKED (250ms)</span>
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                <span>RECONNECTING...</span>
+              </span>
+            )}
+
+            <button
+              onClick={handleOpenGoogleMaps}
+              className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <MapPin className="w-3 h-3" />
+              <span className="hidden sm:inline">GPS Maps</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Hero Triage Banner: Survivor Count & High-Visibility Gauges */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+          
+          {/* Survivor Count Display */}
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+              rawSurvivorCount > 0 ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.35)]" : "bg-white/5 text-white/40 border border-white/10"
+            }`}>
+              <User className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+                DETECTED HUMAN SURVIVORS
+              </span>
+              <span className={`text-2xl sm:text-3xl font-black tracking-tight ${rawSurvivorCount > 0 ? "text-rose-400" : "text-white/60"}`}>
+                {rawSurvivorCount} {rawSurvivorCount === 1 ? "VICTIM DETECTED" : "VICTIMS DETECTED"}
+              </span>
+            </div>
+          </div>
+
+          {/* Numeric Depth Gauge */}
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-[#00C2FF]/20 text-[#00C2FF] border border-[#00C2FF]/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(0,194,255,0.25)]">
+              <Radio className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+                CALCULATED STRATA DEPTH
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black text-cyan-300">
+                  {rawDepth.toFixed(2)}
+                </span>
+                <span className="text-xs font-mono text-white/60">meters</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Numeric Range Gauge */}
+          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(192,132,252,0.25)]">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+                LATERAL RADAR RANGE
+              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black text-purple-300">
+                  {rawRange.toFixed(2)}
+                </span>
+                <span className="text-xs font-mono text-white/60">meters</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Dynamic Triage Color Zone & Spatial Position Tag */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/50 border border-white/10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono text-white/60">TRIAGE ZONE:</span>
+            <span className={`px-3 py-1 rounded-xl text-xs font-black tracking-wider border uppercase shadow-md ${zoneConfig.badgeClass}`}>
+              {zoneColor}: {zoneConfig.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-white/60">SPATIAL POS:</span>
+            <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/15 text-xs font-mono font-bold text-white tracking-wide">
+              {spatialPosition}
+            </span>
+          </div>
+        </div>
+
+        {/* AI Analysis Summary Banner (if present in JSON payload) */}
+        {telemetry.ai_analysis && (
+          <div className="p-3 rounded-xl bg-[#C084FC]/10 border border-[#C084FC]/30 text-xs font-medium text-purple-200 flex items-start gap-2 shadow-sm">
+            <ShieldAlert className="w-4 h-4 text-[#C084FC] flex-shrink-0 mt-0.5" />
+            <div>
+              <strong className="text-white font-bold uppercase tracking-wider block font-mono text-[10px]">
+                {telemetry.ai_status || "AI RESCUE TRIAGE ASSESSMENT"}
+              </strong>
+              <span>{telemetry.ai_analysis}</span>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          MOVEABLE 3D SUBTERRANEAN TOPOGRAPHIC RADAR MAP
+      ══════════════════════════════════════════════════════════════════════ */}
       <div className="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col">
-        <div className="relative w-full h-[400px] sm:h-[460px] overflow-hidden flex items-center justify-center">
+        <div className="relative w-full h-[380px] sm:h-[440px] overflow-hidden flex items-center justify-center">
           <TopoContour
-            contour={primaryColor}
-            indexColor={isBiological ? "#10B981" : isEnvHazard ? "#EF4444" : "#07FF00"}
+            contour={zoneColor === "RED" ? "#F43F5E" : zoneColor === "GREEN" ? "#10B981" : "#00C2FF"}
+            indexColor="#07FF00"
             interval={11}
             indexEvery={5}
             thickness={10}
@@ -406,13 +487,12 @@ export default function SubterraneanTheatreMap({
           {/* Depth Radial Overlay */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
 
-          {/* ACCURATE TARGET RADAR BLIP (Always Active on Last Active Target / Sriperumbudur) */}
+          {/* Target Blip */}
           <div 
             onClick={handleOpenGoogleMaps}
-            onTouchEnd={handleOpenGoogleMaps}
             className="absolute z-30 transition-all duration-700 flex flex-col items-center cursor-pointer group active:scale-95 select-none"
             style={{ 
-              top: `${displayDepth > 0 ? Math.min(75, Math.max(30, 35 + (displayDepth * 5))) : 50}%`,
+              top: `${rawDepth > 0 ? Math.min(75, Math.max(30, 35 + (rawDepth * 5))) : 50}%`,
               left: "50%",
               transform: "translate(-50%, -50%)"
             }}
@@ -421,378 +501,188 @@ export default function SubterraneanTheatreMap({
             <div className="relative flex items-center justify-center">
               <span 
                 className="absolute w-12 h-12 rounded-full animate-ping opacity-75"
-                style={{ backgroundColor: primaryColor }}
+                style={{ backgroundColor: zoneConfig.glowColor }}
               />
               <span 
                 className="relative w-4 h-4 rounded-full shadow-[0_0_20px_currentColor] border-2 border-white group-hover:scale-125 transition-transform"
-                style={{ backgroundColor: primaryColor, color: primaryColor }}
+                style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
               />
             </div>
 
-            {/* Clean Accurate Pill Label with Direct Google Maps Link */}
-            <div 
-              className="mt-2.5 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide backdrop-blur-xl border shadow-xl flex items-center gap-2 group-hover:border-cyan-400 group-hover:bg-black/95 transition-all group-hover:shadow-[0_0_25px_rgba(6,182,212,0.6)]"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.88)",
-                borderColor: `${primaryColor}55`,
-                color: "#FFFFFF"
-              }}
-            >
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: primaryColor }} />
-              <span>{isConnected ? (isBiological && primaryDepth > 0 ? `Target ${primaryDepth.toFixed(1)}m` : primaryDepth > 0 ? `Depth ${primaryDepth.toFixed(1)}m` : "Subterranean Target") : `Last Active Target (${displayDepth.toFixed(1)}m)`}</span>
-              <span className="text-[10px] text-cyan-300 font-medium flex items-center gap-1 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/40 group-hover:bg-cyan-500 group-hover:text-black transition-colors">
-                <MapPin className="w-3 h-3" />
-                <span>Google Maps ↗</span>
+            <div className="mt-2.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide backdrop-blur-xl border border-white/20 bg-black/85 shadow-xl flex items-center gap-2 text-white">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
+              <span>{rawSurvivorCount > 0 ? `${rawSurvivorCount} Trapped (${rawDepth.toFixed(1)}m)` : `Target Lock (${rawDepth.toFixed(1)}m)`}</span>
+              <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/20 px-1.5 py-0.5 rounded border border-cyan-400/40">
+                Maps ↗
               </span>
             </div>
           </div>
 
-          {/* TACTICAL COMPASS & SONAR RANGE RINGS */}
+          {/* Sonar Range Rings */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            {/* Range Rings */}
             <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/5 border-dashed" />
             <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/5" />
-            <div className="w-[450px] h-[450px] sm:w-[540px] sm:h-[540px] rounded-full border border-white/5 border-dashed" />
-
-            {/* Crosshair lines */}
-            <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="absolute h-full w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent" />
           </div>
-
-          {/* TOP-LEFT: TACTICAL LAPTOP GPS SYNC & REAL MAP BUTTON */}
-          <button
-            onClick={handleSyncLaptopGps}
-            className="absolute top-4 left-4 z-20 flex items-center gap-2 text-xs font-sans font-semibold text-white bg-black/75 hover:bg-black/95 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-cyan-400/40 hover:border-cyan-400 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all cursor-pointer group active:scale-95"
-            title="Click to sync Laptop GPS, dispatch signal to ESP32, and open live map"
-          >
-            <MapPin className={`w-3.5 h-3.5 text-cyan-400 ${isSyncingGps ? "animate-bounce" : "animate-pulse"}`} />
-            <span>
-              {isSyncingGps
-                ? "Acquiring Laptop GPS..."
-                : gpsData
-                ? `GPS: ${gpsData.lat.toFixed(3)}°, ${gpsData.lng.toFixed(3)}° (Sync Live)`
-                : telemetry.lat && telemetry.lng
-                ? `GPS: ${telemetry.lat.toFixed(3)}°, ${telemetry.lng.toFixed(3)}° (Open Map)`
-                : "📍 Sync Laptop GPS & Open Map"}
-            </span>
-          </button>
-
-          {/* TOP-RIGHT CONTROLS: OVERDRIVE BADGE */}
-          {isOverdrive && (
-            <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-              <div className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-medium flex items-center gap-1.5 backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                <Zap className="w-3 h-3 text-amber-400" />
-                <span>Overdrive</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          AURA LUXURY GLASS COMMAND INTERFACE (APPLE-GRADE MODERN DESIGN)
+          2. ACOUSTIC SPECTRUM & SEISMIC VIBRATION GAUGES
       ══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full rounded-3xl bg-[#090D14]/75 backdrop-blur-2xl border border-white/10 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col gap-5 font-sans">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
         
-        {/* ROW 1: TARGET STATUS & SMART ACTION DOCK */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          
-          {/* Left: Target Resonance & Live Sensor Classification */}
-          <div className="flex items-center gap-3.5">
-            <div 
-              onClick={handleOpenGoogleMaps}
-              className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/15 hover:border-cyan-400/50 flex-shrink-0 shadow-sm overflow-hidden cursor-pointer group transition-all active:scale-95"
-              title="Touch Target to view live coordinates on Google Maps"
-            >
-              <div 
-                className="absolute inset-0 opacity-25 group-hover:opacity-40 blur-md transition-all duration-500"
-                style={{ backgroundColor: primaryColor }}
-              />
-              {isBiological ? (
-                <span className="relative flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: primaryColor }} />
-                  <span className="relative inline-flex rounded-full h-4 w-4 shadow-[0_0_12px_currentColor]" style={{ backgroundColor: primaryColor, color: primaryColor }} />
-                </span>
-              ) : (
-                <Radio className="w-5 h-5 text-[#00C2FF] animate-pulse group-hover:scale-110 transition-transform" />
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center flex-wrap gap-2.5">
-                <span 
-                  onClick={handleOpenGoogleMaps}
-                  className="text-base sm:text-lg font-semibold text-white hover:text-cyan-300 tracking-tight font-sans cursor-pointer transition-colors"
-                  title="Touch to open target location on Google Maps"
-                >
-                  {statusText}
-                </span>
-                
-                {/* Acoustic Depth Category */}
-                <span 
-                  onClick={handleOpenGoogleMaps}
-                  className="px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-normal border shadow-sm font-sans cursor-pointer hover:border-cyan-400 transition-colors"
-                  style={{
-                    backgroundColor: `${primaryColor}15`,
-                    borderColor: `${primaryColor}35`,
-                    color: primaryColor
-                  }}
-                  title="Touch to open target location on Google Maps"
-                >
-                  {telemetry.sound_depth_cat || (isBiological && primaryDepth > 0 ? `Depth ${primaryDepth.toFixed(1)}m` : "Active Sweep")}
-                </span>
-
-                {/* Live Biological Heartbeat Pulse Badge */}
-                {telemetry.heartbeat_detected && telemetry.heartbeat_bpm && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1.5 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]">
-                    <Heart className="w-3 h-3 fill-red-400" />
-                    <span>{telemetry.heartbeat_bpm} BPM Pulse</span>
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-white/55 mt-0.5 font-normal flex items-center gap-2 font-sans">
-                <span>{statusSubtext}</span>
-                <span className="text-white/20">•</span>
-                <span className="text-emerald-400 font-medium">
-                  {telemetry.sound_classification ? `Acoustic: ${telemetry.sound_classification}` : isBiological ? "Biological Resonance" : "Searching Strata"}
-                </span>
-              </p>
-            </div>
+        {/* Acoustic Spectrum Card */}
+        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+              <Mic className="w-4 h-4 text-cyan-400" />
+              <span>Acoustic Spectrum</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+              {acousticDb} dB
+            </span>
           </div>
 
-          {/* Right: Quick Action Buttons (Target Map, Talk to AI, Settings) */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
-            {/* Direct Google Maps Target Link */}
-            <button
-              onClick={handleOpenGoogleMaps}
-              className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:scale-[1.02] active:scale-[0.98]"
-              title="Touch to open target location on Google Maps"
-            >
-              <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Target on Google Maps ↗</span>
-            </button>
+          <div>
+            <span className="text-[10px] font-mono text-white/45 block mb-1 uppercase">CLASSIFICATION</span>
+            <span className="text-sm font-bold text-white block truncate" title={acousticSpectrum}>
+              {acousticSpectrum}
+            </span>
 
-            {onSwitchToVoice && (
-              <button
-                onClick={onSwitchToVoice}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C084FC]/25 to-[#9333EA]/35 hover:from-[#C084FC]/35 hover:to-[#9333EA]/45 border border-[#C084FC]/40 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(192,132,252,0.25)] hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Mic className="w-3.5 h-3.5 text-[#C084FC]" />
-                <span>Talk to AI</span>
-              </button>
-            )}
-
-            {onToggleSettings && (
-              <button
-                onClick={onToggleSettings}
-                className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/10 border border-white/12 hover:border-white/25 text-white/85 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span>Settings</span>
-              </button>
-            )}
+            {/* Acoustic Energy Bar */}
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-rose-500 transition-all duration-300"
+                style={{ width: `${Math.min(100, Math.max(5, (acousticDb / 80) * 100))}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* ROW 2: CORE TELEMETRY METRIC TILES (6 Distinct Luxury Cards, Pure Responsive Layout) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-white">
-          
-          {/* 1. ACOUSTIC BEACON CARD */}
-          <div 
-            onClick={onCycleBuzzer}
-            className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer group flex flex-col justify-between gap-2.5 ${
-              buzzerLevel > 0
-                ? "bg-[#C084FC]/[0.08] hover:bg-[#C084FC]/[0.14] border-[#C084FC]/30 hover:border-[#C084FC]/60 shadow-[0_0_20px_rgba(192,132,252,0.15)]"
-                : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10 hover:border-white/20"
-            }`}
-            title="Click to cycle volume (Mute / 85 dB / 98 dB / 110 dB)"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-white/55">Acoustic Beacon</span>
-              <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${
-                buzzerLevel > 0 ? "bg-[#C084FC]/20 text-[#C084FC]" : "bg-red-500/15 text-red-400"
-              }`}>
-                {buzzerLevel === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className={`text-xl font-bold tracking-tight ${buzzerLevel === 0 ? "text-red-400" : "text-white"}`}>
-                  {buzzerLevel === 0 ? "Muted" : buzzerLevel === 1 ? "85 dB" : buzzerLevel === 2 ? "98 dB" : "110 dB"}
-                </span>
-                <span className={`text-xs font-medium ${buzzerLevel === 0 ? "text-red-400/80" : "text-[#C084FC]"}`}>
-                  {buzzerLevel === 0 ? "(Off)" : buzzerLevel === 1 ? "Low" : buzzerLevel === 2 ? "Med" : "Alert"}
-                </span>
-              </div>
-
-              {/* Mini Soundwave Indicator */}
-              <div className="flex items-end gap-1 h-3 mt-2">
-                {[0.4, 0.8, 0.5, 0.9, 0.6, 1.0, 0.7].map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-1 rounded-full transition-all duration-300"
-                    style={{
-                      height: buzzerLevel > 0 ? `${Math.max(25, h * (buzzerLevel === 3 ? 100 : buzzerLevel === 2 ? 70 : 45))}%` : "20%",
-                      backgroundColor: buzzerLevel > 0 ? "#C084FC" : "rgba(255,255,255,0.2)"
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+        {/* Seismic Vibration & Piezo Taps */}
+        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-amber-400" />
+              <span>Seismic Taps & Matrix</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tapCount > 0 ? "bg-amber-500/25 text-amber-300 border-amber-400 animate-pulse" : "bg-white/5 text-white/50 border-white/10"}`}>
+              {tapCount} TAPS
+            </span>
           </div>
 
-          {/* 2. SEISMIC ACTIVITY CARD */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-white/55">Seismic Activity</span>
-              <div className="w-7 h-7 rounded-xl bg-[#00C2FF]/15 text-[#00C2FF] flex items-center justify-center">
-                <Activity className="w-3.5 h-3.5" />
+          <div>
+            <div className="flex items-baseline justify-between">
+              <div>
+                <span className="text-[10px] font-mono text-white/45 block uppercase">SEISMIC PEAK</span>
+                <span className="text-xl font-bold text-white">{seismicPeak} <span className="text-xs text-white/50 font-normal">mm/s</span></span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-mono text-white/45 block uppercase">RAW PIEZO</span>
+                <span className="text-xs font-mono font-bold text-cyan-300">{rawPiezo}</span>
               </div>
             </div>
 
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-bold tracking-tight text-white">
-                  {seismicPeak}
-                </span>
-                <span className="text-xs font-normal text-white/50">mm/s</span>
-              </div>
-              <p className="text-[11px] text-[#00C2FF] mt-1 font-medium">
-                {(telemetry.delta_jerk || 0) > 1.2 ? "Structural Tremor" : "Subterranean Stable"}
-              </p>
-            </div>
-          </div>
-
-          {/* 3. RADAR & STRATA BEACON CARD */}
-          <div 
-            onClick={onCycleFrequency}
-            className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all cursor-pointer flex flex-col justify-between gap-2.5 group"
-            title="Click to toggle frequency (40 kHz / 60 kHz / 80 kHz)"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-white/55">Radar Frequency</span>
-              <div className="w-7 h-7 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center">
-                <Radio className="w-3.5 h-3.5" />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-bold tracking-tight text-white">
-                  {frequencyKhz}
-                </span>
-                <span className="text-xs font-normal text-white/50">kHz</span>
-                <span className="text-xs font-medium text-sky-400 ml-1">
-                  {isRadarLocked ? "Locked" : "Sweep"}
-                </span>
-              </div>
-              <p className="text-[11px] text-white/40 mt-1">
-                Click to switch frequency
-              </p>
+            {/* Seismic Peak Bar */}
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-all duration-300"
+                style={{ width: `${Math.min(100, Math.max(5, (seismicPeak / 100) * 100))}%` }}
+              />
             </div>
           </div>
+        </div>
 
-          {/* 4. ENVIRONMENTAL GAS & AIR QUALITY CARD */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-2.5">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold text-white/75 truncate">Environmental Gas</span>
-              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isEnvHazard ? "bg-red-500/20 text-red-400" : isEnvElevated ? "bg-amber-400/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}`}>
-                <Wind className="w-3.5 h-3.5" />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-bold tracking-tight text-white">
-                  {envGasPpm}
-                </span>
-                <span className="text-xs font-normal text-white/50">PPM</span>
-              </div>
-              <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border truncate tracking-wider ${envStatusColor}`}>
-                  {envAirStatus}
-                </span>
-              </div>
-            </div>
+        {/* Human Bio-Scent Card */}
+        <div className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 shadow-lg transition-all ${
+          humanScentDetected ? "bg-emerald-950/30 border-emerald-500/40" : "bg-[#080B12]/85 border-white/10"
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+              <User className={`w-4 h-4 ${humanScentDetected ? "text-emerald-400" : "text-white/50"}`} />
+              <span>Bio-Scent Ammonia</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${humanScentDetected ? "bg-emerald-500/20 text-emerald-300 border-emerald-400 animate-pulse" : "bg-white/5 text-white/40 border-white/10"}`}>
+              {humanScentDetected ? "DETECTED" : "SCANNING"}
+            </span>
           </div>
 
-          {/* 5. HUMAN BIO-SCENT DETECTOR CARD (Live Glowing Indicator Badge) */}
-          <div className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col justify-between gap-2.5 ${
-            humanScentDetected
-              ? "bg-emerald-500/[0.09] hover:bg-emerald-500/[0.15] border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
-              : "bg-white/[0.04] hover:bg-white/[0.07] border-white/10 hover:border-white/20"
-          }`}>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold text-white/75 truncate flex items-center gap-1">
-                <User className={`w-3.5 h-3.5 ${humanScentDetected ? "text-emerald-400" : "text-white/50"}`} />
-                <span>Bio-Scent</span>
+          <div>
+            <span className="text-[10px] font-mono text-white/45 block uppercase">CONCENTRATION</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-xl font-bold ${humanScentDetected ? "text-emerald-300" : "text-white"}`}>
+                {humanScentPpm}
               </span>
-              {/* Glowing Live Indicator Badge */}
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-1.5 transition-all ${
-                humanScentDetected
-                  ? "bg-emerald-500/25 text-emerald-300 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse"
-                  : "bg-white/5 text-white/40 border-white/10"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${humanScentDetected ? "bg-emerald-400 animate-ping" : "bg-white/30"}`} />
-                <span>{humanScentDetected ? "LOCKED" : "SCANNING"}</span>
-              </span>
+              <span className="text-xs text-white/50 font-normal">PPM</span>
             </div>
+            <p className={`text-[11px] font-semibold mt-1 truncate ${humanScentDetected ? "text-emerald-400" : "text-white/40"}`}>
+              {humanScentLabel}
+            </p>
+          </div>
+        </div>
 
-            <div>
-              <div className="flex items-baseline justify-between gap-1">
-                <div className="flex items-baseline gap-1.5">
-                  <span className={`text-xl font-bold tracking-tight ${humanScentDetected ? "text-emerald-300" : "text-white"}`}>
-                    {humanScentPpm}
-                  </span>
-                  <span className="text-xs font-normal text-white/50">PPM</span>
-                </div>
-                <span className="text-[10px] text-white/40 font-mono">SWEAT/AMMONIA</span>
-              </div>
-              <div className="mt-2 pt-2 border-t border-white/10">
-                <p className={`text-[11px] font-semibold tracking-wide truncate ${humanScentDetected ? "text-emerald-400" : "text-white/40"}`}>
-                  {humanScentLabel}
-                </p>
-              </div>
-            </div>
+        {/* Environmental Gas & Air Quality Card */}
+        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+              <Wind className="w-4 h-4 text-sky-400" />
+              <span>Environmental Air</span>
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${envGasPpm > 400 ? "bg-rose-500/20 text-rose-300 border-rose-400" : "bg-emerald-500/20 text-emerald-300 border-emerald-400"}`}>
+              {envGasPpm > 400 ? "HAZARD" : "SAFE"}
+            </span>
           </div>
 
-          {/* 6. ACOUSTIC SPECTRUM & SEISMIC TAP MATRIX CARD (v14.13) */}
-          <div className={`p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br ${acousticEnergyGradient} border transition-all flex flex-col justify-between gap-2.5`}>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold text-white/80 truncate flex items-center gap-1.5">
-                <Mic className="w-3.5 h-3.5" />
-                <span>Acoustic Matrix</span>
-              </span>
-              {/* Live acoustic energy level badge with dynamic color gradients reflecting audio intensity */}
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border tracking-wider flex items-center gap-1 ${acousticBadgeBg}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isLoudVoice || isHumanSpeech ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
-                <span>{acousticDb.toFixed(0)} dB</span>
-              </span>
+          <div>
+            <span className="text-[10px] font-mono text-white/45 block uppercase">GAS CONCENTRATION</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-white">{envGasPpm}</span>
+              <span className="text-xs text-white/50 font-normal">PPM</span>
             </div>
-
-            <div>
-              {/* Prominently displayed real-time acoustic_spectrum classification string */}
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider">Classification</span>
-                <span className="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight truncate" title={acousticSpectrum}>
-                  {acousticSpectrum}
-                </span>
-              </div>
-
-              {/* Dynamic Live Tap Counter widget updating dynamically on physical impacts from ESP32 piezo sensor */}
-              <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium text-white/60">Seismic Taps:</span>
-                  <span className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold ${tapCount > 0 ? "bg-amber-400/25 text-amber-300 border border-amber-400/40 animate-pulse" : "bg-white/5 text-white/60 border border-white/10"}`}>
-                    {tapCount}
-                  </span>
-                </div>
-                <span className="text-[9px] text-white/40 font-mono">PIEZO LIVE</span>
-              </div>
-            </div>
+            <p className="text-[11px] text-white/50 mt-1">
+              {envGasPpm > 400 ? "Toxic gas concentration detected" : "Atmospheric levels safe for extraction"}
+            </p>
           </div>
+        </div>
 
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          3. HARDWARE CONTROL PANEL (DISPATCH POST /api/control)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div className="w-full p-4 sm:p-5 rounded-3xl bg-[#070A10]/90 border border-white/12 flex flex-col gap-3 shadow-xl">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono font-bold tracking-wider text-[#C084FC] uppercase flex items-center gap-2">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>ESP32 HARDWARE CONTROL PANEL (POST /api/control)</span>
+          </span>
+          {isDispatching && (
+            <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+              <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+              <span>DISPATCHING...</span>
+            </span>
+          )}
+        </div>
+
+        {/* 5 Hardware Action Buttons */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {[
+            { mode: 0, label: "Mute All", sub: "Mode 0", color: "bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30" },
+            { mode: 1, label: "Locator Beacon", sub: "Mode 1", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30" },
+            { mode: 2, label: "Rescue Chirp", sub: "Mode 2", color: "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30" },
+            { mode: 3, label: "Evac Siren", sub: "Mode 3", color: "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30" },
+            { mode: 4, label: "Help on Way", sub: "Mode 4", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30" },
+          ].map((btn) => (
+            <button
+              key={btn.mode}
+              onClick={() => dispatchControlCommand(btn.mode)}
+              disabled={isDispatching}
+              className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer select-none active:scale-95 ${btn.color} ${buzzerLevel === btn.mode ? "ring-2 ring-white/50 shadow-lg" : ""}`}
+            >
+              <span className="text-xs font-bold font-sans">{btn.label}</span>
+              <span className="text-[10px] font-mono text-white/50">{btn.sub}</span>
+            </button>
+          ))}
         </div>
 
         {/* ROW 3: COMPACT HARDWARE SWITCHES & LOCATION (APPLE CONTROL ISLAND) */}

@@ -284,52 +284,52 @@ export default function AuraVoiceOrb({
     };
   }, [nodeIp, isPollingPaused]);
 
-  // Physical ESP32 Hardware Register Dispatcher (POST /api/telemetry)
+  // Physical ESP32 Hardware Register Dispatcher (POST /api/control and /api/telemetry)
   const sendHardwareControl = async (updates: {
     buzzer_level?: number;
+    buzzer_mode?: number;
     transducer_active?: boolean;
     ultrasonic_khz?: number;
     polling_ms?: number;
     overdrive?: boolean;
   }) => {
-    const payload = {
+    const payload: any = {
       buzzer_level: updates.buzzer_level !== undefined ? updates.buzzer_level : buzzerLevel,
+      buzzer_mode: updates.buzzer_mode !== undefined ? updates.buzzer_mode : updates.buzzer_level !== undefined ? updates.buzzer_level : buzzerLevel,
       transducer_active: updates.transducer_active !== undefined ? updates.transducer_active : isBeamActive,
       ultrasonic_khz: updates.ultrasonic_khz !== undefined ? updates.ultrasonic_khz : frequencyKhz,
-      polling_ms: updates.polling_ms !== undefined ? updates.polling_ms : 300,
+      polling_ms: updates.polling_ms !== undefined ? updates.polling_ms : 250,
       overdrive: updates.overdrive !== undefined ? updates.overdrive : isOverdrive
     };
 
     if (updates.buzzer_level !== undefined) setBuzzerLevel(updates.buzzer_level);
+    if (updates.buzzer_mode !== undefined) setBuzzerLevel(updates.buzzer_mode);
     if (updates.transducer_active !== undefined) setIsBeamActive(updates.transducer_active);
     if (updates.ultrasonic_khz !== undefined) setFrequencyKhz(updates.ultrasonic_khz);
     if (updates.overdrive !== undefined) setIsOverdrive(updates.overdrive);
 
     try {
-      let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
-      if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
-        if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
-          endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
-        } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
-          endpoint = `https://${nodeIp}/api/telemetry`;
-        } else {
-          endpoint = `http://${nodeIp}/api/telemetry`;
-        }
+      let base = nodeIp;
+      if (!base || base === "famous-meals-brake.loca.lt") {
+        base = "famous-meals-brake.loca.lt";
       }
 
-      let res;
-      try {
-        res = await fetch(endpoint, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Bypass-Tunnel-Reminder": "true",
-            "ngrok-skip-browser-warning": "true"
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res || !res.ok) {
-          res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
+      const endpoints = [];
+      if (base.startsWith("http://") || base.startsWith("https://")) {
+        const clean = base.replace(/\/api\/(control|telemetry)$/, "");
+        endpoints.push(`${clean}/api/control`, `${clean}/api/telemetry`);
+      } else if (base.includes("loca.lt") || base.includes("ngrok") || base.includes("vercel.app")) {
+        endpoints.push(`https://${base}/api/control`, `https://${base}/api/telemetry`);
+      } else {
+        endpoints.push(`http://${base}/api/control`, `http://${base}/api/telemetry`);
+      }
+      // Always fallback to famous-meals-brake if needed
+      endpoints.push("https://famous-meals-brake.loca.lt/api/control", "https://famous-meals-brake.loca.lt/api/telemetry");
+
+      let success = false;
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
@@ -338,19 +338,15 @@ export default function AuraVoiceOrb({
             },
             body: JSON.stringify(payload)
           });
+          if (res && res.ok) {
+            success = true;
+            break;
+          }
+        } catch {
+          // Try next endpoint fallback
         }
-      } catch {
-        res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Bypass-Tunnel-Reminder": "true",
-            "ngrok-skip-browser-warning": "true"
-          },
-          body: JSON.stringify(payload)
-        });
       }
-      return Boolean(res && res.ok);
+      return success;
     } catch (err) {
       console.error("Failed to update ESP32 hardware register:", err);
       return false;
@@ -576,27 +572,35 @@ export default function AuraVoiceOrb({
     let hwActionExecuted: string | null = null;
     let newBuzzerLevel: number | null = null;
 
-    const isBuzzerOff = /(off.*buzzer|buzzer.*off|turn.*off.*buzzer|buzzer.*0|mute|silent|stop.*buzzer|kill.*buzzer|shut.*up|quiet.*buzzer|off.*sound|sound.*off|mute.*sound)/i.test(q);
+    const isBuzzerHelp = /(help.*way|communicate.*help|broadcast.*help|send.*help|survivor.*message|comm.*mode|mode.*4)/i.test(q);
+    const isBuzzerSiren = /(siren|evac|evacuation.*alarm|emergency.*siren|alarm.*sound|mode.*3)/i.test(q);
+    const isBuzzerChirp = /(chirp|rescue.*chirp|pulse.*chirp|ping.*survivor|mode.*2)/i.test(q);
+    const isBuzzerBeacon = /(beacon|locator.*beacon|locator.*pulse|pulse.*beacon|mode.*1)/i.test(q);
+    const isBuzzerOff = /(off.*buzzer|buzzer.*off|turn.*off.*buzzer|buzzer.*0|mute|silent|silence|stop.*buzzer|kill.*buzzer|shut.*up|quiet.*buzzer|off.*sound|sound.*off|mute.*sound|mode.*0)/i.test(q);
     const isBuzzerMax = /(increase.*(buzzer|sound|hardware)|boost.*(buzzer|sound|hardware)|max.*(buzzer|sound|hardware)|(buzzer|sound).*max|(buzzer|sound).*3|level 3|louder|turn.*up.*buzzer|high.*buzzer|buzzer.*high)/i.test(q);
     const isBuzzerMed = /(buzzer.*2|level 2|medium.*(buzzer|sound)|(buzzer|sound).*medium)/i.test(q);
     const isBuzzerLow = /(buzzer.*1|level 1|low.*(buzzer|sound)|(buzzer|sound).*low|lower.*(buzzer|sound)|decrease.*(buzzer|sound)|turn.*down.*(buzzer|sound))/i.test(q);
 
-    if (isBuzzerOff) {
-      newBuzzerLevel = 0;
-      sendHardwareControl({ buzzer_level: 0 });
-      hwActionExecuted = "Acoustic buzzer turned off (muted).";
-    } else if (isBuzzerMax) {
+    if (isBuzzerHelp) {
+      newBuzzerLevel = 4;
+      sendHardwareControl({ buzzer_mode: 4, buzzer_level: 4 });
+      hwActionExecuted = "Dispatched Acoustic Mode 4: 'HELP IS ON THE WAY' audio signal to ESP32.";
+    } else if (isBuzzerSiren || isBuzzerMax) {
       newBuzzerLevel = 3;
-      sendHardwareControl({ buzzer_level: 3 });
-      hwActionExecuted = "Acoustic buzzer increased to maximum Level 3 (110 dB overdrive).";
-    } else if (isBuzzerMed) {
+      sendHardwareControl({ buzzer_mode: 3, buzzer_level: 3 });
+      hwActionExecuted = "Acoustic buzzer set to Mode 3: Evacuation Siren (110 dB).";
+    } else if (isBuzzerChirp || isBuzzerMed) {
       newBuzzerLevel = 2;
-      sendHardwareControl({ buzzer_level: 2 });
-      hwActionExecuted = "Acoustic buzzer set to Level 2 (98 dB alert).";
-    } else if (isBuzzerLow) {
+      sendHardwareControl({ buzzer_mode: 2, buzzer_level: 2 });
+      hwActionExecuted = "Acoustic buzzer set to Mode 2: Rescue Chirp.";
+    } else if (isBuzzerBeacon || isBuzzerLow) {
       newBuzzerLevel = 1;
-      sendHardwareControl({ buzzer_level: 1 });
-      hwActionExecuted = "Acoustic buzzer set to low Level 1 (85 dB).";
+      sendHardwareControl({ buzzer_mode: 1, buzzer_level: 1 });
+      hwActionExecuted = "Acoustic buzzer set to Mode 1: Locator Beacon Pulse.";
+    } else if (isBuzzerOff) {
+      newBuzzerLevel = 0;
+      sendHardwareControl({ buzzer_mode: 0, buzzer_level: 0 });
+      hwActionExecuted = "Acoustic buzzer muted (Mode 0: Standby).";
     }
 
     if (/(turn.*on.*overdrive|overdrive.*on|enable.*overdrive|boost.*hardware|hardware.*max|max.*hardware|increase.*hardware)/i.test(q)) {
@@ -631,7 +635,10 @@ export default function AuraVoiceOrb({
     let successfulModelName = "AURA Core";
 
     // Extract and mathematically compute advanced bio-acoustic, strata depth, and vital telemetry
-    const rawDepth = telemetry.depth_meters || (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 0);
+    const rawD = telemetry.depth_meters !== undefined 
+      ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0) 
+      : (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 0);
+    const rawDepth: number = Number(rawD || 0);
     const micFreq = telemetry.mic_freq_hz || 0;
     const tapCount = telemetry.tap_count || 0;
     const nh3Ppm = typeof telemetry.nh3_ppm === "number" ? telemetry.nh3_ppm : parseFloat(String(telemetry.nh3_ppm || "0")) || 0;
@@ -666,7 +673,7 @@ export default function AuraVoiceOrb({
     }
 
     // Deterministic Subterranean Burial Depth Estimation
-    let calculatedDepthMeters = rawDepth > 0 ? rawDepth : 0;
+    let calculatedDepthMeters: number = rawDepth > 0 ? rawDepth : 0;
     let depthProximityCategory = "Scanning Debris Strata";
 
     if (calculatedDepthMeters > 0) {
