@@ -1035,57 +1035,37 @@ Respond in STRICT JSON ONLY:
 }`;
 
       let resultJson: any = null;
-
-      if (selectedModel === "gemini-flash" || selectedModel === "gemini-pro" || selectedModel === "dual-consensus") {
+      const fallbackKey = typeof atob !== "undefined" ? atob("c2stb3ItdjEtNzA5OGNmMjZkYThhN2FjMjk0NmFjMzY0NWYzM2Y3MjZjYThjYWIyYTg5MjI5NWZlZmNiOWYxYjkwNDMxOTU2MQ==") : "";
+      const openRouterKey = propApiKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || fallbackKey;
+      const c2Models = ["google/gemini-2.5-flash", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat", "qwen/qwen-2.5-72b-instruct"];
+      
+      let usedModelName = "Google Gemini 2.5 Flash";
+      for (const m of c2Models) {
+        if (resultJson) break;
         try {
-          const modelName = selectedModel === "gemini-pro" ? "gemini-1.5-pro" : "gemini-1.5-flash";
-          const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`, {
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Authorization": `Bearer ${openRouterKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "https://aura-system.vercel.app",
+              "X-Title": "AURA Tactical C2"
+            },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: "application/json" }
+              model: m,
+              messages: [{ role: "user", content: prompt }]
             })
           });
           if (res.ok) {
             const data = await res.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) resultJson = JSON.parse(text);
+            const raw = data.choices?.[0]?.message?.content || "";
+            const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+            resultJson = JSON.parse(clean);
+            usedModelName = m;
+            break;
           }
         } catch (e) {
-          console.warn("Gemini API call failed, attempting OpenRouter...", e);
-        }
-      }
-
-      if (!resultJson) {
-        const fallbackKey = typeof atob !== "undefined" ? atob("c2stb3ItdjEtNzA5OGNmMjZkYThhN2FjMjk0NmFjMzY0NWYzM2Y3MjZjYThjYWIyYTg5MjI5NWZlZmNiOWYxYjkwNDMxOTU2MQ==") : "";
-        const openRouterKey = propApiKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || fallbackKey;
-        const c2Models = ["google/gemini-2.5-flash", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat"];
-        for (const m of c2Models) {
-          if (resultJson) break;
-          try {
-            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${openRouterKey}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                model: m,
-                messages: [{ role: "user", content: prompt }]
-              })
-            });
-            if (res.ok) {
-              const data = await res.json();
-              const raw = data.choices?.[0]?.message?.content || "";
-              const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-              resultJson = JSON.parse(clean);
-              break;
-            }
-          } catch (e) {
-            console.warn(`OpenRouter model ${m} error:`, e);
-          }
+          console.warn(`OpenRouter model ${m} error:`, e);
         }
       }
 
@@ -1099,7 +1079,7 @@ Respond in STRICT JSON ONLY:
           depthMeters: resultJson.depth_meters || telemetry.ai_depth_meters || 3.2,
           azimuthVector: resultJson.azimuth_vector || "320° NNW",
           reasoningLog: resultJson.reasoning_log || "Cross-sensor synthesis confirmed biological frequency matching human acoustic pattern.",
-          modelUsed: selectedModel === "gemini-flash" ? "GEMINI 1.5 FLASH" : selectedModel === "gemini-pro" ? "GEMINI 1.5 PRO" : selectedModel === "dual-consensus" ? "DUAL-CORE CONSENSUS" : "OPENROUTER DEEPSEEK"
+          modelUsed: usedModelName.toUpperCase()
         });
       } else {
         // Fallback computation strictly using real live hardware signals
