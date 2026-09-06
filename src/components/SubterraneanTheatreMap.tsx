@@ -42,7 +42,7 @@ interface SubterraneanTheatreMapProps {
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "famous-meals-brake.loca.lt",
+  nodeIp = "192.168.4.1",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -533,7 +533,7 @@ export default function SubterraneanTheatreMap({
                 onClick={onSwitchToVoice}
                 className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#C084FC]/25 to-[#9333EA]/35 hover:from-[#C084FC]/35 hover:to-[#9333EA]/45 border border-[#C084FC]/40 text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(192,132,252,0.25)] hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#C084FC]" />
+                <Mic className="w-3.5 h-3.5 text-[#C084FC]" />
                 <span>Talk to AI</span>
               </button>
             )}

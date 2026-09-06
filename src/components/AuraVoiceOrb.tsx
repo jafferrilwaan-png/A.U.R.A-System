@@ -1231,9 +1231,8 @@ OPERATIONAL DIRECTIVE:
                                 processQuery(pill);
                                 setTimeout(() => scrollToBottom(true), 40);
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/50 via-indigo-950/50 to-cyan-950/50 hover:from-purple-600/30 hover:to-cyan-500/30 border border-purple-400/35 hover:border-cyan-300 text-purple-200 hover:text-cyan-100 transition-all cursor-pointer text-[11px] shadow-[0_0_12px_rgba(168,85,247,0.18)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] active:scale-95 flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/50 via-indigo-950/50 to-cyan-950/50 hover:from-purple-600/30 hover:to-cyan-500/30 border border-purple-400/35 hover:border-cyan-300 text-purple-200 hover:text-cyan-100 transition-all cursor-pointer text-[11px] shadow-[0_0_12px_rgba(168,85,247,0.18)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] active:scale-95 flex items-center"
                             >
-                              <Sparkles className="w-3 h-3 text-cyan-400" />
                               <span>"{pill}"</span>
                             </button>
                           ))}
@@ -1294,7 +1293,7 @@ OPERATIONAL DIRECTIVE:
                       A
                     </div>
                     <div className="text-xs font-mono flex items-center gap-2 text-amber-300">
-                      <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
+                      <Activity className="w-4 h-4 text-amber-400 animate-pulse" />
                       <span>AURA neural engine is probing live hardware registers...</span>
                     </div>
                   </div>
