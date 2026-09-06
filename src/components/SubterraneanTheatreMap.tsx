@@ -409,9 +409,7 @@ export default function SubterraneanTheatreMap({
             speed={contourSpeed}
             disturbance={disturbanceValue}
             disturbanceFreq={frequencyKhz}
-            interactive={true}
-            onTransformChange={setMapTransform}
-            onResetRequested={(fn) => { resetTopoViewRef.current = fn; }}
+            interactive={false}
             className="w-full h-full absolute inset-0 opacity-90"
           />
 
@@ -419,17 +417,11 @@ export default function SubterraneanTheatreMap({
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
 
           {/* ═══════════════════════════════════════════════════════════════════
-              SYNCHRONIZED 3D RADAR & PIN ANCHOR LAYER
-              Locked rigidly to the 3D contour terrain zoom and pan coordinates
+              STRICTLY FIXED 3D RADAR & PIN ANCHOR LAYER (100% ROCK-SOLID)
+              Permanently locked to center without any drifting, scaling, or moving
           ═══════════════════════════════════════════════════════════════════ */}
-          <div 
-            className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center overflow-visible"
-            style={{
-              transform: `translate(${mapTransform.panX}px, ${mapTransform.panY}px) scale(${mapTransform.zoomScale})`,
-              transformOrigin: "center center",
-            }}
-          >
-            {/* Sonar Range Rings (Synchronized with 3D terrain) */}
+          <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center overflow-visible">
+            {/* Sonar Range Rings (Fixed to central transceiver) */}
             <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/10 border-dashed absolute" />
             <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/10 absolute" />
 
