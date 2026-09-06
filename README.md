@@ -185,6 +185,7 @@ npm run dev
 | **Kathiravan V** | Telemetry & Cloud Engineer | Resilient Tunnel Networking & Edge-to-Cloud Protocols |
 | **Kingston** | Firmware & Signal Specialist | ESP32 Real-Time Filtering, Audio DSP & Interrupt Logic |
 | **Giridhar K** | UI/UX & Tactical Ops Lead | High-Contrast Tactical C2 Interface & Field Responsiveness |
+| **Nithyashree V** | Embedded Power & QA Lead | Energy Regulation, Battery Management & Sub-Surface QA Testing |
 
 ---
 
