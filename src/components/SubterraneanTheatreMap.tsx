@@ -90,27 +90,27 @@ export default function SubterraneanTheatreMap({
       if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
         baseUrl = baseUrl.includes("loca.lt") || baseUrl.includes("ngrok") ? `https://${baseUrl}` : `http://${baseUrl}`;
       }
-      const endpoint = `${baseUrl}/api/control`;
-      const payload = { buzzer_mode: mode };
+      const endpoints = [
+        `${baseUrl}/api/control`,
+        "/api/control",
+        `${baseUrl}/api/telemetry`,
+        "/api/telemetry"
+      ];
       let res;
-      try {
-        res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Bypass-Tunnel-Reminder": "true"
-          },
-          body: JSON.stringify(payload)
-        });
-      } catch {
-        res = await fetch(`${baseUrl}/api/telemetry`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Bypass-Tunnel-Reminder": "true"
-          },
-          body: JSON.stringify({ buzzer_level: mode, buzzer_mode: mode })
-        });
+      for (const ep of endpoints) {
+        try {
+          res = await fetch(ep, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Bypass-Tunnel-Reminder": "true"
+            },
+            body: JSON.stringify(payload)
+          });
+          if (res && res.ok) break;
+        } catch {
+          // try next
+        }
       }
     } catch (e) {
       console.warn("Hardware control dispatch failed:", e);
@@ -393,7 +393,122 @@ export default function SubterraneanTheatreMap({
     <div className="w-full flex flex-col gap-4 font-sans text-white animate-fade-in">
       
       {/* ══════════════════════════════════════════════════════════════════════
-          1. CORE SPATIAL RESCUE HERO COMPONENT
+          1. MOVEABLE 3D SUBTERRANEAN TOPOGRAPHIC RADAR MAP (TOP SECTION)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div className="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col">
+        <div className="relative w-full h-[380px] sm:h-[440px] overflow-hidden flex items-center justify-center">
+          <TopoContour
+            contour={zoneColor === "RED" ? "#F43F5E" : zoneColor === "GREEN" ? "#10B981" : "#00C2FF"}
+            indexColor="#07FF00"
+            interval={11}
+            indexEvery={5}
+            thickness={10}
+            zoom={15}
+            detail={5}
+            ridges={15}
+            speed={contourSpeed}
+            disturbance={disturbanceValue}
+            disturbanceFreq={frequencyKhz}
+            interactive={true}
+            className="w-full h-full absolute inset-0 opacity-90"
+          />
+
+          {/* Depth Radial Overlay */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
+
+          {/* PIN RENDERING LOGIC:
+              1. If NOT connected -> No pin shown at all!
+              2. If connected -> White Node in center
+              3. If survivors detected -> Colored surrounding points with depth */}
+          {isConnected && (
+            <>
+              {/* Center White Node Pin */}
+              <div 
+                className="absolute z-20 flex flex-col items-center select-none pointer-events-none"
+                style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+              >
+                <div className="relative flex items-center justify-center">
+                  <span className="absolute w-8 h-8 rounded-full animate-ping bg-white/40 opacity-75" />
+                  <span className="relative w-4 h-4 rounded-full bg-white shadow-[0_0_20px_#ffffff] border-2 border-slate-300" />
+                </div>
+                <div className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/85 border border-white/30 text-white shadow-xl">
+                  A.U.R.A. NODE
+                </div>
+              </div>
+
+              {/* Detected Human Survivors Surrounding the Node */}
+              {rawSurvivorCount > 0 && (
+                <>
+                  {/* Primary Detected Human Point with Depth */}
+                  <div 
+                    className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
+                    style={{ 
+                      top: `${Math.min(75, Math.max(25, 48 - (rawDepth * 4)))}%`,
+                      left: `${Math.min(75, Math.max(25, 52 + (rawRange * 4)))}%`,
+                      transform: "translate(-50%, -50%)"
+                    }}
+                  >
+                    <div className="relative flex items-center justify-center">
+                      <span 
+                        className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
+                        style={{ backgroundColor: zoneConfig.glowColor }}
+                      />
+                      <span 
+                        className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
+                        style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
+                      />
+                    </div>
+                    <div 
+                      className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
+                      <span>{rawSurvivorCount > 1 ? "Victim 1" : "Survivor"} ({rawDepth.toFixed(2)}m)</span>
+                    </div>
+                  </div>
+
+                  {/* Secondary Detected Human Point (if >= 2 survivors) */}
+                  {rawSurvivorCount >= 2 && (
+                    <div 
+                      className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
+                      style={{ 
+                        top: `${Math.min(80, Math.max(20, 52 + (rawDepth * 3)))}%`,
+                        left: `${Math.min(80, Math.max(20, 48 - (rawRange * 3.5)))}%`,
+                        transform: "translate(-50%, -50%)"
+                      }}
+                    >
+                      <div className="relative flex items-center justify-center">
+                        <span 
+                          className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
+                          style={{ backgroundColor: zoneConfig.glowColor }}
+                        />
+                        <span 
+                          className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
+                          style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
+                        />
+                      </div>
+                      <div 
+                        className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
+                        <span>Victim 2 ({(rawDepth * 1.12).toFixed(2)}m)</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Sonar Range Rings */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/5 border-dashed" />
+            <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/5" />
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          2. CORE SPATIAL RESCUE HERO COMPONENT (DOWN THE MAP)
       ══════════════════════════════════════════════════════════════════════ */}
       <div className={`w-full rounded-3xl p-5 sm:p-6 border transition-all duration-500 flex flex-col gap-4 shadow-2xl relative overflow-hidden backdrop-blur-xl ${
         zoneColor === "RED" 
@@ -408,9 +523,9 @@ export default function SubterraneanTheatreMap({
         {/* Top Header Strip with Live Hardware State Badge */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-ping" />
-            <span className="font-mono text-xs font-bold tracking-wider text-emerald-400 uppercase">
-              {isConnected ? "A.U.R.A. v17.0 HARDWARE NODE LINKED" : "AWAITING ESP32 PACKET STREAM"}
+            <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : "bg-amber-400 animate-pulse"}`} />
+            <span className={`font-mono text-xs font-bold tracking-wider uppercase ${isConnected ? "text-emerald-400" : "text-amber-400"}`}>
+              {isConnected ? "A.U.R.A. v18.0 HARDWARE NODE LINKED" : "AWAITING ESP32 PACKET STREAM"}
             </span>
           </div>
 
@@ -516,69 +631,6 @@ export default function SubterraneanTheatreMap({
           </div>
         )}
 
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          MOVEABLE 3D SUBTERRANEAN TOPOGRAPHIC RADAR MAP
-      ══════════════════════════════════════════════════════════════════════ */}
-      <div className="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col">
-        <div className="relative w-full h-[380px] sm:h-[440px] overflow-hidden flex items-center justify-center">
-          <TopoContour
-            contour={zoneColor === "RED" ? "#F43F5E" : zoneColor === "GREEN" ? "#10B981" : "#00C2FF"}
-            indexColor="#07FF00"
-            interval={11}
-            indexEvery={5}
-            thickness={10}
-            zoom={15}
-            detail={5}
-            ridges={15}
-            speed={contourSpeed}
-            disturbance={disturbanceValue}
-            disturbanceFreq={frequencyKhz}
-            interactive={true}
-            className="w-full h-full absolute inset-0 opacity-90"
-          />
-
-          {/* Depth Radial Overlay */}
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
-
-          {/* Target Blip */}
-          <div 
-            onClick={handleOpenGoogleMaps}
-            className="absolute z-30 transition-all duration-700 flex flex-col items-center cursor-pointer group active:scale-95 select-none"
-            style={{ 
-              top: `${rawDepth > 0 ? Math.min(75, Math.max(30, 35 + (rawDepth * 5))) : 50}%`,
-              left: "50%",
-              transform: "translate(-50%, -50%)"
-            }}
-            title="Touch Target to open location on Google Maps"
-          >
-            <div className="relative flex items-center justify-center">
-              <span 
-                className="absolute w-12 h-12 rounded-full animate-ping opacity-75"
-                style={{ backgroundColor: zoneConfig.glowColor }}
-              />
-              <span 
-                className="relative w-4 h-4 rounded-full shadow-[0_0_20px_currentColor] border-2 border-white group-hover:scale-125 transition-transform"
-                style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
-              />
-            </div>
-
-            <div className="mt-2.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wide backdrop-blur-xl border border-white/20 bg-black/85 shadow-xl flex items-center gap-2 text-white">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
-              <span>{rawSurvivorCount > 0 ? `${rawSurvivorCount} Trapped (${rawDepth.toFixed(1)}m)` : `Target Lock (${rawDepth.toFixed(1)}m)`}</span>
-              <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/20 px-1.5 py-0.5 rounded border border-cyan-400/40">
-                Maps ↗
-              </span>
-            </div>
-          </div>
-
-          {/* Sonar Range Rings */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/5 border-dashed" />
-            <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/5" />
-          </div>
-        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════

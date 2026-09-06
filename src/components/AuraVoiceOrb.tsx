@@ -213,54 +213,36 @@ export default function AuraVoiceOrb({
     const pollTelemetry = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 1800);
 
-        let endpoint = "http://192.168.43.101/api/telemetry";
-        if (nodeIp) {
-          if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
-            endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
-          } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
-            endpoint = `https://${nodeIp}/api/telemetry`;
-          } else {
-            endpoint = `http://${nodeIp}/api/telemetry`;
-          }
-        }
+        const endpoints = [
+          `http://${nodeIp || "192.168.43.101"}/api/telemetry`,
+          "/api/telemetry",
+          "http://192.168.43.101/api/telemetry"
+        ];
 
-        let res;
-        try {
-          res = await fetch(endpoint, { 
-            signal: controller.signal,
-            headers: { 
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "Bypass-Tunnel-Reminder": "true",
-              "ngrok-skip-browser-warning": "true" 
-            }
-          });
-          if (!res || !res.ok) {
-            res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", { 
+        let res: Response | null = null;
+        for (const ep of endpoints) {
+          try {
+            const r = await fetch(ep, {
               signal: controller.signal,
-              headers: { 
+              headers: {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "Bypass-Tunnel-Reminder": "true",
-                "ngrok-skip-browser-warning": "true" 
+                "Bypass-Tunnel-Reminder": "true"
               }
             });
-          }
-        } catch {
-          res = await fetch("https://famous-meals-brake.loca.lt/api/telemetry", { 
-            signal: controller.signal,
-            headers: { 
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "Bypass-Tunnel-Reminder": "true",
-              "ngrok-skip-browser-warning": "true" 
+            if (r && r.ok) {
+              res = r;
+              break;
             }
-          });
+          } catch {
+            // try next endpoint
+          }
         }
+
         clearTimeout(timeoutId);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res || !res.ok) throw new Error("Connection failed");
         const data = await res.json();
         if (isMounted) {
           failureCount = 0;
@@ -294,24 +276,9 @@ export default function AuraVoiceOrb({
     };
   }, [nodeIp, isPollingPaused]);
 
-  // Physical ESP32 Hardware Register Dispatcher (POST /api/control and /api/telemetry)
-  const sendHardwareControl = async (updates: {
-    buzzer_level?: number;
-    buzzer_mode?: number;
-    transducer_active?: boolean;
-    ultrasonic_khz?: number;
-    polling_ms?: number;
-    overdrive?: boolean;
-  }) => {
-    const payload: any = {
-      buzzer_level: updates.buzzer_level !== undefined ? updates.buzzer_level : buzzerLevel,
-      buzzer_mode: updates.buzzer_mode !== undefined ? updates.buzzer_mode : updates.buzzer_level !== undefined ? updates.buzzer_level : buzzerLevel,
-      transducer_active: updates.transducer_active !== undefined ? updates.transducer_active : isBeamActive,
-      ultrasonic_khz: updates.ultrasonic_khz !== undefined ? updates.ultrasonic_khz : frequencyKhz,
-      polling_ms: updates.polling_ms !== undefined ? updates.polling_ms : 250,
-      overdrive: updates.overdrive !== undefined ? updates.overdrive : isOverdrive
-    };
-
+  // Direct Hardware Control Trigger (POST /api/control)
+  const sendHardwareBuzzerCommand = async (payload: { [key: string]: any }, feedbackLabel?: string) => {
+    const updates = payload;
     if (updates.buzzer_level !== undefined) setBuzzerLevel(updates.buzzer_level);
     if (updates.buzzer_mode !== undefined) setBuzzerLevel(updates.buzzer_mode);
     if (updates.transducer_active !== undefined) setIsBeamActive(updates.transducer_active);
@@ -319,22 +286,12 @@ export default function AuraVoiceOrb({
     if (updates.overdrive !== undefined) setIsOverdrive(updates.overdrive);
 
     try {
-      let base = nodeIp;
-      if (!base || base === "famous-meals-brake.loca.lt") {
-        base = "famous-meals-brake.loca.lt";
-      }
-
-      const endpoints = [];
-      if (base.startsWith("http://") || base.startsWith("https://")) {
-        const clean = base.replace(/\/api\/(control|telemetry)$/, "");
-        endpoints.push(`${clean}/api/control`, `${clean}/api/telemetry`);
-      } else if (base.includes("loca.lt") || base.includes("ngrok") || base.includes("vercel.app")) {
-        endpoints.push(`https://${base}/api/control`, `https://${base}/api/telemetry`);
-      } else {
-        endpoints.push(`http://${base}/api/control`, `http://${base}/api/telemetry`);
-      }
-      // Always fallback to famous-meals-brake if needed
-      endpoints.push("https://famous-meals-brake.loca.lt/api/control", "https://famous-meals-brake.loca.lt/api/telemetry");
+      const endpoints = [
+        `http://${nodeIp || "192.168.43.101"}/api/control`,
+        "/api/control",
+        `http://${nodeIp || "192.168.43.101"}/api/telemetry`,
+        "/api/telemetry"
+      ];
 
       let success = false;
       for (const ep of endpoints) {
@@ -343,8 +300,7 @@ export default function AuraVoiceOrb({
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
-              "Bypass-Tunnel-Reminder": "true",
-              "ngrok-skip-browser-warning": "true"
+              "Bypass-Tunnel-Reminder": "true"
             },
             body: JSON.stringify(payload)
           });
@@ -353,7 +309,7 @@ export default function AuraVoiceOrb({
             break;
           }
         } catch {
-          // Try next endpoint fallback
+          // try next
         }
       }
       return success;
