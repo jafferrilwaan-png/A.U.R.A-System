@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import TopoContour from "./TopoContour";
 import { TelemetryPayload } from "./TacticalC2Dashboard";
 import { 
@@ -339,16 +339,57 @@ export default function SubterraneanTheatreMap({
     statusSubtext = `Echo signature detected • Resonant strata reflection`;
   }
 
+  // Dynamic Real-time Disturbance Calculation from Live Hardware Telemetry
+  const lastTapRef = useRef<number>(telemetry.tap_count || 0);
+  const [disturbanceValue, setDisturbanceValue] = useState<number>(0);
+
+  useEffect(() => {
+    const currentTaps = telemetry.tap_count || 0;
+    const acousticEnergy = telemetry.acoustic_energy || 0;
+    const seismicSpike = telemetry.seismic_peak || 0;
+    const jerkSpike = telemetry.delta_jerk || 0;
+
+    let targetDisturbance = 0;
+
+    // Tap shockwave spike
+    if (currentTaps > lastTapRef.current) {
+      targetDisturbance = 1.0;
+      lastTapRef.current = currentTaps;
+    } else if (currentTaps > 0) {
+      targetDisturbance = 0.55;
+    }
+
+    // Acoustic dB disturbance
+    if (acousticEnergy > 45) {
+      targetDisturbance = Math.max(targetDisturbance, Math.min(1.0, acousticEnergy / 70));
+    } else if (acousticEnergy > 25) {
+      targetDisturbance = Math.max(targetDisturbance, 0.45);
+    }
+
+    // Seismic tremor disturbance
+    if (seismicSpike > 3.0 || jerkSpike > 1.2) {
+      targetDisturbance = Math.max(targetDisturbance, 0.85);
+    }
+
+    if (targetDisturbance > 0) {
+      setDisturbanceValue(targetDisturbance);
+      const timer = setTimeout(() => {
+        setDisturbanceValue(0);
+      }, 2400);
+      return () => clearTimeout(timer);
+    }
+  }, [telemetry.tap_count, telemetry.acoustic_energy, telemetry.seismic_peak, telemetry.delta_jerk]);
+
   const hasGpsFix = isConnected && (Boolean(telemetry.gps_locked) || (Boolean(telemetry.lat) && telemetry.lat !== 0));
 
   return (
     <div className="w-full flex flex-col gap-4 font-sans text-white">
-      {/* 3D TOPOGRAPHIC CONTOUR RADAR CANVAS - ORIGINKIT FLUID CONTOUR ANIMATION */}
+      {/* 3D TOPOGRAPHIC CONTOUR RADAR CANVAS - 3D INTERACTIVE & SEISMIC DISTURBANCE SHOCKWAVES */}
       <div className="relative w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl flex flex-col">
         <div className="relative w-full h-[400px] sm:h-[460px] overflow-hidden flex items-center justify-center">
           <TopoContour
-            contour="#00C2FF"
-            indexColor="#07FF00"
+            contour={primaryColor}
+            indexColor={isBiological ? "#10B981" : isEnvHazard ? "#EF4444" : "#07FF00"}
             interval={11}
             indexEvery={5}
             thickness={10}
@@ -356,7 +397,10 @@ export default function SubterraneanTheatreMap({
             detail={5}
             ridges={15}
             speed={contourSpeed}
-            className="w-full h-full absolute inset-0 opacity-85"
+            disturbance={disturbanceValue}
+            disturbanceFreq={frequencyKhz}
+            interactive={true}
+            className="w-full h-full absolute inset-0 opacity-90"
           />
 
           {/* Depth Radial Overlay */}
