@@ -428,64 +428,47 @@ export default function SubterraneanTheatreMap({
                 </div>
               </div>
 
-              {/* Detected Human Survivors Surrounding the Node */}
+              {/* Detected Human Survivors Surrounding the Node (Exact Dynamic Real Pins) */}
               {rawSurvivorCount > 0 && (
                 <>
-                  {/* Primary Detected Human Point with Depth */}
-                  <div 
-                    className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
-                    style={{ 
-                      top: `${Math.min(75, Math.max(25, 48 - (rawDepth * 4)))}%`,
-                      left: `${Math.min(75, Math.max(25, 52 + (rawRange * 4)))}%`,
-                      transform: "translate(-50%, -50%)"
-                    }}
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <span 
-                        className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
-                        style={{ backgroundColor: zoneConfig.glowColor }}
-                      />
-                      <span 
-                        className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
-                        style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
-                      />
-                    </div>
-                    <div 
-                      className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
-                      <span>{rawSurvivorCount > 1 ? "Victim 1" : "Survivor"} ({rawDepth.toFixed(2)}m)</span>
-                    </div>
-                  </div>
+                  {Array.from({ length: rawSurvivorCount }).map((_, index) => {
+                    const total = rawSurvivorCount;
+                    const baseRadius = Math.min(32, Math.max(18, (rawRange > 0 ? rawRange * 12 : 24)));
+                    const angleOffset = -Math.PI / 4;
+                    const angle = (2 * Math.PI * index) / total + angleOffset;
+                    
+                    const topPos = Math.min(82, Math.max(18, 50 + Math.sin(angle) * baseRadius));
+                    const leftPos = Math.min(82, Math.max(18, 50 + Math.cos(angle) * baseRadius));
 
-                  {/* Secondary Detected Human Point (if >= 2 survivors) */}
-                  {rawSurvivorCount >= 2 && (
-                    <div 
-                      className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
-                      style={{ 
-                        top: `${Math.min(80, Math.max(20, 52 + (rawDepth * 3)))}%`,
-                        left: `${Math.min(80, Math.max(20, 48 - (rawRange * 3.5)))}%`,
-                        transform: "translate(-50%, -50%)"
-                      }}
-                    >
-                      <div className="relative flex items-center justify-center">
-                        <span 
-                          className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
-                          style={{ backgroundColor: zoneConfig.glowColor }}
-                        />
-                        <span 
-                          className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
-                          style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
-                        />
-                      </div>
+                    return (
                       <div 
-                        className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white"
+                        key={`victim-${index}`}
+                        className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
+                        style={{ 
+                          top: `${topPos}%`,
+                          left: `${leftPos}%`,
+                          transform: "translate(-50%, -50%)"
+                        }}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
-                        <span>Victim 2 ({(rawDepth * 1.12).toFixed(2)}m)</span>
+                        <div className="relative flex items-center justify-center">
+                          <span 
+                            className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
+                            style={{ backgroundColor: zoneConfig.glowColor }}
+                          />
+                          <span 
+                            className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
+                            style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
+                          />
+                        </div>
+                        <div 
+                          className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white whitespace-nowrap"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
+                          <span>{total > 1 ? `Victim ${index + 1}` : "Survivor"} ({rawDepth.toFixed(2)}m)</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </>
               )}
             </>
