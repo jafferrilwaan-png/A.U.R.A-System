@@ -71,6 +71,14 @@ export default function SubterraneanTheatreMap({
   const [mapInputIp, setMapInputIp] = useState<string>(nodeIp);
   const [mapIpSaved, setMapIpSaved] = useState<boolean>(false);
 
+  // Synchronized 3D Radar Transformation State (Tethered to TopoContour)
+  const [mapTransform, setMapTransform] = useState<{ panX: number; panY: number; zoomScale: number }>({
+    panX: 0,
+    panY: 0,
+    zoomScale: 1.0,
+  });
+  const resetTopoViewRef = useRef<(() => void) | null>(null);
+
   // Laptop GPS Geolocation & Live Map Modal State
   const [gpsData, setGpsData] = useState<{
     lat: number;
@@ -402,82 +410,94 @@ export default function SubterraneanTheatreMap({
             disturbance={disturbanceValue}
             disturbanceFreq={frequencyKhz}
             interactive={true}
+            onTransformChange={setMapTransform}
+            onResetRequested={(fn) => { resetTopoViewRef.current = fn; }}
             className="w-full h-full absolute inset-0 opacity-90"
           />
 
           {/* Depth Radial Overlay */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
 
-          {/* PIN RENDERING LOGIC:
-              1. If NOT connected -> No pin shown at all!
-              2. If connected -> White Node in center
-              3. If survivors detected -> Colored surrounding points with depth */}
-          {isConnected && (
-            <>
-              {/* Center White Node Pin */}
-              <div 
-                className="absolute z-20 flex flex-col items-center select-none pointer-events-none"
-                style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
-              >
-                <div className="relative flex items-center justify-center">
-                  <span className="absolute w-8 h-8 rounded-full animate-ping bg-white/40 opacity-75" />
-                  <span className="relative w-4 h-4 rounded-full bg-white shadow-[0_0_20px_#ffffff] border-2 border-slate-300" />
-                </div>
-                <div className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/85 border border-white/30 text-white shadow-xl">
-                  A.U.R.A. NODE
-                </div>
-              </div>
+          {/* ═══════════════════════════════════════════════════════════════════
+              SYNCHRONIZED 3D RADAR & PIN ANCHOR LAYER
+              Locked rigidly to the 3D contour terrain zoom and pan coordinates
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div 
+            className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center overflow-visible"
+            style={{
+              transform: `translate(${mapTransform.panX}px, ${mapTransform.panY}px) scale(${mapTransform.zoomScale})`,
+              transformOrigin: "center center",
+            }}
+          >
+            {/* Sonar Range Rings (Synchronized with 3D terrain) */}
+            <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/10 border-dashed absolute" />
+            <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/10 absolute" />
 
-              {/* Detected Human Survivors Surrounding the Node (Exact Dynamic Real Pins) */}
-              {rawSurvivorCount > 0 && (
-                <>
-                  {Array.from({ length: rawSurvivorCount }).map((_, index) => {
-                    const total = rawSurvivorCount;
-                    const baseRadius = Math.min(32, Math.max(18, (rawRange > 0 ? rawRange * 12 : 24)));
-                    const angleOffset = -Math.PI / 4;
-                    const angle = (2 * Math.PI * index) / total + angleOffset;
-                    
-                    const topPos = Math.min(82, Math.max(18, 50 + Math.sin(angle) * baseRadius));
-                    const leftPos = Math.min(82, Math.max(18, 50 + Math.cos(angle) * baseRadius));
+            {/* PIN RENDERING LOGIC:
+                1. If NOT connected -> No pin shown at all!
+                2. If connected -> White Node in center
+                3. If survivors detected -> Stable colored surrounding points with exact depth */}
+            {isConnected && (
+              <>
+                {/* Center White Node Pin (Central Transceiver Anchor) */}
+                <div 
+                  className="absolute z-20 flex flex-col items-center select-none"
+                  style={{ transform: "translate(-50%, -50%)", left: "50%", top: "50%" }}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <span className="absolute w-8 h-8 rounded-full animate-ping bg-white/40 opacity-75" />
+                    <span className="relative w-4 h-4 rounded-full bg-white shadow-[0_0_20px_#ffffff] border-2 border-slate-300" />
+                  </div>
+                  <div className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/90 border border-white/40 text-white shadow-xl whitespace-nowrap">
+                    A.U.R.A. NODE
+                  </div>
+                </div>
 
-                    return (
-                      <div 
-                        key={`victim-${index}`}
-                        className="absolute z-30 transition-all duration-700 flex flex-col items-center select-none animate-pulse"
-                        style={{ 
-                          top: `${topPos}%`,
-                          left: `${leftPos}%`,
-                          transform: "translate(-50%, -50%)"
-                        }}
-                      >
-                        <div className="relative flex items-center justify-center">
-                          <span 
-                            className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
-                            style={{ backgroundColor: zoneConfig.glowColor }}
-                          />
-                          <span 
-                            className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
-                            style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
-                          />
-                        </div>
+                {/* Detected Human Survivors Surrounding the Node (Rigid Stable Coordinates) */}
+                {rawSurvivorCount > 0 && (
+                  <>
+                    {Array.from({ length: rawSurvivorCount }).map((_, index) => {
+                      const total = rawSurvivorCount;
+                      // Stable, deterministic radial bearing around transceiver
+                      const angle = (2 * Math.PI * index) / total - Math.PI / 4;
+                      // Fixed radial radius based on detected strata
+                      const radiusPx = 75 + (index * 22) % 35;
+                      const offsetX = Math.cos(angle) * radiusPx;
+                      const offsetY = Math.sin(angle) * radiusPx;
+
+                      return (
                         <div 
-                          className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/20 bg-black/90 shadow-xl flex items-center gap-1.5 text-white whitespace-nowrap"
+                          key={`victim-${index}`}
+                          className="absolute z-30 flex flex-col items-center select-none animate-pulse"
+                          style={{ 
+                            left: `calc(50% + ${offsetX}px)`,
+                            top: `calc(50% + ${offsetY}px)`,
+                            transform: "translate(-50%, -50%)"
+                          }}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
-                          <span>{total > 1 ? `Victim ${index + 1}` : "Survivor"} ({rawDepth.toFixed(2)}m)</span>
+                          <div className="relative flex items-center justify-center">
+                            <span 
+                              className="absolute w-10 h-10 rounded-full animate-ping opacity-75"
+                              style={{ backgroundColor: zoneConfig.glowColor }}
+                            />
+                            <span 
+                              className="relative w-3.5 h-3.5 rounded-full shadow-[0_0_15px_currentColor] border border-white"
+                              style={{ backgroundColor: zoneConfig.glowColor, color: zoneConfig.glowColor }}
+                            />
+                          </div>
+                          <div 
+                            className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold backdrop-blur-md border border-white/30 bg-black/95 shadow-2xl flex items-center gap-1.5 text-white whitespace-nowrap"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: zoneConfig.glowColor }} />
+                            <span>{total > 1 ? `Victim ${index + 1}` : "Survivor"} ({rawDepth.toFixed(2)}m)</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </>
-          )}
-
-          {/* Sonar Range Rings */}
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-            <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-white/5 border-dashed" />
-            <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-white/5" />
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

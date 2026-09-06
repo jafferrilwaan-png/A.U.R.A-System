@@ -32,6 +32,7 @@ type Config = {
     disturbance?: number; // 0.0 to 1.0 intensity
     disturbanceFreq?: number; // Hz frequency
     interactive?: boolean;
+    onTransformChange?: (transform: { panX: number; panY: number; zoomScale: number }) => void;
 };
 
 function clamp(v: number, lo: number, hi: number, fallback: number): number {
@@ -216,6 +217,9 @@ export class TopoScene {
     public targetZoom = 1.0;
     public currentZoom = 1.0;
 
+    private lastEmittedPan = new THREE.Vector2(9999, 9999);
+    private lastEmittedZoom = -1;
+
     // Disturbance Wave State
     public disturbanceIntensity = 0.0;
     public targetDisturbance = 0.0;
@@ -359,6 +363,22 @@ export class TopoScene {
         u.uDisturbancePhase.value = this.disturbancePhase;
         u.uDisturbanceFreq.value = this.disturbanceFreq;
 
+        // Emit transform changes to synchronize 3D radar survivor pins
+        if (this.cfg.onTransformChange) {
+            const zoomScale = 1.0 / Math.max(0.1, this.currentZoom);
+            const panX = -this.currentPan.x * 220 * zoomScale;
+            const panY = this.currentPan.y * 220 * zoomScale;
+            if (
+                Math.abs(panX - this.lastEmittedPan.x) > 0.05 ||
+                Math.abs(panY - this.lastEmittedPan.y) > 0.05 ||
+                Math.abs(zoomScale - this.lastEmittedZoom) > 0.001
+            ) {
+                this.lastEmittedPan.set(panX, panY);
+                this.lastEmittedZoom = zoomScale;
+                this.cfg.onTransformChange({ panX, panY, zoomScale });
+            }
+        }
+
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -387,6 +407,7 @@ interface TopoContourProps {
     disturbanceFreq?: number; // Signal frequency in Hz
     interactive?: boolean;
     onResetRequested?: (resetFn: () => void) => void;
+    onTransformChange?: (transform: { panX: number; panY: number; zoomScale: number }) => void;
     style?: React.CSSProperties;
     className?: string;
 }
@@ -405,6 +426,8 @@ export default function TopoContour(props: TopoContourProps) {
         disturbance = 0,
         disturbanceFreq = 40,
         interactive = true,
+        onResetRequested,
+        onTransformChange,
         style,
         className = "",
     } = props;
@@ -437,6 +460,7 @@ export default function TopoContour(props: TopoContourProps) {
         disturbance,
         disturbanceFreq,
         interactive,
+        onTransformChange,
     };
 
     useEffect(() => {
@@ -577,11 +601,20 @@ export default function TopoContour(props: TopoContourProps) {
         disturbanceFreq,
     ]);
 
-    const handleReset = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleReset = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
         sceneRef.current?.resetView();
         setHasMoved(false);
     };
+
+    useEffect(() => {
+        if (onResetRequested) {
+            onResetRequested(() => {
+                sceneRef.current?.resetView();
+                setHasMoved(false);
+            });
+        }
+    }, [onResetRequested]);
 
     const handlePulse = (e: React.MouseEvent) => {
         e.stopPropagation();
