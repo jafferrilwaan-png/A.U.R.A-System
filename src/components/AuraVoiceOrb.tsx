@@ -941,15 +941,15 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
       {/* Main Container */}
       <div className="relative z-10 w-full max-w-5xl mx-auto min-h-screen flex flex-col justify-between p-4 sm:p-6 gap-4">
         
-        {/* LUXURY macOS Tahoe GLASS NAVIGATION HEADER */}
-        <header className="w-full bg-black/50 backdrop-blur-2xl border border-white/12 rounded-2xl px-3.5 py-2.5 flex items-center justify-between shadow-2xl gap-2 font-sans">
+        {/* LUXURY macOS Tahoe GLASS NAVIGATION HEADER (OPTIMIZED FOR 60FPS MOBILE & DESKTOP) */}
+        <header className="w-full bg-black/75 backdrop-blur-md border border-white/12 rounded-2xl px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between shadow-2xl gap-1.5 sm:gap-3 font-sans transform-gpu will-change-transform">
           
           {/* LEFT: Back Button & Minimal Brand / Node Status */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#C084FC]/50 text-white/90 hover:text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#C084FC]/50 text-white/90 hover:text-white text-[11px] sm:text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <ArrowLeft className="w-3.5 h-3.5 text-[#C084FC]" />
                 <span className="hidden sm:inline">Overview</span>
@@ -958,10 +958,10 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
 
             <div className="h-4 w-px bg-white/10 hidden sm:block" />
 
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-white text-sm tracking-wider flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-white text-xs sm:text-sm tracking-wider flex items-center gap-1">
                 A.U.R.A.
-                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-[#C084FC]/20 text-[#C084FC] border border-[#C084FC]/30 uppercase hidden md:inline">
+                <span className="text-[9px] sm:text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-[#C084FC]/20 text-[#C084FC] border border-[#C084FC]/30 uppercase hidden md:inline">
                   C2
                 </span>
               </span>
@@ -969,22 +969,22 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
 
             {/* Node Status Pill */}
             <div
-              className={`font-mono text-[11px] font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all ${
+              className={`font-mono text-[10px] sm:text-[11px] font-medium flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border transition-all ${
                 isConnected
                   ? "bg-[#10B981]/15 border-[#10B981]/30 text-[#10B981]"
                   : "bg-amber-400/10 border-amber-400/25 text-amber-300"
               }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : "bg-amber-400"}`} />
-              <span className="tracking-tight">{isConnected ? "Node Online" : "Standby"}</span>
+              <span className="tracking-tight hidden xs:inline">{isConnected ? "Online" : "Standby"}</span>
             </div>
           </div>
 
           {/* CENTER: Floating Segmented Switcher Capsule (VOICE AI | 3D MAP | SETTINGS) */}
-          <div className="flex items-center p-1 rounded-xl bg-black/60 border border-white/15 backdrop-blur-xl shadow-inner">
+          <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-black/60 border border-white/15 backdrop-blur-md shadow-inner">
             <button
               onClick={() => setActiveTab("voice")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 font-bold transition-all cursor-pointer text-xs ${
+              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 font-bold transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "voice"
                   ? "bg-[#C084FC] text-black shadow-[0_0_15px_rgba(192,132,252,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -996,7 +996,7 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
 
             <button
               onClick={() => setActiveTab("theatre_map")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 font-bold transition-all cursor-pointer text-xs ${
+              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 font-bold transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "theatre_map"
                   ? "bg-[#00C2FF] text-black shadow-[0_0_15px_rgba(0,194,255,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -1008,7 +1008,7 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
 
             <button
               onClick={() => setActiveTab("settings")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 font-bold transition-all cursor-pointer text-xs ${
+              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg flex items-center gap-1 sm:gap-1.5 font-bold transition-all cursor-pointer text-[11px] sm:text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "settings"
                   ? "bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -1020,11 +1020,11 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
           </div>
 
           {/* RIGHT: Clear Action & Live Uptime Badge */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {activeTab === "voice" && (
               <button
                 onClick={() => processQuery("clear")}
-                className="text-white/70 hover:text-white text-xs flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 transition-all cursor-pointer shadow-sm"
+                className="text-white/70 hover:text-white text-[11px] sm:text-xs flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 transition-all cursor-pointer shadow-sm active:scale-95"
                 title="Clear Chat History"
               >
                 <Trash2 className="w-3.5 h-3.5 text-white/60" />
@@ -1032,7 +1032,7 @@ TACTICAL CONVERSATIONAL DIRECTIVE:
               </button>
             )}
 
-            <div className="px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 font-mono text-[11px] text-white/50 hidden sm:flex items-center gap-1">
+            <div className="px-2 sm:px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 font-mono text-[10px] sm:text-[11px] text-white/50 hidden sm:flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
               <span>{uptime}</span>
             </div>

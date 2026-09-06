@@ -730,24 +730,45 @@ export default function App() {
                 { title: "Edge Logic", desc: "Local microcontrollers parse telemetry feeds with zero network latency." },
                 { title: "Telemetry Alerts", desc: "Instantly broadcasts live GPS coordinates and signals to responder dashboards." },
               ].map((item, idx) => (
-                <div key={idx} className="relative rounded-2xl border border-white/10 p-2 md:rounded-3xl bg-[#0a0d14]/75 backdrop-blur-md flex flex-col justify-between min-h-[160px] text-left shadow-lg group overflow-hidden">
-                  {/* Ambient Glass AURA Background Watermark */}
-                  <div className="absolute -top-3 -right-2 text-[52px] sm:text-[68px] font-black font-display tracking-tighter text-[#C084FC]/[0.08] pointer-events-none select-none z-0 leading-none">
+                <div 
+                  key={idx} 
+                  className="relative rounded-2xl md:rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[170px] sm:min-h-[185px] text-left shadow-2xl group overflow-hidden border border-white/15 transition-all duration-300 hover:scale-[1.02] will-change-transform"
+                  style={{
+                    background: "radial-gradient(ellipse 90% 80% at 20% 35%, rgba(56, 189, 248, 0.45) 0%, rgba(192, 132, 252, 0.55) 30%, rgba(147, 51, 234, 0.4) 55%, rgba(11, 15, 25, 0.95) 85%)",
+                    boxShadow: "0 10px 30px -10px rgba(168, 85, 247, 0.25)"
+                  }}
+                >
+                  {/* Iridescent Dynamic Shimmer Background Layer */}
+                  <div 
+                    className="absolute inset-0 opacity-75 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{
+                      background: "conic-gradient(from 210deg at 35% 35%, #38bdf8 0deg, #c084fc 60deg, #9333ea 120deg, transparent 200deg, transparent 360deg)"
+                    }}
+                  />
+
+                  {/* Dark Glass Contrast Gradient Mask */}
+                  <div 
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-[#0b0f19]/40 to-[#0b0f19]/90 pointer-events-none"
+                  />
+
+                  {/* Prominent AURA Metallic Watermark in Top Right */}
+                  <div className="absolute top-1.5 right-3 text-[42px] sm:text-[54px] font-black font-display tracking-tight text-white/[0.08] pointer-events-none select-none z-0 leading-none">
                     AURA
                   </div>
-                  <GlowingEffect
-                    spread={35}
-                    glow={true}
-                    disabled={false}
-                    proximity={60}
-                    inactiveZone={0.01}
-                  />
-                  <div className="relative z-10 p-4 sm:p-5 flex flex-col justify-between h-full">
+
+                  {/* Content Container */}
+                  <div className="relative z-10 flex flex-col justify-between h-full">
                     <div>
-                      <span className="text-[#C084FC] text-xs font-extrabold block mb-2 sm:mb-4 font-display drop-shadow-sm">MODULE_0{idx + 1}</span>
-                      <h4 className="text-base sm:text-lg font-bold text-flowing-purple mb-2 uppercase tracking-tight font-display"><ScrambleText text={item.title} /></h4>
+                      <span className="text-[#e879f9] text-xs font-extrabold tracking-wider block mb-2 font-display drop-shadow-[0_0_8px_rgba(232,121,249,0.5)]">
+                        MODULE_0{idx + 1}
+                      </span>
+                      <h4 className="text-base sm:text-lg font-bold text-white mb-2 uppercase tracking-tight font-display drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                        <ScrambleText text={item.title} />
+                      </h4>
                     </div>
-                    <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-normal drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">{item.desc}</p>
+                    <p className="text-xs sm:text-sm text-white/95 leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                      {item.desc}
+                    </p>
                   </div>
                 </div>
               ))}
