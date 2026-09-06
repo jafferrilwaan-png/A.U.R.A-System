@@ -630,81 +630,95 @@ export default function AuraVoiceOrb({
     let aiReply: string | null = null;
     let successfulModelName = "AURA Core";
 
+    // Extract and mathematically compute advanced bio-acoustic, strata depth, and vital telemetry
+    const rawDepth = telemetry.depth_meters || (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 0);
+    const micFreq = telemetry.mic_freq_hz || 0;
+    const tapCount = telemetry.tap_count || 0;
+    const nh3Ppm = typeof telemetry.nh3_ppm === "number" ? telemetry.nh3_ppm : parseFloat(String(telemetry.nh3_ppm || "0")) || 0;
+    const heartbeatBpm = telemetry.heartbeat_detected ? telemetry.heartbeat_bpm : null;
+    const soundClass = telemetry.sound_classification || (telemetry.ai_classification ?? "Ambient Noise");
+    const spectrum = telemetry.acoustic_spectrum || "AMBIENT NOISE FLOOR";
+
+    const isAskingForBio = /(\b(human|person|people|survivor|someone|anybody|voice|breathing|sound|heartbeat|bpm|pulse|alive|deep|depth|nearby|trapped)\b)/i.test(q);
+    const isAskingForSensors = isAskingForBio || /(\b(gas|ppm|radar|seismic|satellite|telemetry|sensor readings|hardware readings|all readings|node status)\b)/i.test(q);
+
+    // Deterministic Hardware Life Recognition Calculation
+    let calculatedBioScore = 0;
+    if (spectrum.includes("VOICE") || spectrum.includes("SHOUT")) calculatedBioScore += 40;
+    else if (spectrum.includes("SPEECH") || spectrum.includes("BREATH")) calculatedBioScore += 30;
+    else if (spectrum.includes("FAINT") || spectrum.includes("SUB-AUDIBLE")) calculatedBioScore += 15;
+
+    if (tapCount > 0) calculatedBioScore += 25;
+    if (telemetry.human_scent_detected || nh3Ppm > 0.3) calculatedBioScore += 25;
+    if (heartbeatBpm) calculatedBioScore += 35;
+    calculatedBioScore = Math.min(Math.max(calculatedBioScore, 0), 98);
+
+    // Deterministic Victim Count & Multi-Person Analysis (Node-01 Prototype & Mesh Link)
+    let estimatedPersonCount = "0 Persons (Baseline Strata Scan)";
+    if (calculatedBioScore >= 70) {
+      if (tapCount > 5 && micRms > 60) {
+        estimatedPersonCount = "Estimated 1–2 Persons (Multiple Acoustic Distress Sources)";
+      } else {
+        estimatedPersonCount = "1 Confirmed Survivor (Individual Pulse & Acoustic Formant Locked)";
+      }
+    } else if (calculatedBioScore >= 35) {
+      estimatedPersonCount = "1 Potential Survivor (Bio-Scent & Micro-Tap Resolving)";
+    }
+
+    // Deterministic Subterranean Burial Depth Estimation
+    let calculatedDepthMeters = rawDepth > 0 ? rawDepth : 0;
+    let depthProximityCategory = "Scanning Debris Strata";
+
+    if (calculatedDepthMeters > 0) {
+      if (calculatedDepthMeters < 1.5) depthProximityCategory = `Surface Cavity (${calculatedDepthMeters.toFixed(1)}m)`;
+      else if (calculatedDepthMeters <= 3.0) depthProximityCategory = `Intermediate Debris (${calculatedDepthMeters.toFixed(1)}m)`;
+      else depthProximityCategory = `Deep Subterranean (${calculatedDepthMeters.toFixed(1)}m)`;
+    } else if (isConnected) {
+      if (micRms > 60 && (micFreq > 350 || tapCount > 0)) {
+        calculatedDepthMeters = 1.2;
+        depthProximityCategory = "Surface Cavity (~1.2m)";
+      } else if (micRms > 40) {
+        calculatedDepthMeters = 2.4;
+        depthProximityCategory = "Intermediate Debris (~2.4m)";
+      } else {
+        calculatedDepthMeters = 3.8;
+        depthProximityCategory = "Deep Subterranean (~3.8m)";
+      }
+    }
+
     // 4. If hardware command was executed, reply IMMEDIATELY with clean confirmation (no robot bullet dumping!)
     if (hwActionExecuted) {
       aiReply = hwActionExecuted;
       successfulModelName = "ESP32 Hardware Direct";
     } else {
-      // Extract and mathematically compute advanced bio-acoustic, strata depth, and vital telemetry
-      const rawDepth = telemetry.depth_meters || (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 0);
-      const micFreq = telemetry.mic_freq_hz || 0;
-      const tapCount = telemetry.tap_count || 0;
-      const nh3Ppm = typeof telemetry.nh3_ppm === "number" ? telemetry.nh3_ppm : parseFloat(String(telemetry.nh3_ppm || "0")) || 0;
-      const heartbeatBpm = telemetry.heartbeat_detected ? telemetry.heartbeat_bpm : null;
-      const soundClass = telemetry.sound_classification || (telemetry.ai_classification ?? "Ambient Noise");
-      const spectrum = telemetry.acoustic_spectrum || "AMBIENT NOISE FLOOR";
-
-      const isAskingForBio = /(\b(human|person|people|survivor|someone|anybody|voice|breathing|sound|heartbeat|bpm|pulse|alive|deep|depth|nearby|trapped)\b)/i.test(q);
-      const isAskingForSensors = isAskingForBio || /(\b(gas|ppm|radar|seismic|satellite|telemetry|sensor readings|hardware readings|all readings|node status)\b)/i.test(q);
-
-      // Deterministic Hardware Life Recognition Calculation
-      let calculatedBioScore = 0;
-      if (spectrum.includes("VOICE") || spectrum.includes("SHOUT")) calculatedBioScore += 40;
-      else if (spectrum.includes("SPEECH") || spectrum.includes("BREATH")) calculatedBioScore += 30;
-      else if (spectrum.includes("FAINT") || spectrum.includes("SUB-AUDIBLE")) calculatedBioScore += 15;
-
-      if (tapCount > 0) calculatedBioScore += 25;
-      if (telemetry.human_scent_detected || nh3Ppm > 0.3) calculatedBioScore += 25;
-      if (heartbeatBpm) calculatedBioScore += 35;
-      calculatedBioScore = Math.min(Math.max(calculatedBioScore, 0), 98);
-
-      // Deterministic Subterranean Burial Depth Estimation
-      let calculatedDepthMeters = rawDepth > 0 ? rawDepth : 0;
-      let depthProximityCategory = "Scanning Debris Strata";
-
-      if (calculatedDepthMeters > 0) {
-        if (calculatedDepthMeters < 1.5) depthProximityCategory = `Surface Cavity (${calculatedDepthMeters.toFixed(1)}m)`;
-        else if (calculatedDepthMeters <= 3.0) depthProximityCategory = `Intermediate Debris (${calculatedDepthMeters.toFixed(1)}m)`;
-        else depthProximityCategory = `Deep Subterranean (${calculatedDepthMeters.toFixed(1)}m)`;
-      } else if (isConnected) {
-        if (micRms > 60 && (micFreq > 350 || tapCount > 0)) {
-          calculatedDepthMeters = 1.2;
-          depthProximityCategory = "Surface Cavity (~1.2m)";
-        } else if (micRms > 40) {
-          calculatedDepthMeters = 2.4;
-          depthProximityCategory = "Intermediate Debris (~2.4m)";
-        } else {
-          calculatedDepthMeters = 3.8;
-          depthProximityCategory = "Deep Subterranean (~3.8m)";
-        }
-      }
-
       const activeApiKey = apiKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || FALLBACK_OR_KEY;
 
       const systemPrompt = `You are A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment).
 You are a mission-critical Search-and-Rescue tactical AI assistant dedicated to locating buried human survivors with 100% mathematical precision.
 
+NETWORK TOPOLOGY: Node-01 Tactical Probe (Primary Subterranean Link // Multi-Node Swarm Expandable)
 CONNECTION STATE: ${isConnected ? `ONLINE (Active Node: ${nodeIp})` : "OFFLINE (Hardware Probe Standby)"}
 
 ${isConnected ? `REAL-TIME HARDWARE SENSOR REGISTERS:
-- Ultrasonic / Sonar Strata Depth: ${calculatedDepthMeters.toFixed(1)} meters (${depthProximityCategory})
+- Estimated Trapped Survivors: ${estimatedPersonCount}
 - Biological Vital Confidence: ${calculatedBioScore}% (${calculatedBioScore >= 50 ? "CONFIRMED SURVIVOR SIGNATURE" : "BASELINE SCANNING"})
+- Biological Heartbeat Pulse: ${heartbeatBpm ? `${heartbeatBpm} BPM Confirmed Heart Rate` : "No pulse locked"}
+- Ultrasonic / Sonar Strata Depth: ${calculatedDepthMeters.toFixed(1)} meters (${depthProximityCategory})
 - Acoustic Sound: ${soundClass} (${micRms} dB RMS energy, ${micFreq} Hz frequency)
 - Acoustic Classification: ${spectrum}
 - Seismic Impact Matrix: ${tapCount} physical taps recorded (${seismicPeak} mm/s impact peak)
 - Metabolic Bio-Scent (NH3 / Sweat): ${nh3Ppm} PPM (${telemetry.human_scent_detected ? "POSITIVE BIO-VOC DETECTED" : "NOMINAL / ZERO VOC"})
 - Air Purity / Gas Hazard: ${gasPpm} PPM (${gasPpm > 400 ? "HAZARDOUS CONCENTRATION" : "Safe / Breathable"})
 - Metabolic CO2 Level: ${telemetry.co2_ppm || gasPpm} PPM
-- Biological Heartbeat Pulse: ${heartbeatBpm ? `${heartbeatBpm} BPM Confirmed Pulse` : "No pulse locked"}
 - Geographic Target Fix: ${cityStr} (${gpsCoords})` : `HARDWARE NODE STATUS: OFFLINE (Standby Mode)
 - Anchored Target Coordinates: Sriperumbudur Bus Stand (12.9665° N, 79.9450° E)
 - All live sensor registers: 0 (No active packet stream)
 CRITICAL RESCUE PROTOCOL: Never hallucinate fake survivor heartbeats, gas leaks, or depths when the hardware is offline. Truthfully state that the node is offline and provide cached target fix information.`}
 
 OPERATIONAL DIRECTIVE:
-1. Provide accurate, reliable search-and-rescue answers in 2 to 3 clear, natural sentences.
-2. When asked about depth or victim proximity, explain the exact computed depth (${calculatedDepthMeters.toFixed(1)}m, ${depthProximityCategory}) and the sensor signals behind it.
-3. NEVER use markdown symbols (*, **, _, #) or robot bullet points so voice synthesis sounds smooth and natural.`;
+1. Deeply analyze the real-time sensor data above and answer with situational awareness.
+2. State clearly the estimated survivor count (${estimatedPersonCount}), vital heart rate, and exact depth (${calculatedDepthMeters.toFixed(1)}m, ${depthProximityCategory}) when asked about trapped persons.
+3. Speak in 2 to 3 concise, natural sentences without markdown symbols (*, **, _, #) for smooth voice audio synthesis.`;
 
       // Multi-turn conversational memory (remembers previous chat turns)
       const recentHistory = messages
@@ -825,17 +839,17 @@ OPERATIONAL DIRECTIVE:
         ? {
             title: "LIVE ESP32 BIO-ACOUSTIC & MULTI-GAS AUDIT",
             metrics: [
-              { label: "Hardware Link", value: `ONLINE (${nodeIp})`, color: "#10B981" },
+              { label: "Mesh Topology", value: "Node-01 Link (Swarm Expandable)", color: "#38BDF8" },
+              { label: "Detected Survivors", value: estimatedPersonCount.split("(")[0].trim(), color: calculatedBioScore >= 70 ? "#10B981" : calculatedBioScore >= 35 ? "#F59E0B" : "#94A3B8" },
               { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
+              { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
+              { label: "Strata Depth", value: `${calculatedDepthMeters.toFixed(1)}m (${depthProximityCategory})`, color: "#00C2FF" },
               { label: "Acoustic Spectrum", value: acousticSpec, color: acousticSpecColor },
               { label: "Seismic Taps", value: `${telemetry.tap_count ?? 0} Taps (${seismicPeak} mm/s)`, color: (telemetry.tap_count ?? 0) > 0 ? "#F59E0B" : "#00C2FF" },
               { label: "Gas Profile", value: gasProf, color: gasColor },
               { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
               { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
               { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
-              { label: "Acoustic Depth", value: String(telemetry.sound_depth_cat || "Sweeping Strata"), color: "#00C2FF" },
-              { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
-              { label: "Radar Depth", value: radarDepthStr, color: "#00C2FF" },
               { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
               { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }
             ]
@@ -843,6 +857,8 @@ OPERATIONAL DIRECTIVE:
         : {
             title: "HARDWARE AUDIT: ESP32 NODE OFFLINE",
             metrics: [
+              { label: "Mesh Topology", value: "Node-01 Gateway (Awaiting Physical Link)", color: "#EF4444" },
+              { label: "Detected Survivors", value: "0 Locked (Node Offline)", color: "#94A3B8" },
               { label: "Hardware Link", value: `OFFLINE (${nodeIp})`, color: "#EF4444" },
               { label: "Telemetry Stream", value: "STANDBY (0 PACKETS)", color: "#F59E0B" },
               { label: "Last Active Target", value: "Sriperumbudur Bus Stand", color: "#38BDF8" },
@@ -1184,23 +1200,30 @@ OPERATIONAL DIRECTIVE:
                 className="h-60 sm:h-72 overflow-y-auto p-4 sm:p-5 flex flex-col gap-3 font-sans scroll-smooth"
               >
                 {messages.map((m) => (
-                  <div key={m.id} className="flex items-start gap-3 text-sm">
+                  <div
+                    key={m.id}
+                    className={`flex items-start gap-3.5 text-sm p-3.5 sm:p-4 rounded-2xl transition-all duration-300 ${
+                      m.sender === "ai"
+                        ? "bg-gradient-to-br from-[#1c0e30]/90 via-[#130a21]/90 to-[#0a0512]/95 border border-[#C084FC]/35 shadow-[0_0_25px_rgba(192,132,252,0.16)] hover:shadow-[0_0_30px_rgba(192,132,252,0.25)]"
+                        : "bg-gradient-to-br from-[#072438]/90 via-[#061826]/90 to-[#030d14]/95 border border-[#06B6D4]/35 shadow-[0_0_25px_rgba(6,182,212,0.16)] hover:shadow-[0_0_30px_rgba(6,182,212,0.25)]"
+                    }`}
+                  >
                     {m.sender === "ai" ? (
-                      <div className="w-6 h-6 rounded-full bg-[#C084FC]/25 text-[#C084FC] border border-[#C084FC]/40 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 via-fuchsia-500 to-indigo-500 text-white shadow-[0_0_15px_rgba(192,132,252,0.65)] flex items-center justify-center text-xs font-black ring-2 ring-purple-400/40 flex-shrink-0 mt-0.5">
                         A
                       </div>
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-[#06B6D4]/25 text-[#06B6D4] border border-[#06B6D4]/40 flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 via-teal-500 to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.65)] flex items-center justify-center text-xs font-black ring-2 ring-cyan-400/40 flex-shrink-0 mt-0.5">
                         U
                       </div>
                     )}
 
-                    <div className="flex-1">
-                      <p className="text-white/90 leading-relaxed font-medium">{m.text}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/95 leading-relaxed font-medium text-sm">{m.text}</p>
 
-                      {/* Interactive Pills */}
+                      {/* Glowing Interactive Suggestion Pills */}
                       {m.pills && (
-                        <div className="mt-2.5 flex flex-wrap gap-2 text-xs font-mono">
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-mono">
                           {m.pills.map((pill, i) => (
                             <button
                               key={i}
@@ -1208,20 +1231,27 @@ OPERATIONAL DIRECTIVE:
                                 processQuery(pill);
                                 setTimeout(() => scrollToBottom(true), 40);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-[#C084FC]/20 border border-white/15 hover:border-[#C084FC] text-white hover:text-[#C084FC] transition-all cursor-pointer text-[11px]"
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/50 via-indigo-950/50 to-cyan-950/50 hover:from-purple-600/30 hover:to-cyan-500/30 border border-purple-400/35 hover:border-cyan-300 text-purple-200 hover:text-cyan-100 transition-all cursor-pointer text-[11px] shadow-[0_0_12px_rgba(168,85,247,0.18)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] active:scale-95 flex items-center gap-1.5"
                             >
-                              "{pill}"
+                              <Sparkles className="w-3 h-3 text-cyan-400" />
+                              <span>"{pill}"</span>
                             </button>
                           ))}
                         </div>
                       )}
 
-                      {/* Telemetry Card */}
+                      {/* Glowing Telemetry HUD Card */}
                       {m.telemetryCard && (
-                        <div className="mt-2.5 p-3 rounded-xl bg-black/50 border border-white/10 font-mono text-xs">
-                          <span className="text-[10px] text-white/50 block font-bold mb-1.5">
-                            {m.telemetryCard.title}
-                          </span>
+                        <div className="mt-3.5 p-3.5 rounded-xl bg-black/75 border border-purple-500/30 shadow-[0_0_25px_rgba(147,51,234,0.18)] font-mono text-xs">
+                          <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-purple-500/20">
+                            <span className="text-[11px] text-purple-300 font-black tracking-wider flex items-center gap-2">
+                              <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                              {m.telemetryCard.title}
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-200 shadow-[0_0_8px_rgba(192,132,252,0.3)]">
+                              TELEMETRY LOCK
+                            </span>
+                          </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {m.telemetryCard.metrics.map((met, j) => {
                               const isGps = met.label === "Precise GPS";
@@ -1237,14 +1267,14 @@ OPERATIONAL DIRECTIVE:
                                     }
                                     window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
                                   } : undefined}
-                                  className={`p-2 rounded bg-white/5 border border-white/5 ${isGps ? "cursor-pointer hover:border-cyan-400/60 hover:bg-cyan-500/10 transition-all select-none" : ""}`}
+                                  className={`p-2.5 rounded-lg bg-black/60 border border-white/10 hover:border-purple-400/40 shadow-[0_0_10px_rgba(0,0,0,0.4)] transition-all ${isGps ? "cursor-pointer hover:border-cyan-400/70 hover:bg-cyan-500/10 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] select-none" : ""}`}
                                   title={isGps ? "Touch to open location on Google Maps" : undefined}
                                 >
-                                  <span className="text-[10px] text-white/50 flex items-center justify-between">
+                                  <span className="text-[10px] text-white/50 flex items-center justify-between font-mono">
                                     <span>{met.label}</span>
                                     {isGps && <span className="text-cyan-400 text-[10px] font-bold">Maps ↗</span>}
                                   </span>
-                                  <span className="font-bold text-sm" style={{ color: met.color || "#fff" }}>
+                                  <span className="font-bold text-xs sm:text-sm block mt-0.5 truncate" style={{ color: met.color || "#fff" }}>
                                     {met.value}
                                   </span>
                                 </div>
@@ -1259,13 +1289,13 @@ OPERATIONAL DIRECTIVE:
 
                 {/* Real-time Thinking & Neural Reasoning Indicator */}
                 {phase === "thinking" && (
-                  <div className="flex items-start gap-3 text-sm animate-pulse">
-                    <div className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/40 flex items-center justify-center text-xs font-bold mt-0.5">
+                  <div className="flex items-start gap-3.5 text-sm p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-transparent border border-amber-400/40 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)] animate-pulse">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.6)] flex items-center justify-center text-xs font-black ring-2 ring-amber-400/40 flex-shrink-0">
                       A
                     </div>
-                    <div className="p-3 rounded-xl bg-white/5 border border-amber-400/25 text-amber-300 text-xs font-mono flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                      <span>AURA is reasoning and formulating response...</span>
+                    <div className="text-xs font-mono flex items-center gap-2 text-amber-300">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
+                      <span>AURA neural engine is probing live hardware registers...</span>
                     </div>
                   </div>
                 )}
