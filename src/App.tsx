@@ -10,6 +10,7 @@ import Lenis from "lenis";
 // @ts-ignore
 import PortalRedirectButton from "./components/PortalRedirectButton";
 import AuraVoiceOrb from "./components/AuraVoiceOrb";
+import MobileCommanderDashboard from "./components/MobileCommanderDashboard";
 
 // --- CUSTOM A.U.R.A. LOGO IMAGE ---
 function AuraLogo({ className = "w-10 h-10 object-cover rounded-full" }: { className?: string }) {
@@ -61,7 +62,7 @@ function ScrambleText({ text, className = "" }: { text: string; className?: stri
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
-  const [activeView, setActiveView] = useState<'overview' | 'c2'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'c2' | 'mobile'>('overview');
   const [loading, setLoading] = useState(true);
   const [entranceComplete, setEntranceComplete] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -72,11 +73,13 @@ export default function App() {
   // Shared scroll fraction ref for canvas animation loop to avoid dependency cycles
   const scrollFractionRef = useRef(0);
 
-  // Synchronize active view with URL hash (#c2)
+  // Synchronize active view with URL hash (#c2, #mobile)
   useEffect(() => {
     const handleHash = () => {
       if (window.location.hash === '#c2') {
         setActiveView('c2');
+      } else if (window.location.hash === '#mobile' || window.location.hash === '#commander') {
+        setActiveView('mobile');
       } else if (!window.location.hash || window.location.hash === '#overview') {
         setActiveView('overview');
       }
@@ -354,6 +357,17 @@ export default function App() {
   if (activeView === 'c2') {
     return (
       <AuraVoiceOrb
+        onBack={() => {
+          window.location.hash = '';
+          setActiveView('overview');
+        }}
+      />
+    );
+  }
+
+  if (activeView === 'mobile') {
+    return (
+      <MobileCommanderDashboard
         onBack={() => {
           window.location.hash = '';
           setActiveView('overview');
