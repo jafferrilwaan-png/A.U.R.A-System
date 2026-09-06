@@ -37,7 +37,7 @@ export default function SettingsModal({
   onClose,
   telemetry,
   isConnected,
-  nodeIp = "famous-meals-brake.loca.lt",
+  nodeIp = "10.178.117.16",
   buzzerLevel,
   frequencyKhz,
   isOverdrive,

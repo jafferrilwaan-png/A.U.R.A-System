@@ -143,7 +143,7 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "192.168.43.145"
+  nodeIp = "10.178.117.16"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("theatre_map");
@@ -215,7 +215,7 @@ export default function AuraVoiceOrb({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        let endpoint = "http://192.168.43.145/api/telemetry";
+        let endpoint = "http://10.178.117.16/api/telemetry";
         if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
@@ -866,6 +866,7 @@ OPERATIONAL DIRECTIVE:
               { label: "Gas Profile", value: gasProf, color: gasColor },
               { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
               { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
+              { label: "Bio-Scent VOC", value: telemetry.human_scent_label || (telemetry.human_scent_detected ? "SWEAT / AMMONIA VOC" : "CLEAR AMBIENT"), color: (telemetry.human_scent_label || "").toUpperCase().includes("GASTRO") ? "#F59E0B" : (telemetry.human_scent_label || "").toUpperCase().includes("EFFLUENT") ? "#FACC15" : (telemetry.human_scent_label || "").toUpperCase().includes("SHIRT") ? "#C084FC" : (telemetry.human_scent_label || "").toUpperCase().includes("SALIVA") ? "#60A5FA" : "#94A3B8" },
               { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
               { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
               { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }

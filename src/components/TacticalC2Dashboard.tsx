@@ -889,7 +889,7 @@ export function GeospatialLocalizationCard({
 // ══════════════════════════════════════════════════════════════════════════════
 export default function TacticalC2Dashboard({
   onExit,
-  initialNodeIp = "192.168.43.145",
+  initialNodeIp = "10.178.117.16",
   apiKey: propApiKey = ""
 }: TacticalC2Props) {
   // ── Node & Telemetry State ──
@@ -967,7 +967,7 @@ export default function TacticalC2Dashboard({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
         
-        let targetUrl = "http://192.168.43.145/api/telemetry";
+        let targetUrl = "http://10.178.117.16/api/telemetry";
         if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             targetUrl = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;

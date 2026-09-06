@@ -51,7 +51,7 @@ interface SubterraneanTheatreMapProps {
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "192.168.43.145",
+  nodeIp = "10.178.117.16",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -86,7 +86,7 @@ export default function SubterraneanTheatreMap({
       onSetBuzzerLevel(mode);
     }
     try {
-      let baseUrl = nodeIp || "192.168.43.145";
+      let baseUrl = nodeIp || "10.178.117.16";
       if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
         baseUrl = baseUrl.includes("loca.lt") || baseUrl.includes("ngrok") ? `https://${baseUrl}` : `http://${baseUrl}`;
       }
@@ -234,7 +234,58 @@ export default function SubterraneanTheatreMap({
 
   const humanScentPpm = typeof telemetry.human_scent_ppm === "number" ? telemetry.human_scent_ppm : parseFloat(String(telemetry.human_scent_ppm || "0")) || 0;
   const humanScentDetected = Boolean(telemetry.human_scent_detected || humanScentPpm > 0.3);
-  const humanScentLabel = telemetry.human_scent_label || (humanScentDetected ? "SWEAT / AMMONIA VOC" : "ZERO DETECTABLE VOC");
+  const rawScentLabel = telemetry.human_scent_label || (humanScentDetected ? "SWEAT / AMMONIA VOC" : "CLEAR AMBIENT");
+
+  // Bio-Scent Profiler v18.0 dynamic classification color mapping
+  const getBioScentConfig = (label: string, detected: boolean) => {
+    const upper = (label || "").toUpperCase();
+    if (upper.includes("GASTRO") || upper.includes("SULFIDE")) {
+      return {
+        badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse",
+        textClass: "text-amber-400 font-bold",
+        cardBorder: "bg-amber-950/20 border-amber-500/40",
+        iconColor: "text-amber-400",
+        label: "GASTRO/SULFIDE"
+      };
+    }
+    if (upper.includes("HEAVY EFFLUENT") || upper.includes("EFFLUENT")) {
+      return {
+        badgeClass: "bg-yellow-400/20 text-yellow-300 border-yellow-400/50 shadow-[0_0_12px_rgba(250,204,21,0.35)] animate-pulse",
+        textClass: "text-yellow-300 font-bold",
+        cardBorder: "bg-yellow-950/20 border-yellow-400/40",
+        iconColor: "text-yellow-400",
+        label: "HEAVY EFFLUENT"
+      };
+    }
+    if (upper.includes("SHIRT") || upper.includes("BODY ODOR") || upper.includes("SWEAT")) {
+      return {
+        badgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]",
+        textClass: "text-purple-300 font-bold",
+        cardBorder: "bg-purple-950/20 border-purple-500/40",
+        iconColor: "text-purple-400",
+        label: "SHIRT/BODY ODOR"
+      };
+    }
+    if (upper.includes("SALIVA") || upper.includes("ORAL")) {
+      return {
+        badgeClass: "bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.3)]",
+        textClass: "text-blue-300 font-bold",
+        cardBorder: "bg-blue-950/20 border-blue-500/40",
+        iconColor: "text-blue-400",
+        label: "SALIVA/ORAL VOC"
+      };
+    }
+    return {
+      badgeClass: "bg-slate-500/15 text-slate-300 border-slate-500/30",
+      textClass: "text-slate-400",
+      cardBorder: "bg-[#080B12]/85 border-white/10",
+      iconColor: "text-slate-400",
+      label: detected ? (label || "SWEAT / AMMONIA VOC") : "CLEAR AMBIENT"
+    };
+  };
+
+  const bioScentConfig = getBioScentConfig(rawScentLabel, humanScentDetected);
+  const humanScentLabel = bioScentConfig.label;
 
   const envGasPpm = Number(telemetry.env_gas_ppm ?? telemetry.gas ?? 0);
   const isDopplerMotion = Boolean(telemetry.radar || telemetry.motion_detected || (telemetry.delta_jerk && telemetry.delta_jerk > 0.4));
@@ -597,29 +648,27 @@ export default function SubterraneanTheatreMap({
           </div>
         </div>
 
-        {/* Human Bio-Scent Card */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 shadow-lg transition-all ${
-          humanScentDetected ? "bg-emerald-950/30 border-emerald-500/40" : "bg-[#080B12]/85 border-white/10"
-        }`}>
+        {/* Human Bio-Scent Card (v18.0 Bio-Scent Profiler) */}
+        <div className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 shadow-lg transition-all ${bioScentConfig.cardBorder}`}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-              <User className={`w-4 h-4 ${humanScentDetected ? "text-emerald-400" : "text-white/50"}`} />
+              <User className={`w-4 h-4 ${bioScentConfig.iconColor}`} />
               <span>Bio-Scent VOC</span>
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${humanScentDetected ? "bg-emerald-500/20 text-emerald-300 border-emerald-400 animate-pulse" : "bg-white/5 text-white/40 border-white/10"}`}>
-              {humanScentDetected ? "DETECTED" : "SCANNING"}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${bioScentConfig.badgeClass}`}>
+              {humanScentLabel}
             </span>
           </div>
 
           <div>
             <span className="text-[10px] font-mono text-white/45 block uppercase">CONCENTRATION</span>
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-xl font-bold ${humanScentDetected ? "text-emerald-300" : "text-white"}`}>
+              <span className={`text-xl font-bold ${humanScentDetected ? "text-white" : "text-white/80"}`}>
                 {humanScentPpm}
               </span>
               <span className="text-xs text-white/50 font-normal">PPM</span>
             </div>
-            <p className={`text-[11px] font-semibold mt-1 truncate ${humanScentDetected ? "text-emerald-400" : "text-white/40"}`}>
+            <p className={`text-[11px] mt-1 truncate ${bioScentConfig.textClass}`}>
               {humanScentLabel}
             </p>
           </div>
