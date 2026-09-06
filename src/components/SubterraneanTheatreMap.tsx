@@ -409,7 +409,7 @@ export default function SubterraneanTheatreMap({
             speed={contourSpeed}
             disturbance={disturbanceValue}
             disturbanceFreq={frequencyKhz}
-            interactive={false}
+            interactive={true}
             className="w-full h-full absolute inset-0 opacity-90"
           />
 
