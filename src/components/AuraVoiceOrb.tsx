@@ -658,11 +658,10 @@ export default function AuraVoiceOrb({
       successfulModelName = "ESP32 Hardware Direct";
     } else {
       const activeApiKey = (apiKey && apiKey !== FALLBACK_OR_KEY) 
-        ? apiKey 
-        : (import.meta.env.VITE_OPENROUTER_API_KEY as string) || "";
+        ? apiKey.trim() 
+        : (import.meta.env.VITE_OPENROUTER_API_KEY as string) || (import.meta.env.VITE_GEMINI_API_KEY as string) || "";
 
-      if (activeApiKey && activeApiKey.startsWith("sk-")) {
-        const systemPrompt = `You are A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment).
+      const systemPrompt = `You are A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment).
 You are a mission-critical Search-and-Rescue tactical AI assistant dedicated to locating buried human survivors with 100% mathematical precision.
 
 NETWORK TOPOLOGY: Node-01 Tactical Probe (Primary Subterranean Link // Swarm Mesh Active)
@@ -690,14 +689,78 @@ OPERATIONAL DIRECTIVES:
 2. STRICT DATA FIDELITY: Never invent, guess, or hallucinate survivors or depths. If Survivor Count is 0, explicitly report 0 survivors. If Depth is 0.00m, report that no depth target is currently locked. If Survivor Count is ${survivorCount} > 0, report exactly ${survivorCount} survivor(s) at ${depthMeters.toFixed(2)}m.
 3. Speak in 2 to 3 concise, natural sentences without markdown symbols (*, **, _, #) for smooth voice audio synthesis.`;
 
-        const recentHistory = messages
-          .filter((m) => m.id !== "init")
-          .slice(-6)
-          .map((m) => ({
-            role: m.sender === "ai" ? "assistant" : "user",
-            content: m.text
-          }));
+      const recentHistory = messages
+        .filter((m) => m.id !== "init")
+        .slice(-6)
+        .map((m) => ({
+          role: m.sender === "ai" ? "assistant" : "user",
+          content: m.text
+        }));
 
+      // PROVIDER 1: DIRECT GOOGLE GEMINI API (AIzaSy...)
+      if (!aiReply && activeApiKey.startsWith("AIzaSy")) {
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${activeApiKey}`;
+          const res = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: `${systemPrompt}\n\nUser Question: ${rawQuery}` }]
+                }
+              ]
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (txt) {
+              aiReply = txt.replace(/[*_#`]/g, "");
+              successfulModelName = "Google Gemini 2.0 Flash";
+            }
+          }
+        } catch (err) {
+          console.warn("Direct Gemini API attempt failed:", err);
+        }
+      }
+
+      // PROVIDER 2: DIRECT GROQ API (gsk_...)
+      if (!aiReply && activeApiKey.startsWith("gsk_")) {
+        try {
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${activeApiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "llama-3.3-70b-versatile",
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...recentHistory,
+                { role: "user", content: rawQuery }
+              ],
+              temperature: 0.7,
+              max_tokens: 350
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const txt = data.choices?.[0]?.message?.content?.trim();
+            if (txt) {
+              aiReply = txt.replace(/[*_#`]/g, "");
+              successfulModelName = "Groq LLaMA 3.3 70B";
+            }
+          }
+        } catch (err) {
+          console.warn("Groq API attempt failed:", err);
+        }
+      }
+
+      // PROVIDER 3: OPENROUTER API (sk-or-...)
+      if (!aiReply && activeApiKey.startsWith("sk-")) {
         const conversationPayload = [
           { role: "system", content: systemPrompt },
           ...recentHistory,
@@ -749,70 +812,102 @@ OPERATIONAL DIRECTIVES:
         }
       }
 
-      // Comprehensive High-Speed Tactical Intelligence Reasoner (Handles 100% of SAR queries deterministically with zero latency & full accuracy)
+      // PROVIDER 4: COMPREHENSIVE ON-DEVICE TACTICAL & CONVERSATIONAL NLP ENGINE
       if (!aiReply) {
         successfulModelName = isConnected ? "AURA Tactical Intelligence Core" : "AURA Standby Engine";
 
-        if (!isConnected) {
-          if (isAskingForSensors || /(\b(depth|gas|survivor|victim|node|status)\b)/i.test(q)) {
-            aiReply = `The ESP32 hardware node is currently offline. No active sensor packet is being received. Retaining last active target lock at Sriperumbudur Bus Stand (12.9665° N, 79.9450° E).`;
-          } else if (/who (are|is)|what is aura/i.test(q)) {
-            aiReply = `I am A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment). I monitor subterranean seismic, acoustic, and bio-scent sensors to locate trapped survivors.`;
-          } else {
-            aiReply = `AURA Tactical Station is active in standby mode. Connect the ESP32 node via IP ${nodeIpState} to begin live subterranean telemetry analysis.`;
-          }
-        } else {
-          // ONLINE: Evaluate the user query with domain-specific tactical intelligence
-          if (/(who (are|is)|what is aura|identity)/i.test(q)) {
-            aiReply = `I am A.U.R.A. Tactical Intelligence (Autonomous Underground Reconnaissance & Assessment). Connected to Node ${nodeIpState}. Currently monitoring live strata depth, bio-acoustic formants, seismic impacts, and metabolic gases.`;
-          } else if (/(heartbeat|pulse|vital|alive|bpm|breathing|breath)/i.test(q)) {
-            if (heartbeatBpm) {
-              aiReply = `Vital pulse lock confirmed at ${heartbeatBpm} BPM. Target indicates active biological respiration with ${scentLabel} scent signature.`;
-            } else if (survivorCount > 0) {
-              aiReply = `${survivorCount} survivor signature(s) detected via acoustic and bio-scent sensors (${spectrum}, ${scentLabel}). Pulse detection array is currently sweeping.`;
-            } else {
-              aiReply = `Zero biological vital pulses detected. Sensor registers indicate baseline ambient background noise.`;
-            }
-          } else if (/(how many|count|number of|anyone|someone|anybody|people|trapped|survivor|victim)/i.test(q)) {
-            if (survivorCount > 0) {
-              aiReply = `Hardware telemetry reports ${survivorCount} survivor(s) detected at depth ${depthMeters.toFixed(2)} meters (${depthProximityCategory}). Triage zone is ${zoneColor} (${threatLevel}) with acoustic classification: ${spectrum}.`;
-            } else {
-              aiReply = `Currently zero trapped survivors are detected by the sensor array. Strata scan is nominal with no active distress signatures.`;
-            }
-          } else if (/(depth|how deep|strata|deep|meters|cavity|distance|range)/i.test(q)) {
-            if (depthMeters > 0) {
-              aiReply = `Calculated strata depth is ${depthMeters.toFixed(2)} meters (${depthProximityCategory}) with a lateral radar range of ${rangeMeters.toFixed(2)} meters.`;
-            } else {
-              aiReply = `Ultrasonic sonar depth register reads 0.00 meters. Subterranean strata scan is clear with no void targets locked.`;
-            }
-          } else if (/(gas|air|ppm|oxygen|co2|ammonia|hazard|toxic|smoke|breathable|purity)/i.test(q)) {
-            if (gasPpm > 400 || (telemetry.air_rating || "").includes("DANGER")) {
-              aiReply = `Warning: Gas hazard detected at ${gasPpm} PPM (${telemetry.air_rating || "HAZARDOUS"}). Metabolic CO2 is ${telemetry.co2_ppm || gasPpm} PPM. Supplemental breathing apparatus required for rescue personnel.`;
-            } else {
-              aiReply = `Atmospheric gas reading is ${gasPpm} PPM (${telemetry.air_rating || "SAFE / BREATHABLE"}). Metabolic CO2 is ${telemetry.co2_ppm || gasPpm} PPM, and ammonia VOC is ${nh3Ppm.toFixed(2)} PPM.`;
-            }
-          } else if (/(seismic|vibration|structural|collapse|taps|tap|knocking|piezo|impact|stable)/i.test(q)) {
-            aiReply = `Seismic impact matrix records ${tapCount} physical taps with a peak vibration of ${seismicPeak} mm/s. Structural strata stability is ${seismicPeak > 5 ? "UNSTABLE / POST-SHOCK RISK" : "STABLE"}.`;
-          } else if (/(scent|smell|voc|sulfide|effluent|odor|saliva)/i.test(q)) {
-            aiReply = `Bio-scent VOC classification is ${scentLabel} with ${nh3Ppm.toFixed(2)} PPM concentration (${telemetry.human_scent_detected ? "POSITIVE HUMAN METABOLITE" : "AMBIENT"}).`;
-          } else if (/(how to rescue|rescue plan|extract|extraction|how do we|dig|procedure|protocol|triage|strategy)/i.test(q)) {
-            if (survivorCount > 0) {
-              if (depthMeters < 1.5) {
-                aiReply = `Triage Protocol: Surface cavity extraction (${depthMeters.toFixed(2)}m). Clear surface debris manually with hand tools and deploy the acoustic beacon to guide the team.`;
-              } else if (depthMeters <= 3.0) {
-                aiReply = `Triage Protocol: Intermediate debris extraction (${depthMeters.toFixed(2)}m). Install pneumatic shoring to secure the void and establish auxiliary air ventilation.`;
-              } else {
-                aiReply = `Triage Protocol: Deep subterranean extraction (${depthMeters.toFixed(2)}m). Heavy hydraulic trench shoring and core drilling required before team entry.`;
+        // 1. Mathematical Calculation Evaluator
+        const mathMatch = q.match(/(?:calculate|what is|compute)\s+([0-9\.\+\-\*\/\(\)\s\^]+)/i);
+        if (mathMatch && mathMatch[1]) {
+          try {
+            const cleanedExpr = mathMatch[1].replace(/[^0-9\+\-\*\/\.\(\)]/g, "");
+            if (cleanedExpr.length > 0) {
+              const mathResult = Function(`"use strict"; return (${cleanedExpr})`)();
+              if (typeof mathResult === "number" && !isNaN(mathResult)) {
+                aiReply = `Calculation result: ${cleanedExpr} = ${mathResult}`;
               }
-            } else {
-              aiReply = `No active rescue extraction required. Continue subterranean radar sweep across grid coordinates.`;
             }
-          } else if (/(where|gps|coordinates|location|city|bus stand)/i.test(q)) {
-            aiReply = `Target lock is anchored at ${cityStr} (${gpsCoords}) with ${satsCount} GPS satellites locked.`;
-          } else if (/(status|report|sitrep|summary|check|readings|all sensors)/i.test(q)) {
-            aiReply = `Sitrep: Node ${nodeIpState} Online. Detected Survivors: ${survivorCount} at ${depthMeters.toFixed(2)}m depth. Gas: ${gasPpm} PPM (${telemetry.air_rating || "NOMINAL"}). Acoustic: ${spectrum}. Seismic: ${seismicPeak} mm/s.`;
+          } catch {
+            // fallback to conversational
+          }
+        }
+
+        // 2. Physics & Sensor Principles
+        if (!aiReply) {
+          if (/(how (does|do) (doppler|radar)|radar physics|microwave radar)/i.test(q)) {
+            aiReply = `The RCWL-0516 Doppler radar transmits 3.18 GHz microwave pulses and detects frequency shifts caused by physical motion, capturing survivor chest wall movements through rubble.`;
+          } else if (/(how (does|do) (piezo|seismic)|piezoelectric effect)/i.test(q)) {
+            aiReply = `The piezoelectric subterranean transducer converts kinetic stress and structural vibrations directly into electrical charges, detecting micro-taps and acoustic impacts.`;
+          } else if (/(what is mq-?135|how (does|do) gas sensor)/i.test(q)) {
+            aiReply = `The MQ-135 sensor utilizes a tin dioxide sensitive layer to measure ambient concentrations of hazardous gases including ammonia, sulfide, and CO2 in parts per million.`;
+          } else if (/(what is (triage|start triage)|triage protocol)/i.test(q)) {
+            aiReply = `START triage categorizes casualties into Green (Surface / Immediate), Yellow (Delayed), Red (Immediate Critical Mid-Debris), and Black (Deceased) based on respiration, perfusion, and mental status.`;
+          }
+        }
+
+        // 3. Situational Hardware & Telemetry Evaluation
+        if (!aiReply) {
+          if (!isConnected) {
+            if (isAskingForSensors || /(\b(depth|gas|survivor|victim|node|status)\b)/i.test(q)) {
+              aiReply = `The ESP32 hardware node is currently offline. No active sensor packets are being received. Retaining last active target lock at Sriperumbudur Bus Stand (12.9665° N, 79.9450° E).`;
+            } else if (/who (are|is)|what is aura/i.test(q)) {
+              aiReply = `I am A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment). I monitor subterranean seismic, acoustic, and bio-scent sensors to locate trapped survivors.`;
+            } else {
+              aiReply = `AURA Tactical Station is active in standby mode. To unlock unrestricted open-ended conversations across any topic, enter a free Google Gemini key (AIzaSy...) in Settings.`;
+            }
           } else {
-            aiReply = `AURA Tactical Intelligence active on Node ${nodeIpState}. Current telemetry locks ${survivorCount} survivor(s) at ${depthMeters.toFixed(2)}m with ${gasPpm} PPM gas and ${seismicPeak} mm/s seismic activity.`;
+            // ONLINE: Evaluate the user query with domain-specific tactical intelligence
+            if (/(who (are|is)|what is aura|identity)/i.test(q)) {
+              aiReply = `I am A.U.R.A. Tactical Intelligence (Autonomous Underground Reconnaissance & Assessment). Connected to Node ${nodeIpState}. Currently monitoring live strata depth, bio-acoustic formants, seismic impacts, and metabolic gases.`;
+            } else if (/(heartbeat|pulse|vital|alive|bpm|breathing|breath)/i.test(q)) {
+              if (heartbeatBpm) {
+                aiReply = `Vital pulse lock confirmed at ${heartbeatBpm} BPM. Target indicates active biological respiration with ${scentLabel} scent signature.`;
+              } else if (survivorCount > 0) {
+                aiReply = `${survivorCount} survivor signature(s) detected via acoustic and bio-scent sensors (${spectrum}, ${scentLabel}). Pulse detection array is currently sweeping.`;
+              } else {
+                aiReply = `Zero biological vital pulses detected. Sensor registers indicate baseline ambient background noise.`;
+              }
+            } else if (/(how many|count|number of|anyone|someone|anybody|people|trapped|survivor|victim)/i.test(q)) {
+              if (survivorCount > 0) {
+                aiReply = `Hardware telemetry reports ${survivorCount} survivor(s) detected at depth ${depthMeters.toFixed(2)} meters (${depthProximityCategory}). Triage zone is ${zoneColor} (${threatLevel}) with acoustic classification: ${spectrum}.`;
+              } else {
+                aiReply = `Currently zero trapped survivors are detected by the sensor array. Strata scan is nominal with no active distress signatures.`;
+              }
+            } else if (/(depth|how deep|strata|deep|meters|cavity|distance|range)/i.test(q)) {
+              if (depthMeters > 0) {
+                aiReply = `Calculated strata depth is ${depthMeters.toFixed(2)} meters (${depthProximityCategory}) with a lateral radar range of ${rangeMeters.toFixed(2)} meters.`;
+              } else {
+                aiReply = `Ultrasonic sonar depth register reads 0.00 meters. Subterranean strata scan is clear with no void targets locked.`;
+              }
+            } else if (/(gas|air|ppm|oxygen|co2|ammonia|hazard|toxic|smoke|breathable|purity)/i.test(q)) {
+              if (gasPpm > 400 || (telemetry.air_rating || "").includes("DANGER")) {
+                aiReply = `Warning: Gas hazard detected at ${gasPpm} PPM (${telemetry.air_rating || "HAZARDOUS"}). Metabolic CO2 is ${telemetry.co2_ppm || gasPpm} PPM. Supplemental breathing apparatus required for rescue personnel.`;
+              } else {
+                aiReply = `Atmospheric gas reading is ${gasPpm} PPM (${telemetry.air_rating || "SAFE / BREATHABLE"}). Metabolic CO2 is ${telemetry.co2_ppm || gasPpm} PPM, and ammonia VOC is ${nh3Ppm.toFixed(2)} PPM.`;
+              }
+            } else if (/(seismic|vibration|structural|collapse|taps|tap|knocking|piezo|impact|stable)/i.test(q)) {
+              aiReply = `Seismic impact matrix records ${tapCount} physical taps with a peak vibration of ${seismicPeak} mm/s. Structural strata stability is ${seismicPeak > 5 ? "UNSTABLE / POST-SHOCK RISK" : "STABLE"}.`;
+            } else if (/(scent|smell|voc|sulfide|effluent|odor|saliva)/i.test(q)) {
+              aiReply = `Bio-scent VOC classification is ${scentLabel} with ${nh3Ppm.toFixed(2)} PPM concentration (${telemetry.human_scent_detected ? "POSITIVE HUMAN METABOLITE" : "AMBIENT"}).`;
+            } else if (/(how to rescue|rescue plan|extract|extraction|how do we|dig|procedure|protocol|triage|strategy)/i.test(q)) {
+              if (survivorCount > 0) {
+                if (depthMeters < 1.5) {
+                  aiReply = `Triage Protocol: Surface cavity extraction (${depthMeters.toFixed(2)}m). Clear surface debris manually with hand tools and deploy the acoustic beacon to guide the team.`;
+                } else if (depthMeters <= 3.0) {
+                  aiReply = `Triage Protocol: Intermediate debris extraction (${depthMeters.toFixed(2)}m). Install pneumatic shoring to secure the void and establish auxiliary air ventilation.`;
+                } else {
+                  aiReply = `Triage Protocol: Deep subterranean extraction (${depthMeters.toFixed(2)}m). Heavy hydraulic trench shoring and core drilling required before team entry.`;
+                }
+              } else {
+                aiReply = `No active rescue extraction required. Continue subterranean radar sweep across grid coordinates.`;
+              }
+            } else if (/(where|gps|coordinates|location|city|bus stand)/i.test(q)) {
+              aiReply = `Target lock is anchored at ${cityStr} (${gpsCoords}) with ${satsCount} GPS satellites locked.`;
+            } else if (/(status|report|sitrep|summary|check|readings|all sensors)/i.test(q)) {
+              aiReply = `Sitrep: Node ${nodeIpState} Online. Detected Survivors: ${survivorCount} at ${depthMeters.toFixed(2)}m depth. Gas: ${gasPpm} PPM (${telemetry.air_rating || "NOMINAL"}). Acoustic: ${spectrum}. Seismic: ${seismicPeak} mm/s.`;
+            } else {
+              aiReply = `AURA Tactical Intelligence active on Node ${nodeIpState}. Current telemetry locks ${survivorCount} survivor(s) at ${depthMeters.toFixed(2)}m with ${gasPpm} PPM gas. To enable open-ended general conversations, paste a free Gemini key in Settings.`;
+            }
           }
         }
       }
