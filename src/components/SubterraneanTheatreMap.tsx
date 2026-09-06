@@ -157,34 +157,25 @@ export default function SubterraneanTheatreMap({
     window.open(`https://www.google.com/maps?q=${activeTargetLat},${activeTargetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
   };
 
-  // 1. Core Spatial & Multi-Person Calculations
+  // 1. Pure Genuine Spatial Calculations from Live Telemetry
   const rawSurvivorCount = telemetry.survivor_count !== undefined 
     ? Number(telemetry.survivor_count) 
     : (telemetry.ai_biological ? 1 : 0);
   
   const rawDepth = telemetry.depth_meters !== undefined 
     ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0)
-    : (telemetry.ai_depth_meters ?? 0);
+    : (Number(telemetry.ai_depth_meters) || 0);
   
   const rawRange = telemetry.range_meters !== undefined
     ? (typeof telemetry.range_meters === "number" ? telemetry.range_meters : parseFloat(String(telemetry.range_meters)) || 0)
-    : (rawDepth > 0 ? Number((rawDepth * 1.25).toFixed(2)) : 0);
+    : 0;
 
   const confidenceScore = telemetry.confidence !== undefined 
     ? Number(telemetry.confidence) 
-    : (rawSurvivorCount > 0 ? 94 : 0);
+    : 0;
 
-  // Dynamic Triage Color Zone Selection
-  let zoneColor = (telemetry.zone_color || "").toUpperCase();
-  if (!zoneColor || zoneColor === "AUTO") {
-    if (rawSurvivorCount > 0 || rawDepth > 0) {
-      if (rawDepth < 1.2) zoneColor = "GREEN";
-      else if (rawDepth <= 3.5) zoneColor = "RED";
-      else zoneColor = "WHITE";
-    } else {
-      zoneColor = "NONE";
-    }
-  }
+  // Dynamic Triage Color Zone Selection (Pure Hardware Payload)
+  let zoneColor = (telemetry.zone_color || "NONE").toUpperCase();
 
   let zoneConfig = {
     badgeClass: "bg-zinc-800 text-zinc-400 border-zinc-700",
@@ -213,28 +204,24 @@ export default function SubterraneanTheatreMap({
   }
 
   const spatialPosition = telemetry.spatial_position || (
-    zoneColor === "GREEN" ? "SURFACE AIR CAVITY / HIGH VIABILITY" :
-    zoneColor === "RED" ? "DOWN / MID-DEBRIS CORE VOID" :
-    zoneColor === "WHITE" ? "VERY DOWN / DEEP SUBTERRANEAN STRATA" :
+    zoneColor === "GREEN" ? "SURFACE / IMMEDIATE ACCESS" :
+    zoneColor === "RED" ? "DOWN / MID-DEBRIS CORE" :
+    zoneColor === "WHITE" ? "VERY DOWN / DEEP SUBTERRANEAN" :
     "SEARCHING VOID SECTORS"
   );
 
   // 2. Acoustic & Seismic Vibration Matrix
-  const acousticSpectrum = telemetry.acoustic_spectrum || (
-    (telemetry.acoustic_energy || 0) > 60 ? "LOUD CRY / SHOUT" :
-    (telemetry.acoustic_energy || 0) > 30 ? "HUMAN SPEECH / VOCAL" :
-    (telemetry.acoustic_energy || 0) > 15 ? "FAINT BREATH / WHISPER" :
-    "SILENCE / NOISE FLOOR"
-  );
-
+  const acousticSpectrum = telemetry.acoustic_spectrum || "SILENCE / NOISE FLOOR";
   const acousticDb = Number(telemetry.acoustic_energy ?? 0);
   const tapCount = Number(telemetry.tap_count ?? 0);
-  const rawPiezo = Number(telemetry.raw_piezo ?? (tapCount > 0 ? 1820 : 0));
+  const rawPiezo = Number(telemetry.raw_piezo ?? 0);
   const seismicPeak = Number(telemetry.seismic_peak ?? 0);
 
-  const humanScentPpm = typeof telemetry.human_scent_ppm === "number" ? telemetry.human_scent_ppm : parseFloat(String(telemetry.human_scent_ppm || "0")) || 0;
-  const humanScentDetected = Boolean(telemetry.human_scent_detected || humanScentPpm > 0.3);
-  const rawScentLabel = telemetry.human_scent_label || (humanScentDetected ? "SWEAT / AMMONIA VOC" : "CLEAR AMBIENT");
+  const humanScentPpm = telemetry.human_scent_ppm !== undefined 
+    ? (typeof telemetry.human_scent_ppm === "number" ? telemetry.human_scent_ppm : parseFloat(String(telemetry.human_scent_ppm)) || 0) 
+    : 0;
+  const humanScentDetected = Boolean(telemetry.human_scent_detected);
+  const rawScentLabel = telemetry.human_scent_label || (humanScentDetected ? "HUMAN VOC DETECTED" : "CLEAR AMBIENT");
 
   // Bio-Scent Profiler v18.0 dynamic classification color mapping
   const getBioScentConfig = (label: string, detected: boolean) => {
@@ -280,7 +267,7 @@ export default function SubterraneanTheatreMap({
       textClass: "text-slate-400",
       cardBorder: "bg-[#080B12]/85 border-white/10",
       iconColor: "text-slate-400",
-      label: detected ? (label || "SWEAT / AMMONIA VOC") : "CLEAR AMBIENT"
+      label: detected ? (label || "HUMAN VOC") : "CLEAR AMBIENT"
     };
   };
 
@@ -288,7 +275,7 @@ export default function SubterraneanTheatreMap({
   const humanScentLabel = bioScentConfig.label;
 
   const envGasPpm = Number(telemetry.env_gas_ppm ?? telemetry.gas ?? 0);
-  const isDopplerMotion = Boolean(telemetry.radar || telemetry.motion_detected || (telemetry.delta_jerk && telemetry.delta_jerk > 0.4));
+  const isDopplerMotion = Boolean(telemetry.radar === 1 || telemetry.motion_detected);
   const deltaJerk = typeof telemetry.delta_jerk === "number" ? telemetry.delta_jerk : parseFloat(String(telemetry.delta_jerk || "0")) || 0;
 
   // Active Buzzer Mode from live telemetry with fallback to local state
