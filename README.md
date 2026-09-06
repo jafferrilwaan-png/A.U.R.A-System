@@ -1,42 +1,61 @@
-# 🌐 A.U.R.A. // Autonomous Underground Reconnaissance & Assessment
+# 🌐 A.U.R.A. // Autonomous Universal Rescue & Analysis Node
 ### *Subterranean Cavity Mapping, Bio-Scent Detection & Multi-Modal Life Finding Matrix*
 
 ![A.U.R.A. Status](https://img.shields.io/badge/System-Operational-purple?style=for-the-badge)
-![SIH](https://img.shields.io/badge/Smart_India_Hackathon-Disaster_Management-orange?style=for-the-badge)
-![Tech Stack](https://img.shields.io/badge/Stack-React_19_%7C_TypeScript_%7C_ESP32_C%2B%2B_%7C_Neural_LLM-blue?style=for-the-badge)
-![AI Engine](https://img.shields.io/badge/AI_Engine-Gemini_2.5_Flash_%7C_LLaMA_3.3_70B-green?style=for-the-badge)
+![Disaster Management](https://img.shields.io/badge/Domain-Disaster_Search_and_Rescue-orange?style=for-the-badge)
+![Tech Stack](https://img.shields.io/badge/Stack-React_19_%7C_TypeScript_%7C_ESP32_Dual--Core_FreeRTOS-blue?style=for-the-badge)
+![AI Engine](https://img.shields.io/badge/AI_Engine-Google_Gemini_Flash_1.5_%7C_Meta_LLaMA_3.3_70B-green?style=for-the-badge)
 
-> *"Underneath tons of shattered concrete and steel rubble, every second is the difference between a life saved and a life lost. A.U.R.A. gives eyes, ears, and artificial intelligence to first responders where human senses end."*
-
----
-
-## 💔 The Human Cost & Emotional Core
-
-When an earthquake strikes, a mine collapses, or a severe structural disaster shatters a multi-story building into compressed pancake voids:
-- **The Golden Window (First 72 Hours)**: Trapped survivors face suffocating concrete dust, toxic gas buildup, hypothermia, traumatic shock, and rapid dehydration. Survival probability plummets exponentially with every passing hour.
-- **The Agony of Search-and-Rescue**: Emergency responders (NDRF, SDRF, Fire & Rescue) arrive at an impenetrable mountain of chaotic rubble. Traditional tools fail: **thermal imaging drones cannot penetrate dense reinforced concrete slabs**, while radio waves and cellular signals are **completely dead** under meters of twisted steel.
-- **The Peril of Blind Excavation**: Digging blindly with heavy excavators can destabilize fragile rubble arches, triggering secondary cave-ins that crush the very survivors teams are desperately trying to reach.
-- **The Voice from the Dark**: Trapped souls often tap a piece of rebar or whisper with their last breath. In the deafening roar of surface diesel generators, these faint acoustic cries go unheard.
-
-**Project A.U.R.A. was engineered to solve this human crisis.** It is an edge-deployed tactical reconnaissance and bio-acoustic life-detection platform designed to non-invasively locate buried victims, classify respiration and pulse markers, isolate metabolic scents, and calculate pinpoint surgical excavation vectors for rescue commanders.
+> *"Underneath tons of shattered reinforced concrete and steel debris, every second is the difference between a life saved and a life lost. A.U.R.A. equips first responders with subterranean eyes, acoustic ears, and neural intelligence where human senses end."*
 
 ---
 
-## 🎯 Smart India Hackathon (SIH) Problem Statement
-
-### **Domain**: Disaster Management, Robotics & AI for Emergency Response
-> **Problem Statement**: *Rapid Non-Invasive Subterranean Victim Localization & Structural Cavity Assessment in Post-Disaster Collapse Scenarios.*
-
-### **Target Objectives**:
-1. **Penetrative Non-Invasive Sensing**: Overcome the physical limitations of optical drones by utilizing sub-surface acoustic frequency isolation and ultrasonic strata void sonar.
-2. **Dual-Gas Bio-Scent Discrimination**: Distinguish between hazardous environmental gases (combustibles, smoke, carbon monoxide) and human metabolic VOC biomarkers (ammonia $NH_3$, sweat VOCs, exhaled $CO_2$) inside collapse voids.
-3. **Piezoelectric Seismic Tap Matrix**: Capture rhythmic micro-impact vibrations (distress knocks/taps) against debris and filter out surface machinery noise in real time.
-4. **Autonomous Neural Tactical Triage**: Stream multi-modal sensor telemetry directly into an AI reasoning engine (Google Gemini 2.5 Flash / Meta LLaMA 3.3 70B via OpenRouter) to deliver instant excavation directives (burial depth, azimuth angle, structural hazard ratings) to field commander tablets.
-5. **Zero-Failure Offline Persistence**: Anchor tactical theatre radar to the last active target coordinate fix so operations continue uninterrupted even through communication blackouts.
+![A.U.R.A. Subterranean Search & Rescue Concept](./public/subterranean_victim_detection.jpg)
 
 ---
 
-## ⚡ System Architecture & Hardware Evolution
+## 🚨 Operational Context & Mission Imperative
+
+In post-earthquake structural collapses, mine entrapments, and pancake building collapses:
+- **The Critical 72-Hour Window**: Trapped survivors endure suffocating concrete dust, toxic metabolic VOC buildup, hypothermia, shock, and dehydration. Survival likelihood decreases exponentially with each passing hour.
+- **Limitations of Conventional Tools**: Standard optical drones and thermal imaging cameras cannot penetrate dense reinforced concrete slabs. Radio frequencies and cellular signals attenuate heavily under meters of twisted steel.
+- **Dangers of Unassisted Excavation**: Blind excavation with heavy hydraulic machinery risks collapsing fragile rubble void arches, causing fatal secondary cave-ins.
+- **Detection of Faint Distress Signals**: Buried victims often make micro-impact taps or faint vocalizations that are completely drowned out by surface generator noise.
+
+**Project A.U.R.A. delivers an edge-deployed multi-modal tactical sensing platform.** It non-invasively penetrates rubble voids, captures seismic tap impulses, isolates acoustic distress spectrums, classifies metabolic VOC scent markers, and runs real-time cloud neural AI inference to compute surgical excavation directives for disaster response commanders.
+
+---
+
+## 🎯 System Objectives & Core Capabilities
+
+1. **Multi-Modal Penetrative Sensing**: Combines high-sensitivity piezoelectric seismic geophones, micro-acoustic frequency filters, and penetrative microwave Doppler radar to detect trapped victims through dense strata.
+2. **Bio-Scent & Hazardous Gas Discrimination**: Continuous MQ-135 analog VOC sensing to detect metabolic breath emissions (ammonia $NH_3$, oral VOCs, saliva/effluent markers) while alerting responders to toxic gas accumulation.
+3. **500Hz DSP Seismic Tap Tracking**: Real-time impulse envelope extraction that isolates rhythmic survivor tapping from background machinery vibrations.
+4. **Cloud Neural AI Triage (Google Gemini Flash 1.5)**: Streams physical multi-sensor telemetry into neural LLMs to generate 1-sentence tactical search-and-rescue directives and survival probability metrics.
+5. **Zero-Failure Geospatial Persistence**: Anchors search-and-rescue operations to high-precision geographic targets (e.g., Small Pond Sector, Nehru Street: `12.9676° N, 79.9462° E`) with live satellite mapping overlays.
+
+---
+
+## 🛠️ Hardware Architecture & Pinout Schematic
+
+![A.U.R.A. Hardware Architecture & Pinout Schematic](./public/aura_hardware_architecture.jpg)
+
+### Complete Hardware Sensor Array
+
+| Component | Interface | Pin Mapping | Function |
+| :--- | :--- | :--- | :--- |
+| **ESP32-WROOM-32** | Central Node | Dual-Core 240MHz | Core 0: Async WebServer & Cloud AI<br>Core 1: 500Hz Real-Time Sensor DSP |
+| **MQ-135 Bio-Scent Sensor** | Analog (ADC1) | **GPIO 34** | Detects metabolic human scent, $NH_3$, and hazardous air quality |
+| **Piezoelectric Geophone** | Analog (ADC1) | **GPIO 35** | High-sensitivity seismic contact microphone for distress tap detection |
+| **Electret Microphone** | Analog (ADC1) | **GPIO 32** | Real-time acoustic spectrum listening (whispers, vocalizations, cries) |
+| **Microwave Doppler Radar (RCWL-0516)** | Digital IN | **GPIO 33** | Penetrative microwave motion sensor for sub-surface chest flutter |
+| **MPU-6050 6-Axis IMU** | I2C (100kHz) | **SDA: 21 / SCL: 22** | Debris jerk, tilt angle, and structural stability monitoring |
+| **SSD1306 OLED Display (128x64)** | I2C (100kHz) | **SDA: 21 / SCL: 22** | 8-Slide animated live telemetry carousel for field operators |
+| **Tactical Alert Buzzer** | Digital / PWM | **GPIO 25** | Directional locator beacon, chirp cadence, and evacuation alarm |
+
+---
+
+## ⚡ System Architecture Flow
 
 ```
                            ┌────────────────────────────────────────┐
@@ -46,20 +65,20 @@ When an earthquake strikes, a mine collapses, or a severe structural disaster sh
                     ┌─────────────────────────┴─────────────────────────┐
                     ▼                                                   ▼
        ┌─────────────────────────┐                         ┌─────────────────────────┐
-       │   BIO-SCENT & GAS VOC   │                         │  PIEZO GEOPHONE & SONAR │
-       │  MQ-4 / MQ-135 Sensor   │                         │ Piezoelectric & HC-SR04 │
+       │   BIO-SCENT & GAS VOC   │                         │  PIEZO GEOPHONE & RADAR │
+       │     MQ-135 (GPIO 34)    │                         │  Piezo (35) & RCWL (33) │
        └────────────┬────────────┘                         └────────────┬────────────┘
-                    │ (PPM & VOC Signals)                               │ (Taps & Void Depth)
+                    │ (PPM & VOC Signals)                               │ (Taps & Void Motion)
                     └─────────────────────────┬─────────────────────────┘
                                               │
                                               ▼
                         ┌───────────────────────────────────────────┐
                         │      ESP32 TACTICAL HARDWARE NODE         │
-                        │        (Firmware v14.x Architecture)      │
-                        │  • Real-time Frequency FFT Analysis       │
-                        │  • Seismic Impact Tap Counting            │
-                        │  • Resonant Acoustic/Ultrasonic Beacon    │
-                        │  • 300ms Low-Latency Telemetry Stream     │
+                        │       (Dual-Core FreeRTOS Matrix)         │
+                        │  • Core 0: Dedicated Async HTTP WebServer │
+                        │  • Core 0: OpenRouter Gemini Flash AI     │
+                        │  • Core 1: 500Hz DSP Seismic & Audio FFT  │
+                        │  • Core 1: 8-Slide Animated OLED Engine   │
                         └─────────────────────┬─────────────────────┘
                                               │ (HTTP Telemetry / LocalTunnel)
                                               ▼
@@ -69,7 +88,7 @@ When an earthquake strikes, a mine collapses, or a severe structural disaster sh
                         │                                           │
                         │  ┌─────────────────────────────────────┐  │
                         │  │     Subterranean Theatre Radar      │  │
-                        │  │ (Topographic Map & Last Active Fix) │  │
+                        │  │ (Topographic Map & Small Pond Fix)  │  │
                         │  └─────────────────────────────────────┘  │
                         │  ┌─────────────────────────────────────┐  │
                         │  │    Dual-Gas & Bio-Scent Matrix      │  │
@@ -81,38 +100,10 @@ When an earthquake strikes, a mine collapses, or a severe structural disaster sh
                         │  └─────────────────────────────────────┘  │
                         │  ┌─────────────────────────────────────┐  │
                         │  │    AURA Voice Orb Neural Engine     │  │
-                        │  │ (Gemini 2.5 Flash / LLaMA 3.3 70B)   │  │
+                        │  │ (Gemini 1.5 Flash / LLaMA 3.3 70B)  │  │
                         │  └─────────────────────────────────────┘  │
                         └───────────────────────────────────────────┘
 ```
-
----
-
-## 🛠️ Hardware Subsystems & Edge Sensing
-
-### 1. ESP32 Microcontroller Core (`firmware/esp32_aura_node.ino`)
-- High-performance dual-core 240MHz microcontroller handling microsecond interrupt routines for seismic impact spikes and audio sample averaging.
-- Low-latency HTTP REST server streaming 300ms telemetry packets (`/api/telemetry`) and ingesting tactical hardware commands (`/api/command`).
-
-### 2. Dual-Gas & Metabolic Bio-Scent Array
-- **Environmental Hazard Channel**: Evaluates combustible gas, smoke, and air purity in parts-per-million (PPM).
-- **Human Bio-Scent VOC Channel**: Detects faint traces of ammonia ($NH_3$), sweat VOCs, and human exhaled breath concentrated in sealed subterranean cavities.
-- **Dynamic Visualizer**: Real-time glow indicators on the dashboard flag biological presence vs fire hazard instantly.
-
-### 3. Piezoelectric Geophone & Micro-Acoustic Spectrum
-- **Piezo Impact Transducer**: Captures physical distress tapping on pipes, beams, and concrete slabs.
-- **Acoustic Spectrum Classifier**: Distinguishes between:
-  - `LOUD VOICE/SHOUT` (Immediate survivor vocalization)
-  - `HUMAN SPEECH/BREATH` (Faint vocal distress)
-  - `FAINT SUB-AUDIBLE` (Micro-vibrations / scratching)
-  - `AMBIENT NOISE FLOOR` (Background environmental baseline)
-- **Tap Counter Widget**: Live incrementing tap ledger recording impact frequency patterns.
-
-### 4. Ultrasonic Void & Strata Depth Sonar
-- High-frequency ultrasonic echo sensing measures distance to debris obstacles, calculating subterranean cavity depth (meters) and detecting structural sandwich voids.
-
-### 5. Multi-Mode Acoustic Beacon
-- Onboard variable-level directional buzzer (Levels 1–4, up to 130 dB) and ultrasonic guidance pulses to establish acoustic communication with trapped victims or guide search K9 units.
 
 ---
 
@@ -120,21 +111,13 @@ When an earthquake strikes, a mine collapses, or a severe structural disaster sh
 
 ### 🗺️ Subterranean Theatre Map & Last Active Target Persistence
 - Interactive topological radar canvas displaying sub-surface strata depth slices.
-- **Fault-Tolerant Last Active Fix**: If the hardware probe disconnects or signal is lost in deep rubble, the map retains and displays the last known active target fix (anchored to GPS coordinates, e.g., Sriperumbudur command post `12.9665° N, 79.9450° E`).
+- **Fault-Tolerant Geospatial Anchor**: Real-time positioning locked to the disaster response sector at **Nehru Street Small Pond (`12.9676° N, 79.9462° E`)**.
 - Click-to-launch satellite navigation modal integrating Google Maps and OpenStreetMap.
 
-### 🧠 Pure Neural AI Reasoning Engine (Zero Fake Scripts)
-- **True LLM Pipeline**: Every question and voice query is processed directly through real neural models (**Google Gemini 2.5 Flash**, **Meta LLaMA 3.3 70B**, and **DeepSeek**) via OpenRouter API.
-- **Tactical C2 Synthesis**: The AI ingests live gas levels, seismic peak, tap count, acoustic decibels, and radar depth to compute:
-  - Precise excavation azimuth vectors (e.g., `320° NNW`)
-  - Estimated victim burial depth (e.g., `3.2 meters`)
-  - Structural collapse risk assessment (`STABLE` vs `COLLAPSE HAZARD`)
-- **AURA Voice Orb**: Interactive voice assistant equipped with clean speech synthesis (zero raw markdown characters for seamless audio communication).
-
-### 📱 Responsive Mobile Field Operations
-- Optimized for ruggedized mobile tablets and smartphones carried by rescue personnel.
-- 300ms live polling with automatic LocalTunnel / Ngrok bypass header injection (`Bypass-Tunnel-Reminder: true`, `ngrok-skip-browser-warning: true`).
-- Military HUD glassmorphic UI with zero layout overlaps and high-contrast tactical dark mode.
+### 🧠 True Multi-Modal AI Reasoning Engine (Zero Fake Data)
+- **100% Ground-Truth Telemetry**: Direct analog-to-digital sensor conversions with zero synthetic floors or mock values.
+- **Real-Time Cloud LLM Inference**: Sends live seismic peak, audio energy, gas delta, and radar state to **Google Gemini Flash 1.5** via OpenRouter API.
+- **AURA Voice Orb**: Interactive voice assistant equipped with natural speech synthesis for eyes-free rescue operations.
 
 ---
 
@@ -143,22 +126,23 @@ When an earthquake strikes, a mine collapses, or a severe structural disaster sh
 ```
 A.U.R.A-System/
 ├── firmware/
-│   └── esp32_aura_node.ino          # ESP32 C++ Microcontroller Source Code (v14.x)
+│   └── esp32_aura_node.ino          # ESP32 C++ Production Firmware (v30.0-PROD)
 ├── public/
-│   ├── aura_hardware_architecture.jpg # Hardware Schematic & Pinout Diagram
-│   └── high_res_frames/             # Topographic Strata Visual Assets
+│   ├── aura_hardware_architecture.jpg # High-Resolution Hardware Pinout Schematic
+│   ├── subterranean_victim_detection.jpg # Subterranean Rescue Cross-Section Illustration
+│   └── tahoe_animated.gif           # Tactical Backdrop Asset
 ├── src/
 │   ├── components/
 │   │   ├── AuraVoiceOrb.tsx          # Voice AI Assistant (OpenRouter Neural LLM)
 │   │   ├── TacticalC2Dashboard.tsx   # Mobile C2 Command & Telemetry Grid
-│   │   ├── SubterraneanTheatreMap.tsx # Radar & Last Active Target GPS Modal
+│   │   ├── SubterraneanTheatreMap.tsx # Radar & Target Sector GPS Modal
 │   │   ├── SettingsPage.tsx          # System Configuration & API Diagnostics
 │   │   └── SettingsModal.tsx         # Node IP & Connection Settings
 │   ├── App.tsx                       # Main Application State & View Routing
 │   ├── main.tsx                      # React DOM Entrypoint
 │   └── index.css                     # Tactical Military HUD Styling
-├── PROBLEM_STATEMENT.md              # In-depth SIH Problem Analysis & Human Cost
-├── HARDWARE_TECH_PARTS.md            # Complete Bill of Materials & Wiring Guide
+├── PROBLEM_STATEMENT.md              # Detailed Search-and-Rescue Engineering Problem
+├── HARDWARE_TECH_PARTS.md            # Hardware Bill of Materials & Wiring Guide
 ├── README.md                         # Main Documentation & System Architecture
 └── package.json                      # Dependencies & Build Scripts
 ```
@@ -169,7 +153,7 @@ A.U.R.A-System/
 
 ### 1. Prerequisites
 - Node.js 18+ & npm
-- Arduino IDE (with ESP32 board support)
+- Arduino IDE (with ESP32 board package)
 
 ### 2. Install & Run Web Dashboard
 ```bash
@@ -186,14 +170,9 @@ npm run dev
 
 ### 3. Flash ESP32 Hardware Probe
 1. Open `firmware/esp32_aura_node.ino` in Arduino IDE.
-2. Configure your WiFi SSID and Password.
-3. Connect your sensors according to `HARDWARE_TECH_PARTS.md`.
-4. Upload to ESP32 Dev Module at 115200 baud.
-
-### 4. Cloud / Vercel Environment Variables
-| Variable | Value | Description |
-| :--- | :--- | :--- |
-| `VITE_OPENROUTER_API_KEY` | `sk-or-v1-...` | OpenRouter Neural AI Engine Key |
+2. Select board **ESP32 Dev Module** on your active COM port (e.g. `COM6`).
+3. Set your WiFi SSID and password (defaults: `"dhil"` / `"12345678"`).
+4. Click **Upload**.
 
 ---
 
@@ -204,11 +183,11 @@ npm run dev
 | **Jaffer Rilwaan V** | Lead Systems Architect | Full-Stack C2 Platform, Neural AI Integration & Telemetry Pipeline |
 | **Hannah Blessy J** | Hardware & Sensor Lead | Piezoelectric Transducer Arrays & Bio-Scent VOC Hardware |
 | **Kathiravan V** | Telemetry & Cloud Engineer | Resilient Tunnel Networking & Edge-to-Cloud Protocols |
-| **Kingston** | Firmware & Signal Specialist | ESP32 Real-Time Filtering, Audio FFT & Interrupt Logic |
+| **Kingston** | Firmware & Signal Specialist | ESP32 Real-Time Filtering, Audio DSP & Interrupt Logic |
 | **Giridhar K** | UI/UX & Tactical Ops Lead | High-Contrast Tactical C2 Interface & Field Responsiveness |
 
 ---
 
 ## 📜 License & Mission
 © 2026 Project A.U.R.A. Built for disaster search-and-rescue teams worldwide.
-*Dedicated to saving trapped lives beneath disaster rubble.*
+*Dedicated to rapid, non-invasive subterranean victim localization and saving trapped lives.*

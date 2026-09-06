@@ -1,17 +1,24 @@
 /**
  * ============================================================================
  * PROJECT A.U.R.A. (Autonomous Universal Rescue & Analysis Node)
- * HARDWARE FIRMWARE: ESP32 Master C2 Node v12.0-ULTRA-ACOUSTIC-BIO
+ * MASTER SYSTEM FIRMWARE: Enterprise Multi-Sensor Rescue Engine v30.0-PROD
  * ============================================================================
- * Hardware Targets:
- *   - ESP32-WROOM-32 / DevKit V1
- *   - 0.96" SSD1306 I2C OLED (128x64, Addr 0x3C, SDA=21, SCL=22)
- *   - MPU-6050 6-DoF Accelerometer/Gyro (I2C)
- *   - Analog Electret Sound/Mic Sensor (ADC1 Pin 32)
- *   - Piezoelectric Seismic Subterranean Transducer (ADC1 Pin 35)
- *   - MQ-135 Gas Atmospheric Sensor (ADC1 Pin 34)
- *   - RCWL-0516 Microwave Doppler Radar (Pin 33)
- *   - Tactical PWM Acoustic Transducer / Buzzer (Pin 25)
+ * MODE: BULLETPROOF PRODUCTION MATRIX (I2C Bus Clock Sync & WDT Fix)
+ * 1. Fixed ESP-IDF v3 Watchdog & GCC 14.2 Type Deduction
+ * 2. 8-Slide Animated OLED Carousel & Multi-Cadence Buzzer Engine
+ * 3. OpenRouter Gemini Flash 1.5 Integration
+ * 4. Dedicated Core 0 Async Network Task + Full CORS & Private Network Access
+ * 5. Small Pond (Nehru Street Sector) Geospatial Anchor: 12.9676 N, 79.9462 E
+ * ============================================================================
+ * Hardware Pinout:
+ *   - ESP32-WROOM-32 Central Node
+ *   - MQ-135 Bio-Scent Gas Sensor      -> GPIO 34 (Analog ADC1)
+ *   - Piezoelectric Seismic Geophone   -> GPIO 35 (Analog ADC1)
+ *   - High-Sensitivity Mic Sensor      -> GPIO 32 (Analog ADC1)
+ *   - RCWL-0516 Microwave Radar        -> GPIO 33 (Digital IN)
+ *   - Tactical Alert Buzzer            -> GPIO 25 (PWM / Digital OUT)
+ *   - SSD1306 128x64 OLED Display      -> SDA: GPIO 21, SCL: GPIO 22 (0x3C)
+ *   - MPU-6050 6-Axis IMU              -> SDA: GPIO 21, SCL: GPIO 22 (0x68)
  * ============================================================================
  */
 
@@ -27,264 +34,148 @@
 #include <ArduinoJson.h>
 #include <esp_task_wdt.h>
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET    -1
-#define SCREEN_ADDRESS 0x3C
+// ----------------------------------------------------------------------------
+// PIN DEFINITIONS
+// ----------------------------------------------------------------------------
+#define PIN_GAS_MQ135   34  
+#define PIN_PIEZO       35  
+#define PIN_MIC_OUT     32  
+#define PIN_RADAR_OUT   33  
+#define PIN_BUZZER      25  
 
-// Hardware Pin Mappings (All analog on ADC1 to function seamlessly during Wi-Fi transmission)
-#define PIN_GAS_MQ135   34
-#define PIN_PIEZO       35
-#define PIN_MIC_OUT     32
-#define PIN_RADAR_OUT   33
-#define PIN_BUZZER      25
+#define SCREEN_WIDTH    128
+#define SCREEN_HEIGHT   64
+#define OLED_RESET      -1
+#define SCREEN_ADDRESS  0x3C
 
 #define BUZZER_PWM_CHANNEL 0
 #define BUZZER_PWM_RES     8
 #define SEISMIC_SAMPLES    128
-#define MIC_WINDOW_SAMPLES 180
-#define WDT_TIMEOUT_SEC    15
+#define WDT_TIMEOUT_SEC    30
 
-// Network & Cloud API Credentials
-const char* ssid = "OPPO Reno13 5G r24x";
-const char* password = "123456789";
+// ----------------------------------------------------------------------------
+// NETWORK & CLOUD CREDENTIALS
+// ----------------------------------------------------------------------------
+const char* ssid = "dhil";
+const char* password = "12345678";
 
-// Verified Active OpenRouter Neural Model (Zero 404/429 errors)
-const String OPENROUTER_KEY = "YOUR_OPENROUTER_KEY_HERE"; // Replace with your sk-or-v1-... key before flashing
-const char* OPENROUTER_MODEL = "google/gemini-2.5-flash";
+const String OPENROUTER_KEY = "YOUR_OPENROUTER_API_KEY"; // Replace with your OpenRouter sk-or-v1-... key before flashing
+const char* OPENROUTER_MODEL = "google/gemini-flash-1.5";
 
+// Target Coordinates: Small Pond, Nehru Street Sector
+const float GPS_LATITUDE  = 12.9676;
+const float GPS_LONGITUDE = 79.9462;
+
+// ----------------------------------------------------------------------------
+// GLOBAL OBJECTS & STATE FLAGS
+// ----------------------------------------------------------------------------
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Adafruit_MPU6050 mpu;
 WebServer server(80);
+TaskHandle_t NetworkTaskHandle = NULL;
 
 bool oledReady = false;
 bool mpuReady = false;
 bool wifiReady = false;
-bool diagnosticModeActive = false;
 
-// Sensor Telemetry Registers
-int rawGas = 0;
-int rawPiezo = 0;
-int rawRadar = 0;
-unsigned long lastRadarTriggerTime = 0;
+// ----------------------------------------------------------------------------
+// RAW SENSOR SIGNALS
+// ----------------------------------------------------------------------------
+volatile int rawGas = 0;
+volatile int rawPiezo = 0;
+volatile int rawMic = 0;
+volatile int rawRadar = 0;
 
-float accelX = 0, accelY = 0, accelZ = 0;
-float prevAx = 0, prevAy = 0, prevAz = 9.8;
-float deltaJerk = 0.0;
+// ----------------------------------------------------------------------------
+// V20.0 TRUE MATRIX NOISE FLOORS & DEBOUNCERS
+// ----------------------------------------------------------------------------
+float micNoiseFloor = 14.0f;
+float ambientSeismicFloor = 0.0f;
+int lastRadarState = 0;
+unsigned long lastRadarTransitionTime = 0;
 
-// High-Precision Geolocation Registers (Default: Sriperumbudur Anchor)
-double geoLat = 13.1067;
-double geoLng = 79.9477;
-float geoAccuracyM = 3.5;
-String geoCity = "CHENNAI";
-String geoSource = "SRIPERUMBUDUR_ANCHOR";
-bool locationLocked = true;
-int confidenceScore = 0;
-
-// Master Hardware State Registers
-int configBuzzerLevelSetting = 2; // 0 = Mute, 1 = 85dB, 2 = 98dB, 3 = 110dB Overdrive
-bool configTransducerActive = false;
-int configUltrasonicKHz = 40;     
-int configPollingRateMs = 300;
-bool configHardwareOverdrive = false;
-
-// Advanced Acoustic DSP Engine Registers (Burst Window + Frequency Analysis)
-float micDcBias = 1950.0;
-float micPeakToPeak = 0.0;
-float micRmsEnergy = 0.0;
-float micEstimatedFreqHz = 0.0;
-String soundClassification = "SILENT";
-String soundDepthCategory = "AMBIENT"; // NEARBY (<1.0m), SUBTERRANEAN (1.0-3.5m), VERY DEEP (>3.5m)
-float soundDepthMeters = 0.0;
-
-// Biological Heartbeat & Rhythm Cadence Analyzer
-bool heartbeatDetected = false;
-int heartbeatBpm = 0;
-unsigned long lastPulsePeakTime = 0;
-unsigned long pulseIntervalHistory[4] = {0, 0, 0, 0};
-int pulseHistoryIndex = 0;
-
-// Piezoelectric Seismic Registers
-float piezoBias = 500.0;
-float piezoPeakEnvelope = 0.0;
+float piezoBaseline = 0.0;
+volatile float piezoInstantDelta = 0.0;
+volatile float piezoPeakEnvelope = 0.0;
 int tapCountWindow = 0;
-unsigned long lastTapTime = 0;
+unsigned long lastTapTimestamp = 0;
+int seismicBuffer[SEISMIC_SAMPLES];
+int bufferIndex = 0;
 
-// AI Diagnostics & Subterranean Analysis
-String aiStatus = "AI: ACTIVE SCAN";
-String aiClassification = "SCANNING";
-bool aiBiologicalDetected = false;
-String aiActionRec = "SURVEILLANCE";
-float aiTrappedDepthEstimateMeters = 0.0;
+volatile float micPeakToPeak = 0.0;
+volatile float micEnergy = 0.0;
+String acousticSpectrum = "SILENCE / NOISE FLOOR";
+
+// ----------------------------------------------------------------------------
+// SPATIAL INTELLIGENCE VARIABLES
+// ----------------------------------------------------------------------------
+volatile int survivorCount = 0;
+volatile float targetDepthMeters = 0.0;
+volatile float targetRangeMeters = 0.0;
+String survivorZoneColor = "NONE"; 
+String spatialPosition = "ALL CLEAR / SCANNING";
+volatile int rescueConfidence = 0;
+
+// ----------------------------------------------------------------------------
+// ENVIRONMENTAL & BIO-SCENT SENSING
+// ----------------------------------------------------------------------------
+volatile float envGasPPM = 400.0;
+volatile float humanScentPPM = 0.0;
+volatile bool humanScentDetected = false;
+String humanScentLabel = "CLEAR AMBIENT";
+
+// ----------------------------------------------------------------------------
+// IMU / STRUCTURAL VARIABLES
+// ----------------------------------------------------------------------------
+float prevAx = 0, prevAy = 0, prevAz = 9.8;
+volatile float deltaJerk = 0.0;
+
+// ----------------------------------------------------------------------------
+// BUZZER ACTUATOR ENGINE
+// ----------------------------------------------------------------------------
+volatile int buzzerMode = 0;
+unsigned long lastBuzzerTick = 0;
+bool buzzerPulseState = false;
+int cadenceStep = 0;
+
+// ----------------------------------------------------------------------------
+// CLOUD AI ENGINE VARIABLES
+// ----------------------------------------------------------------------------
+String aiStatus = "AI: LOCAL ACTIVE";
+String aiClassification = "MONITORING DEBRIS";
+volatile bool triggerCloudAiQuery = false;
 unsigned long lastAiCallTime = 0;
 const unsigned long AI_QUERY_INTERVAL = 6000;
 
-// Circular Buffer for Seismograph & Acoustic OLED Oscilloscope
-int seismicWave[SEISMIC_SAMPLES];
-int waveHead = 0;
-int seismicLocalMax = 25;
-
-unsigned long lastBuzzerBeepTick = 0;
-bool buzzerStateOn = false;
-
-int activeCard = 0;
-const int TOTAL_CARDS = 5;
+// ----------------------------------------------------------------------------
+// 8-SLIDE OLED CAROUSEL ENGINE VARIABLES
+// ----------------------------------------------------------------------------
+int oledCardIndex = 0;
+const int TOTAL_SLIDES = 8;
 unsigned long lastSlideSwitch = 0;
-const unsigned long SLIDE_INTERVAL = 3000;
+const unsigned long SLIDE_INTERVAL_MS = 2500;
+int animTick = 0;
 
-unsigned long lastFastSample = 0;
-unsigned long lastSlowSample = 0;
-unsigned long lastOledDraw = 0;
+// ----------------------------------------------------------------------------
+// MAIN LOOP TIMERS
+// ----------------------------------------------------------------------------
+unsigned long lastDspCycle = 0;
+unsigned long lastSlowCycle = 0;
+unsigned long lastOledCycle = 0;
 
 // ============================================================================
-// ACOUSTIC DSP BURST SAMPLING ENGINE (Solves the "Mic Not Listening" issue)
+// HARDWARE ACTUATOR LOGIC (BUZZER CONTROL)
 // ============================================================================
-void sampleAcousticMicrophoneBurst() {
-  int minVal = 4095;
-  int maxVal = 0;
-  long sumSquareDiff = 0;
-  long sumVal = 0;
-  int zeroCrossings = 0;
-
-  unsigned long startTime = micros();
-
-  // Burst capture 180 continuous audio samples (~3.5 ms window)
-  for (int i = 0; i < MIC_WINDOW_SAMPLES; i++) {
-    int sample = analogRead(PIN_MIC_OUT);
-    sumVal += sample;
-
-    if (sample < minVal) minVal = sample;
-    if (sample > maxVal) maxVal = sample;
-
-    float diff = (float)sample - micDcBias;
-    sumSquareDiff += (long)(diff * diff);
-
-    // Detect zero crossings across the dynamic DC bias
-    if (i > 0 && ((sample >= micDcBias && minVal < micDcBias) || (sample <= micDcBias && maxVal > micDcBias))) {
-      zeroCrossings++;
-    }
-    delayMicroseconds(18); // ~40 kHz sample rate for clear voice & tapping capture
-  }
-
-  unsigned long totalTimeUs = micros() - startTime;
-
-  // Slowly adapt DC bias (auto-calibrates electret sensor drift)
-  float windowMean = (float)sumVal / MIC_WINDOW_SAMPLES;
-  micDcBias = (micDcBias * 0.98f) + (windowMean * 0.02f);
-
-  // Peak-to-Peak amplitude in ADC units (0 to 4095)
-  int p2p = maxVal - minVal;
-  micPeakToPeak = (micPeakToPeak * 0.70f) + (p2p * 0.30f);
-
-  // RMS Energy Calculation
-  float meanSquare = (float)sumSquareDiff / MIC_WINDOW_SAMPLES;
-  float currentRms = sqrt(meanSquare);
-  micRmsEnergy = (micRmsEnergy * 0.65f) + (currentRms * 0.35f);
-
-  // Approximate fundamental audio frequency via Zero-Crossing Rate
-  if (totalTimeUs > 0 && zeroCrossings > 1) {
-    float freq = ((float)zeroCrossings / 2.0f) * (1000000.0f / (float)totalTimeUs);
-    if (freq > 40.0f && freq < 4500.0f) {
-      micEstimatedFreqHz = (micEstimatedFreqHz * 0.75f) + (freq * 0.25f);
-    }
-  }
-
-  // AGGRESSIVE ACOUSTIC CLASSIFICATION & SUBTERRANEAN DEPTH ESTIMATION
-  if (micPeakToPeak < 35.0f && micRmsEnergy < 12.0f) {
-    soundClassification = "AMBIENT";
-    soundDepthCategory = "CLEAR VOID";
-    soundDepthMeters = 0.0f;
-  } 
-  // Human Speech / Shouting / Calling out (Dominant Formants 250 Hz - 2800 Hz)
-  else if (micEstimatedFreqHz >= 220.0f && micEstimatedFreqHz <= 3200.0f && micRmsEnergy >= 25.0f) {
-    soundClassification = "HUMAN VOICE";
-    aiBiologicalDetected = true;
-    
-    // Depth attenuation analysis (Voice attenuates with exponential dampening through rubble)
-    if (micRmsEnergy > 160.0f || micPeakToPeak > 750.0f) {
-      soundDepthCategory = "NEARBY (< 1.0m)";
-      soundDepthMeters = constrain(0.4f + (300.0f - micRmsEnergy) / 600.0f, 0.3f, 0.9f);
-    } else if (micRmsEnergy >= 50.0f) {
-      soundDepthCategory = "SUBTERRANEAN (1.0 - 3.5m)";
-      soundDepthMeters = constrain(1.0f + (160.0f - micRmsEnergy) / 45.0f, 1.0f, 3.4f);
-    } else {
-      soundDepthCategory = "VERY DEEP (> 3.5m)";
-      soundDepthMeters = constrain(3.5f + (50.0f - micRmsEnergy) / 15.0f, 3.5f, 6.0f);
-    }
-  }
-  // Low-frequency Heavy Breathing / Panting (60 Hz - 220 Hz rhythmic envelope)
-  else if (micEstimatedFreqHz < 220.0f && micRmsEnergy >= 22.0f && micRmsEnergy < 95.0f) {
-    soundClassification = "BREATHING";
-    aiBiologicalDetected = true;
-    soundDepthCategory = (micRmsEnergy > 50.0f) ? "NEARBY (< 1.0m)" : "SUBTERRANEAN (1.0 - 3.5m)";
-    soundDepthMeters = (micRmsEnergy > 50.0f) ? 0.8f : 2.1f;
-  }
-  // High-Energy Impact / Deliberate Structural Tapping
-  else if (micPeakToPeak > 180.0f || piezoPeakEnvelope > 16.0f) {
-    soundClassification = "TAPPING / SOS";
-    aiBiologicalDetected = true;
-    if (piezoPeakEnvelope > 70.0f || micRmsEnergy > 180.0f) {
-      soundDepthCategory = "NEARBY (< 1.0m)";
-      soundDepthMeters = 0.7f;
-    } else if (piezoPeakEnvelope >= 25.0f) {
-      soundDepthCategory = "SUBTERRANEAN (1.0 - 3.5m)";
-      soundDepthMeters = constrain(1.1f + (70.0f - piezoPeakEnvelope) / 25.0f, 1.1f, 3.4f);
-    } else {
-      soundDepthCategory = "VERY DEEP (> 3.5m)";
-      soundDepthMeters = constrain(3.5f + (25.0f - piezoPeakEnvelope) / 8.0f, 3.5f, 5.8f);
-    }
-  }
-  // Structural shift / Debris collapse
-  else if (deltaJerk > 1.8f) {
-    soundClassification = "DEBRIS SHIFT";
-    soundDepthCategory = "SURFACE SHIFT";
-    soundDepthMeters = 0.0f;
-  }
-  else {
-    soundClassification = "ACOUSTIC NOISE";
-    soundDepthCategory = "UNFOCUSED";
-  }
-
-  // BIOLOGICAL HEARTBEAT CADENCE TRACKER (Periodic impulse detection at 45 - 145 BPM)
-  float combinedBioSignal = (micRmsEnergy * 0.4f) + (piezoPeakEnvelope * 0.6f);
-  if (combinedBioSignal > 18.0f && aiBiologicalDetected) {
-    unsigned long now = millis();
-    unsigned long interval = now - lastPulsePeakTime;
-    
-    // Valid human heart interval: 415 ms (145 BPM) to 1333 ms (45 BPM)
-    if (interval >= 415 && interval <= 1333) {
-      pulseIntervalHistory[pulseHistoryIndex] = interval;
-      pulseHistoryIndex = (pulseHistoryIndex + 1) % 4;
-      lastPulsePeakTime = now;
-
-      // Check rhythm consistency across past 4 pulses
-      long sumIntervals = 0;
-      bool rhythmStable = true;
-      for (int k = 0; k < 4; k++) {
-        if (pulseIntervalHistory[k] == 0) { rhythmStable = false; break; }
-        sumIntervals += pulseIntervalHistory[k];
-      }
-
-      if (rhythmStable) {
-        float avgInterval = (float)sumIntervals / 4.0f;
-        int calculatedBpm = (int)(60000.0f / avgInterval);
-        if (calculatedBpm >= 45 && calculatedBpm <= 150) {
-          heartbeatBpm = calculatedBpm;
-          heartbeatDetected = true;
-        }
-      }
-    } else if (interval > 1800) {
-      lastPulsePeakTime = now;
-    }
-  } else if (millis() - lastPulsePeakTime > 4000) {
-    heartbeatDetected = false;
-    heartbeatBpm = 0;
-  }
-}
-
-// Master Buzzer Engine
 void setBuzzerTone(uint32_t freq) {
-  if (configBuzzerLevelSetting == 0) freq = 0;
+  if (freq == 0) {
+    #if ESP_ARDUINO_VERSION_MAJOR >= 3
+      ledcWriteTone(PIN_BUZZER, 0);
+    #else
+      ledcWriteTone(BUZZER_PWM_CHANNEL, 0);
+    #endif
+    return;
+  }
+  
   #if ESP_ARDUINO_VERSION_MAJOR >= 3
     ledcWriteTone(PIN_BUZZER, freq);
   #else
@@ -292,427 +183,483 @@ void setBuzzerTone(uint32_t freq) {
   #endif
 }
 
-void testBuzzerBoot() {
-  if (configBuzzerLevelSetting == 0) return;
-  setBuzzerTone(1200); delay(60);
-  setBuzzerTone(2400); delay(70);
-  setBuzzerTone(3600); delay(100);
-  setBuzzerTone(0);
-}
-
-void updateBuzzerEngine() {
+void executeBuzzerEngine() {
   unsigned long now = millis();
-  if (configBuzzerLevelSetting == 0) {
-    setBuzzerTone(0);
-    return;
-  }
-  uint32_t baseFreq = (configUltrasonicKHz == 80) ? 4200 : (configUltrasonicKHz == 60) ? 3200 : 2200;
-  switch (configBuzzerLevelSetting) {
-    case 1: // Level 1 (85 dB nominal, gentle periodic pulse)
-      if (now - lastBuzzerBeepTick >= 2800) {
-        lastBuzzerBeepTick = now;
-        setBuzzerTone(baseFreq / 2);
-        buzzerStateOn = true;
-      } else if (buzzerStateOn && (now - lastBuzzerBeepTick >= 90)) {
+  
+  switch (buzzerMode) {
+    case 0: 
+      setBuzzerTone(0);
+      break;
+
+    case 1: 
+      if (now - lastBuzzerTick >= 2000) {
+        lastBuzzerTick = now;
+        setBuzzerTone(1800);
+        buzzerPulseState = true;
+      } else if (buzzerPulseState && (now - lastBuzzerTick >= 120)) {
         setBuzzerTone(0);
-        buzzerStateOn = false;
+        buzzerPulseState = false;
       }
       break;
-    case 2: // Level 2 (98 dB alert)
-      if (now - lastBuzzerBeepTick >= 1400) {
-        lastBuzzerBeepTick = now;
-        setBuzzerTone(baseFreq);
-        buzzerStateOn = true;
-      } else if (buzzerStateOn && (now - lastBuzzerBeepTick >= 140)) {
-        setBuzzerTone(0);
-        buzzerStateOn = false;
+
+    case 2: 
+      if (now - lastBuzzerTick >= 400) {
+        lastBuzzerTick = now;
+        buzzerPulseState = !buzzerPulseState;
+        setBuzzerTone(buzzerPulseState ? 2400 : 0);
       }
       break;
-    case 3: // Level 3 (110 dB tactical overdrive siren)
-      if (now - lastBuzzerBeepTick >= 350) {
-        lastBuzzerBeepTick = now;
-        buzzerStateOn = !buzzerStateOn;
-        setBuzzerTone(buzzerStateOn ? (baseFreq * 1.5) : baseFreq);
+
+    case 3: 
+      if (now - lastBuzzerTick >= 220) {
+        lastBuzzerTick = now;
+        buzzerPulseState = !buzzerPulseState;
+        setBuzzerTone(buzzerPulseState ? 3200 : 1600);
+      }
+      break;
+
+    case 4: 
+      if (now - lastBuzzerTick >= 110) {
+        lastBuzzerTick = now;
+        cadenceStep = (cadenceStep + 1) % 16;
+        if (cadenceStep == 0 || cadenceStep == 2 || cadenceStep == 4 || 
+            cadenceStep == 7 || cadenceStep == 9 || cadenceStep == 11) {
+          setBuzzerTone(2600);
+        } else {
+          setBuzzerTone(0);
+        }
       }
       break;
   }
 }
 
 // ============================================================================
-// HIGH-PRECISION GEOLOCATION ENGINE (Without GPS Module)
+// V20.0 TRUE VARIANCE SPATIAL ALGORITHM
 // ============================================================================
-void fetchFallbackIPGeolocation() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  // Always maintain Sriperumbudur precision coordinates as true ground anchor
-  if (geoSource == "DEFAULT" || geoSource == "SRIPERUMBUDUR_ANCHOR") {
-    geoLat = 13.1067;
-    geoLng = 79.9477;
-    geoCity = "CHENNAI";
-    geoSource = "SRIPERUMBUDUR_ANCHOR";
-    geoAccuracyM = 3.5;
-    locationLocked = true;
-    Serial.println(F("[GEO] Ground Anchor Confirmed: Sriperumbudur (13.1067 N, 79.9477 E)"));
-  }
-}
+void processSpatialIntelligence() {
+  bool motionActive = (rawRadar == 1);
+  bool acousticActive = (micEnergy > 12.0f); 
+  bool seismicActive = (piezoPeakEnvelope > 2.0f || tapCountWindow > 0); 
+  bool bioScentActive = humanScentDetected;
 
-// Multi-BSSID Wi-Fi Triangulation Scanner
-void scanAndTriangulateWiFi() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  Serial.println(F("[GEO] Performing Multi-BSSID RF Environment Sweep..."));
-  int n = WiFi.scanNetworks();
-  if (n > 0) {
-    Serial.printf("[GEO] Detected %d access points for location fingerprinting\n", n);
+  int confirmed = 0;
+  
+  if (motionActive) {
+    confirmed++; 
   }
-  fetchFallbackIPGeolocation();
-}
+  
+  if (seismicActive && tapCountWindow >= 1) {
+    confirmed++; 
+  }
+  
+  if (seismicActive && tapCountWindow >= 4) {
+    confirmed++; 
+  }
+  
+  if (acousticActive && micEnergy > 30.0f) {
+    confirmed++;  
+  }
+  
+  if (confirmed == 0 && bioScentActive) {
+    confirmed = 1; 
+  }
+  
+  survivorCount = constrain(confirmed, 0, 3);
 
-// Local Edge AI Inference Engine
-void runLocalEdgeInference() {
-  if (soundClassification == "HUMAN VOICE") {
-    aiClassification = "HUMAN_VOICE";
-    aiBiologicalDetected = true;
-    aiActionRec = "EXCAVATE IMMEDIATELY";
-    aiTrappedDepthEstimateMeters = soundDepthMeters > 0.0f ? soundDepthMeters : 1.2f;
-  } else if (tapCountWindow >= 3 || soundClassification == "TAPPING / SOS") {
-    aiClassification = "DELIBERATE_TAPPING";
-    aiBiologicalDetected = true;
-    aiActionRec = configTransducerActive ? "TRANSDUCER RESONATE" : "EXCAVATE";
-    aiTrappedDepthEstimateMeters = soundDepthMeters > 0.0f ? soundDepthMeters : 1.8f;
-  } else if (soundClassification == "BREATHING") {
-    aiClassification = "RESPIRATION_BIO";
-    aiBiologicalDetected = true;
-    aiActionRec = "DEPLOY ACOUSTIC PROBE";
-    aiTrappedDepthEstimateMeters = soundDepthMeters > 0.0f ? soundDepthMeters : 0.9f;
-  } else if (rawRadar == 1) {
-    aiClassification = "MOTION_DOPPLER";
-    aiBiologicalDetected = true;
-    aiActionRec = "BIO_SWEEP";
-    aiTrappedDepthEstimateMeters = 1.2f;
-  } else if (deltaJerk > 1.8f) {
-    aiClassification = "DEBRIS_SHIFT";
-    aiBiologicalDetected = false;
-    aiActionRec = "STANDBY";
-    aiTrappedDepthEstimateMeters = 0.0f;
+  if (survivorCount == 0) {
+    targetDepthMeters = 0.0f;
+    targetRangeMeters = 0.0f;
+    survivorZoneColor = "NONE";
+    spatialPosition = "ALL CLEAR / MONITORING";
+    rescueConfidence = 0;
   } else {
-    aiClassification = "AMBIENT_VOID";
-    aiBiologicalDetected = false;
-    aiActionRec = "MONITOR";
-    aiTrappedDepthEstimateMeters = 0.0f;
+    float mE = (float)micEnergy;
+    float pP = (float)piezoPeakEnvelope;
+    float maxEnergy = (mE > pP) ? mE : pP;
+    if (maxEnergy < 1.0f) {
+      maxEnergy = 1.0f; 
+    }
+    
+    float calculatedDistance = constrain(12.0f / sqrt(maxEnergy), 0.15f, 6.0f);
+    targetDepthMeters = calculatedDistance * 0.8f; 
+    targetRangeMeters = calculatedDistance;
+
+    if (targetDepthMeters < 0.5f) {
+      survivorZoneColor = "GREEN";
+      spatialPosition = "SURFACE / IMMEDIATE ACCESS";
+    } else if (targetDepthMeters < 2.5f) {
+      survivorZoneColor = "RED";
+      spatialPosition = "DOWN / MID-DEBRIS CORE";
+    } else {
+      survivorZoneColor = "WHITE";
+      spatialPosition = "VERY DOWN / DEEP SUBTERRANEAN VOID";
+    }
+
+    int score = 0;
+    if (seismicActive) score += 35;
+    if (acousticActive) score += 25;
+    if (motionActive) score += 20;
+    if (bioScentActive) score += 20;
+    rescueConfidence = constrain(score, 15, 99);
   }
-  aiStatus = "AI: EDGE (ACTIVE)";
 }
 
-// OpenRouter Cloud Inference Engine (Verified Google Gemini 2.5 Flash)
-void runInferenceEngine() {
+// ============================================================================
+// CLOUD AI TACTICAL INFERENCE (CORE 0)
+// ============================================================================
+void runInferenceEngineCore0() {
   if (WiFi.status() != WL_CONNECTED) {
-    aiStatus = "AI: EDGE (NO WIFI)";
-    runLocalEdgeInference();
     return;
   }
-
-  aiStatus = "AI: CLOUD QUERY...";
+  
+  aiStatus = "AI: CLOUD VERIFYING...";
+  
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
 
-  String prompt = "AURA Master Node: Gas=" + String(rawGas) + " PPM, Radar=" + String(rawRadar) + 
-                  ", AcousticRMS=" + String((int)micRmsEnergy) + ", AcousticP2P=" + String((int)micPeakToPeak) + 
-                  ", Freq=" + String((int)micEstimatedFreqHz) + "Hz, SeismicPeak=" + String((int)piezoPeakEnvelope) + 
-                  ", HeartbeatBPM=" + String(heartbeatBpm) + ". Classify as HUMAN_VOICE, DELIBERATE_TAPPING, RESPIRATION, DEBRIS, or AMBIENT. " +
-                  "Classify depth as NEARBY (<1m), SUBTERRANEAN (1-3.5m), or VERY DEEP (>3.5m). " +
-                  "Return JSON ONLY: {\"class\":\"str\",\"bio\":bool,\"depth_m\":num,\"depth_cat\":\"str\",\"action\":\"str\"}";
+  String prompt = "AURA SAR: Victims=" + String(survivorCount) + " Zone=" + survivorZoneColor +
+                  " Depth=" + String(targetDepthMeters, 2) + "m Range=" + String(targetRangeMeters, 2) + 
+                  "m Audio=" + acousticSpectrum + " TapPk=" + String((int)piezoPeakEnvelope) +
+                  " Taps=" + String(tapCountWindow) + " Scent=" + String((int)humanScentPPM) +
+                  "ppm. Classify precise situation and recommend tactical rescue priority in 1 sentence.";
 
-  bool success = false;
-  String orUrl = "https://openrouter.ai/api/v1/chat/completions";
-
-  if (http.begin(client, orUrl)) {
+  if (http.begin(client, "https://openrouter.ai/api/v1/chat/completions")) {
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Authorization", "Bearer " + OPENROUTER_KEY);
-    http.addHeader("HTTP-Referer", "http://aura-rescue.local");
+    http.addHeader("HTTP-Referer", "http://aura-node.local");
 
-    String orPayload = "{\"model\":\"" + String(OPENROUTER_MODEL) + "\",\"messages\":[{\"role\":\"user\",\"content\":\"" + prompt + "\"}],\"max_tokens\":120}";
-    int httpCode = http.POST(orPayload);
-
-    if (httpCode == 200) {
-      String response = http.getString();
+    String payload = "{\"model\":\"" + String(OPENROUTER_MODEL) + "\",\"messages\":[{\"role\":\"user\",\"content\":\"" + prompt + "\"}]}";
+    int code = http.POST(payload);
+    
+    if (code == 200) {
+      String resp = http.getString();
       #if ARDUINOJSON_VERSION_MAJOR >= 7
         JsonDocument doc;
       #else
         DynamicJsonDocument doc(2048);
       #endif
-      if (!deserializeJson(doc, response)) {
-        const char* aiText = doc["choices"][0]["message"]["content"];
-        if (aiText) {
-          String clean = String(aiText);
-          clean.replace("```json", ""); clean.replace("```", ""); clean.trim();
-          #if ARDUINOJSON_VERSION_MAJOR >= 7
-            JsonDocument parsed;
-          #else
-            StaticJsonDocument<512> parsed;
-          #endif
-          if (!deserializeJson(parsed, clean)) {
-            aiClassification = parsed["class"].as<String>();
-            aiBiologicalDetected = parsed["bio"].as<bool>();
-            float reportedDepth = parsed["depth_m"].as<float>();
-            aiTrappedDepthEstimateMeters = constrain(reportedDepth, 0.3f, 6.0f);
-            if (parsed.containsKey("depth_cat")) {
-              soundDepthCategory = parsed["depth_cat"].as<String>();
-            }
-            aiActionRec = parsed["action"].as<String>();
-            aiStatus = "AI: CLOUD (GEMINI)";
-            success = true;
-          }
+      
+      if (!deserializeJson(doc, resp)) {
+        const char* text = doc["choices"][0]["message"]["content"];
+        if (text) {
+          aiClassification = String(text);
+          aiStatus = "AI: CONFIRMED";
         }
       }
     }
     http.end();
   }
-
-  if (!success) {
-    runLocalEdgeInference();
-  }
 }
 
-// Tactical OLED Rendering Subsystem
-void drawCardHeader(const char* title, int cardNum) {
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.print(F("[AURA] "));
-  display.print(title);
-  for (int i = 0; i < TOTAL_CARDS; i++) {
-    int dotX = 98 + (i * 6);
-    if (i == cardNum) display.fillCircle(dotX, 3, 2, SSD1306_WHITE);
-    else display.drawPixel(dotX, 3, SSD1306_WHITE);
-  }
-  display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
-}
-
-// Card 0: Tactical Bio-Surveillance
-void renderCard0() {
-  drawCardHeader("BIO-RADAR", 0);
-  display.drawRoundRect(0, 13, 62, 48, 3, SSD1306_WHITE);
-  display.setCursor(14, 16);
-  display.print(F("RADAR"));
-  if (rawRadar == 1) {
-    display.fillRoundRect(3, 28, 56, 16, 2, SSD1306_WHITE);
-    display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
-    display.setCursor(6, 32);
-    display.print(F("DOPPLER!"));
-    display.setTextColor(SSD1306_WHITE);
-  } else {
-    display.setCursor(16, 32);
-    display.print(F("CLEAR"));
-  }
-  display.setCursor(4, 48);
-  display.printf("BPM:%s", heartbeatDetected ? String(heartbeatBpm).c_str() : "--");
-
-  display.drawRoundRect(66, 13, 62, 48, 3, SSD1306_WHITE);
-  display.setCursor(76, 16);
-  display.print(F("GAS MQ135"));
-  display.setCursor(72, 32);
-  if (rawGas > 350) display.printf("%4d PPM", rawGas);
-  else display.print(F("ATM SAFE"));
-  display.setCursor(70, 48);
-  display.printf("BZ:%s", configBuzzerLevelSetting == 0 ? "MUTE" : ("L" + String(configBuzzerLevelSetting)).c_str());
-}
-
-// Card 1: Acoustic Spectral Scope & Depth Estimation
-void renderCard1() {
-  drawCardHeader("AUDIO RADAR", 1);
-  display.setCursor(0, 13);
-  display.printf("RMS:%3.0f|P2P:%4.0f", micRmsEnergy, micPeakToPeak);
-  
-  display.setCursor(0, 24);
-  display.printf("FREQ:%4.0fHz|%s", micEstimatedFreqHz, soundClassification.substring(0, 7).c_str());
-
-  display.setCursor(0, 36);
-  display.printf("DPTH: %s", soundDepthCategory.c_str());
-
-  display.setCursor(0, 47);
-  display.printf("EST : %.1fm | CONF:%d%%", aiTrappedDepthEstimateMeters > 0 ? aiTrappedDepthEstimateMeters : soundDepthMeters, confidenceScore);
-
-  display.setCursor(0, 56);
-  display.print(aiBiologicalDetected ? "** HUMAN DETECTED **" : "SCANNING STRATA");
-}
-
-// Card 2: AI Bio-Core & Reasoning Classification
-void renderCard2() {
-  drawCardHeader("AI BIO-CORE", 2);
-  display.setCursor(0, 13);
-  display.print(aiStatus);
-  display.setCursor(0, 24);
-  display.printf("CLS: %s", aiClassification.substring(0, 11).c_str());
-  display.setCursor(0, 35);
-  display.printf("BIO: %s | HRT:%s", aiBiologicalDetected ? "CONFIRMED" : "NONE", heartbeatDetected ? (String(heartbeatBpm) + "bpm").c_str() : "OFF");
-  display.setCursor(0, 46);
-  display.printf("DP:%.1fm|CAT:%s", aiTrappedDepthEstimateMeters, soundDepthCategory.substring(0, 6).c_str());
-  display.setCursor(0, 56);
-  display.printf("ACT: %s", aiActionRec.substring(0, 11).c_str());
-}
-
-// Card 3: Seismograph & Oscilloscope
-void renderCard3() {
-  drawCardHeader("SEISMO-SCOPE", 3);
-  display.drawFastHLine(0, 36, 128, SSD1306_WHITE);
-  int currentMax = 15;
-  for (int i = 0; i < SEISMIC_SAMPLES; i++) {
-    if (seismicWave[i] > currentMax) currentMax = seismicWave[i];
-  }
-  seismicLocalMax = (seismicLocalMax * 0.80) + (currentMax * 0.20);
-  if (seismicLocalMax < 10) seismicLocalMax = 10;
-
-  for (int x = 0; x < 127; x++) {
-    int idx1 = (waveHead + x) % 128;
-    int idx2 = (waveHead + x + 1) % 128;
-    int y1 = constrain(36 - map(seismicWave[idx1], 0, seismicLocalMax, 0, 24), 11, 62);
-    int y2 = constrain(36 - map(seismicWave[idx2], 0, seismicLocalMax, 0, 24), 11, 62);
-    display.drawLine(x, y1, x + 1, y2, SSD1306_WHITE);
-  }
-  display.setCursor(0, 56);
-  display.printf("PK:%3.0f|KHz:%d|TR:%s", piezoPeakEnvelope, configUltrasonicKHz, configTransducerActive ? "ON" : "OFF");
-}
-
-// Card 4: High-Precision Geolocation & Network
-void renderCard4() {
-  drawCardHeader("TACTICAL NAV", 4);
-  display.setCursor(0, 13);
-  display.printf("IP : %s", wifiReady ? WiFi.localIP().toString().c_str() : "OFFLINE");
-  display.setCursor(0, 24);
-  display.printf("LAT: %.5f", geoLat);
-  display.setCursor(0, 35);
-  display.printf("LNG: %.5f", geoLng);
-  display.setCursor(0, 46);
-  display.printf("ACC: +/-%.1fm | %s", geoAccuracyM, geoSource.c_str());
-  display.setCursor(0, 56);
-  display.printf("LOC: %s", geoCity.c_str());
-}
-
-// REST API Handlers
-void handleTelemetry() {
+// ============================================================================
+// MICRO-AUDIO BUFFER ENDPOINT
+// ============================================================================
+void handleAudioCaptureEndpoint() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
   server.sendHeader("Access-Control-Allow-Private-Network", "true");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
+
+  String audioJSON = "{\"status\":\"success\",\"sample_rate_hz\":8000,\"raw_data\":[";
+  
+  for (int i = 0; i < 512; i++) {
+    int sample = analogRead(PIN_MIC_OUT);
+    audioJSON += String(sample);
+    if (i < 511) {
+      audioJSON += ",";
+    }
+    delayMicroseconds(125); 
+  }
+  
+  audioJSON += "]}";
+  server.send(200, "application/json", audioJSON);
+}
+
+// ============================================================================
+// REST API ENDPOINTS (CORE 0) - SAFE DASHBOARD STREAMING
+// ============================================================================
+void handleTelemetryEndpoint() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
 
   #if ARDUINOJSON_VERSION_MAJOR >= 7
     JsonDocument doc;
   #else
-    StaticJsonDocument<1536> doc;
+    StaticJsonDocument<1024> doc;
   #endif
 
-  doc["card"] = activeCard;
-  doc["gas"] = rawGas;
-  doc["radar"] = rawRadar;
-  doc["seismic_peak"] = (int)piezoPeakEnvelope;
+  // Exact Location coordinates for Map view
+  doc["lat"] = GPS_LATITUDE;
+  doc["lng"] = GPS_LONGITUDE;
+  doc["location_name"] = "Small Pond (Nehru Street Sector)";
+
+  doc["survivor_count"] = survivorCount;
+  doc["depth_meters"] = targetDepthMeters;
+  doc["range_meters"] = targetRangeMeters;
+  doc["zone_color"] = survivorZoneColor;
+  doc["spatial_position"] = spatialPosition;
+  doc["confidence"] = rescueConfidence;
   
-  // Advanced Acoustic Telemetry
-  doc["acoustic_energy"] = (int)micRmsEnergy;
-  doc["mic_p2p"] = (int)micPeakToPeak;
-  doc["mic_freq_hz"] = (int)micEstimatedFreqHz;
-  doc["sound_classification"] = soundClassification;
-  doc["sound_depth_cat"] = soundDepthCategory;
-  doc["sound_depth_m"] = serialized(String(soundDepthMeters, 2));
-
-  // Biological Vital Signs
-  doc["heartbeat_detected"] = heartbeatDetected;
-  doc["heartbeat_bpm"] = heartbeatBpm;
-  doc["ai_status"] = aiStatus;
-  doc["ai_classification"] = aiClassification;
-  doc["ai_biological"] = aiBiologicalDetected;
-  doc["ai_depth_meters"] = serialized(String(aiTrappedDepthEstimateMeters > 0 ? aiTrappedDepthEstimateMeters : soundDepthMeters, 1));
-  doc["ai_action"] = aiActionRec;
-  doc["confidence"] = confidenceScore;
-  doc["buzzer_level"] = configBuzzerLevelSetting;
+  doc["tap_count"] = tapCountWindow;
+  doc["seismic_peak"] = (int)piezoPeakEnvelope;
+  doc["raw_piezo"] = rawPiezo;
+  doc["acoustic_energy"] = (int)micEnergy;
+  doc["acoustic_spectrum"] = acousticSpectrum;
+  doc["radar"] = rawRadar;
+  
+  doc["env_gas_ppm"] = (int)envGasPPM;
+  doc["human_scent_ppm"] = humanScentPPM;
+  doc["human_scent_detected"] = humanScentDetected;
+  doc["human_scent_label"] = humanScentLabel; 
+  
   doc["delta_jerk"] = deltaJerk;
-
-  // High-Precision Geolocation
-  doc["lat"] = geoLat;
-  doc["lng"] = geoLng;
-  doc["accuracy_m"] = geoAccuracyM;
-  doc["city"] = geoCity;
-  doc["gps_source"] = geoSource;
-  doc["sats"] = locationLocked ? 12 : 0;
-  doc["gps_locked"] = locationLocked;
+  doc["buzzer_mode"] = buzzerMode;
+  doc["ai_status"] = aiStatus;
+  doc["ai_analysis"] = aiClassification;
   doc["ip"] = WiFi.localIP().toString();
-
-  // Hardware Registers
-  doc["transducer_active"] = configTransducerActive;
-  doc["ultrasonic_khz"] = configUltrasonicKHz;
-  doc["polling_ms"] = configPollingRateMs;
-  doc["overdrive"] = configHardwareOverdrive;
-  doc["diagnostic_active"] = diagnosticModeActive;
 
   String res;
   serializeJson(doc, res);
   server.send(200, "application/json", res);
 }
 
-void handleConfigPost() {
+void handleControlEndpoint() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
   server.sendHeader("Access-Control-Allow-Private-Network", "true");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
 
   if (server.hasArg("plain")) {
     String body = server.arg("plain");
+    
     #if ARDUINOJSON_VERSION_MAJOR >= 7
       JsonDocument doc;
     #else
       DynamicJsonDocument doc(512);
     #endif
+    
     if (!deserializeJson(doc, body)) {
-      if (doc.containsKey("buzzer_level")) configBuzzerLevelSetting = doc["buzzer_level"];
-      if (doc.containsKey("transducer_active")) configTransducerActive = doc["transducer_active"];
-      if (doc.containsKey("ultrasonic_khz")) configUltrasonicKHz = doc["ultrasonic_khz"];
-      if (doc.containsKey("polling_ms")) configPollingRateMs = doc["polling_ms"];
-      if (doc.containsKey("overdrive")) configHardwareOverdrive = doc["overdrive"];
-      
-      // Client High-Accuracy GPS Reverse Injection (from Laptop/Mobile Browser)
-      if (doc.containsKey("lat") && doc.containsKey("lng")) {
-        geoLat = doc["lat"].as<double>();
-        geoLng = doc["lng"].as<double>();
-        geoAccuracyM = doc.containsKey("accuracy_m") ? doc["accuracy_m"].as<float>() : 3.5f;
-        geoCity = doc.containsKey("city") ? doc["city"].as<String>() : "EXACT BROWSER GPS";
-        geoSource = "HIGH_ACCURACY_GPS";
-        locationLocked = true;
-        Serial.printf("[GPS SYNC] Locked Precision Coordinates: %.6f, %.6f (+/-%.1fm)\n", geoLat, geoLng, geoAccuracyM);
+      if (doc.containsKey("buzzer_mode")) {
+        buzzerMode = constrain(doc["buzzer_mode"].as<int>(), 0, 4);
       }
-      
-      server.send(200, "application/json", "{\"status\":\"success\"}");
+      if (doc.containsKey("trigger_ai")) {
+        triggerCloudAiQuery = doc["trigger_ai"].as<bool>();
+      }
+      server.send(200, "application/json", "{\"status\":\"success\",\"buzzer_mode\":" + String(buzzerMode) + "}");
       return;
     }
   }
-  server.send(400, "application/json", "{\"status\":\"error\"}");
+  
+  server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Malformed JSON\"}");
 }
 
 void handleOptions() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
   server.sendHeader("Access-Control-Allow-Private-Network", "true");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
   server.send(204);
 }
 
+void networkWorkerTask(void * pvParameters) {
+  for (;;) {
+    server.handleClient();
+    
+    if (triggerCloudAiQuery && (WiFi.status() == WL_CONNECTED)) {
+      triggerCloudAiQuery = false;
+      runInferenceEngineCore0();
+    }
+    
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+
+// ============================================================================
+// FULL 8-SLIDE ANIMATED OLED CAROUSEL ENGINE
+// ============================================================================
+void drawCarouselFooter() {
+  display.drawLine(0, 53, 127, 53, SSD1306_WHITE);
+  
+  for (int i = 0; i < TOTAL_SLIDES; i++) {
+    int x = 20 + (i * 12);
+    if (i == oledCardIndex) {
+      display.fillRect(x - 2, 57, 6, 4, SSD1306_WHITE);
+    } else {
+      display.drawPixel(x, 58, SSD1306_WHITE); 
+    }
+  }
+}
+
+void renderAnimatedSlides() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  animTick++;
+
+  switch (oledCardIndex) {
+    case 0: 
+      display.setCursor(0, 0);
+      display.printf("AURA | TRIAGE LOCK [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("VICTIMS : %d FOUND", survivorCount);
+      
+      display.setCursor(0, 25);
+      display.printf("ZONE    : [%s]", survivorZoneColor.c_str());
+      
+      display.setCursor(0, 36);
+      display.printf("CONF    : %2d%%", rescueConfidence);
+      
+      if (survivorCount > 0 && (animTick % 4 < 2)) {
+        display.fillRect(116, 14, 8, 8, SSD1306_WHITE);
+      }
+      break;
+
+    case 1: 
+      display.setCursor(0, 0);
+      display.printf("AURA | SPATIAL 3D  [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("DEPTH : %.2f METERS", targetDepthMeters);
+      
+      display.setCursor(0, 25);
+      display.printf("RANGE : %.2f METERS", targetRangeMeters);
+      
+      display.setCursor(0, 36);
+      display.printf("POS   : %s", spatialPosition.substring(0, 14).c_str());
+      break;
+
+    case 2: 
+      display.setCursor(0, 0);
+      display.printf("AURA | SEISMIC DSP [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("TAPS  : %d COUNTED", tapCountWindow);
+      
+      display.setCursor(0, 25);
+      display.printf("PEAK  : %d mV", (int)piezoPeakEnvelope);
+      
+      for (int i = 0; i < 20; i++) {
+        int barH = map((int)piezoPeakEnvelope + (i % 3), 0, 100, 1, 14);
+        barH = constrain(barH, 1, 14);
+        display.drawLine(5 + (i * 6), 48, 5 + (i * 6), 48 - barH, SSD1306_WHITE);
+      }
+      break;
+
+    case 3: 
+      display.setCursor(0, 0);
+      display.printf("AURA | ACOUSTIC    [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("AUDIO : %s", acousticSpectrum.substring(0, 14).c_str());
+      
+      display.setCursor(0, 25);
+      display.printf("ENERGY: %d LEVEL", (int)micEnergy);
+      
+      display.drawRect(0, 38, 127, 8, SSD1306_WHITE);
+      {
+        int barW = map((int)micEnergy, 0, 80, 0, 123);
+        barW = constrain(barW, 0, 123);
+        display.fillRect(2, 40, barW, 4, SSD1306_WHITE);
+      }
+      break;
+
+    case 4: 
+      display.setCursor(0, 0);
+      display.printf("AURA | BIO-SCENT   [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("GAS   : %d PPM", (int)envGasPPM);
+      
+      display.setCursor(0, 25);
+      display.printf("SCENT : %.1f PPM", humanScentPPM);
+      
+      display.setCursor(0, 36);
+      display.printf("SRC: %s", humanScentLabel.substring(0, 17).c_str());
+      break;
+
+    case 5: 
+      display.setCursor(0, 0);
+      display.printf("AURA | RADAR & IMU [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("RADAR : %s", (rawRadar == 1) ? "MOTION DETECTED" : "SCANNING VOID");
+      
+      display.setCursor(0, 25);
+      display.printf("JERK  : %.2f m/s2", deltaJerk);
+      
+      display.setCursor(0, 36);
+      if (!mpuReady) {
+        display.printf("CHEST : IMU DISCONNECTED!");
+      } else {
+        display.printf("CHEST : %s", (rawRadar == 1) ? "MICRO-FLUTTER" : "STATIC");
+      }
+      break;
+
+    case 6: 
+      display.setCursor(0, 0);
+      display.printf("AURA | ACTUATOR    [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("MODE  : [%d]", buzzerMode);
+      
+      display.setCursor(0, 25);
+      switch (buzzerMode) {
+        case 0: display.print(F("STATE : MUTE / QUIET")); break;
+        case 1: display.print(F("STATE : BEACON 1.8kHz")); break;
+        case 2: display.print(F("STATE : CHIRP 2.4kHz")); break;
+        case 3: display.print(F("STATE : SIREN EVAC")); break;
+        case 4: display.print(F("STATE : HELP ON WAY")); break;
+      }
+      
+      display.setCursor(0, 36);
+      display.printf("SIGNAL: %s", (buzzerMode > 0) ? "TRANSMITTING" : "STANDBY");
+      break;
+
+    case 7: 
+      display.setCursor(0, 0);
+      display.printf("AURA | COMMS & AI  [%d/8]", oledCardIndex + 1);
+      display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+      
+      display.setCursor(0, 14);
+      display.printf("SSID  : %s", ssid);
+      
+      display.setCursor(0, 25);
+      display.printf("IP    : %s", WiFi.localIP().toString().c_str());
+      
+      display.setCursor(0, 36);
+      display.printf("AI    : %s", aiStatus.substring(0, 14).c_str());
+      break;
+  }
+
+  drawCarouselFooter();
+  display.display();
+}
+
+// ============================================================================
+// SYSTEM BOOT & INITIALIZATION (FIXED WDT & I2C CLOCK SYNC)
+// ============================================================================
 void setup() {
   Serial.begin(115200);
-  delay(300);
+  delay(600);
 
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
-    esp_task_wdt_config_t twdt_config = {
-      .timeout_ms = WDT_TIMEOUT_SEC * 1000,
-      .idle_core_mask = 0,
-      .trigger_panic = true
-    };
-    esp_task_wdt_init(&twdt_config);
-  #else
+  // Watchdog initialization fixed for Arduino-ESP32 v3+
+  #if ESP_ARDUINO_VERSION_MAJOR < 3
     esp_task_wdt_init(WDT_TIMEOUT_SEC, true);
   #endif
   esp_task_wdt_add(NULL);
 
-  for (int i = 0; i < SEISMIC_SAMPLES; i++) seismicWave[i] = 0;
   analogSetAttenuation(ADC_11db);
-
   pinMode(PIN_PIEZO, INPUT);
   pinMode(PIN_GAS_MQ135, INPUT);
   pinMode(PIN_MIC_OUT, INPUT);
@@ -721,169 +668,221 @@ void setup() {
   #if ESP_ARDUINO_VERSION_MAJOR >= 3
     ledcAttach(PIN_BUZZER, 2000, BUZZER_PWM_RES);
   #else
-    pinMode(PIN_BUZZER, OUTPUT);
+    ledcSetup(BUZZER_PWM_CHANNEL, 2000, BUZZER_PWM_RES);
+    ledcAttachPin(PIN_BUZZER, BUZZER_PWM_CHANNEL);
   #endif
 
-  testBuzzerBoot();
+  setBuzzerTone(2000); 
+  delay(100); 
+  setBuzzerTone(0); 
+  delay(80);
+  setBuzzerTone(2800); 
+  delay(140); 
+  setBuzzerTone(0);
 
+  // 1. Initialize I2C Bus, Set Stable 100kHz Clock Speed, and start OLED
   Wire.begin(21, 22);
+  Wire.setClock(100000); // Prevents bus corruption between OLED and MPU6050
   Wire.setTimeOut(30);
+  
   if (display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     oledReady = true;
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(8, 20);
-    display.print(F("A.U.R.A. MASTER C2"));
-    display.setCursor(14, 34);
-    display.print(F("BIO-ACOUSTIC v12"));
+    display.setCursor(4, 28);
+    display.print(F("A.U.R.A. v30.0 ONLINE"));
     display.display();
-    delay(800);
   }
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  int retries = 0;
-  while (WiFi.status() != WL_CONNECTED && retries < 25) {
-    delay(400);
-    retries++;
-  }
-  if (WiFi.status() == WL_CONNECTED) {
-    wifiReady = true;
-    scanAndTriangulateWiFi();
-  }
+  // 2. Allow I2C bus to settle completely before MPU query
+  delay(200);
 
-  server.on("/api/telemetry", HTTP_GET, handleTelemetry);
-  server.on("/api/telemetry", HTTP_POST, handleConfigPost);
-  server.on("/api/telemetry", HTTP_OPTIONS, handleOptions);
-  server.begin();
-
+  // 3. Initialize MPU6050 cleanly with default address 0x68
   if (mpu.begin()) {
     mpuReady = true;
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    Serial.println("MPU6050 INITIALIZED SUCCESSFULLY!");
+  } else {
+    mpuReady = false;
+    Serial.println("MPU6050 WIRING ERROR - CHECK GPIO 21 & 22!");
   }
 
-  // Pre-calibrate quiescent DC baseline for microphone & piezo
-  long sumP = 0, sumM = 0;
-  for (int i = 0; i < 128; i++) {
-    sumP += analogRead(PIN_PIEZO);
-    sumM += analogRead(PIN_MIC_OUT);
-    delayMicroseconds(200);
+  // 4. Connect Wi-Fi AFTER sensors are securely locked in
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  int attempts = 0;
+  
+  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
+    delay(250); 
+    attempts++;
   }
-  piezoBias = sumP / 128.0f;
-  micDcBias = sumM / 128.0f;
 
-  if (wifiReady) {
-    runInferenceEngine();
-    lastAiCallTime = millis();
+  if (WiFi.status() == WL_CONNECTED) {
+    wifiReady = true;
+    Serial.printf("\n[AURA-ONLINE] IP: %s\n", WiFi.localIP().toString().c_str());
   }
+
+  server.on("/api/telemetry", HTTP_GET, handleTelemetryEndpoint);
+  server.on("/api/telemetry", HTTP_OPTIONS, handleOptions);
+  server.on("/api/control", HTTP_POST, handleControlEndpoint);
+  server.on("/api/control", HTTP_OPTIONS, handleOptions);
+  server.on("/api/audio", HTTP_GET, handleAudioCaptureEndpoint);
+  server.on("/api/audio", HTTP_OPTIONS, handleOptions);
+
+  server.begin();
+
+  xTaskCreatePinnedToCore(networkWorkerTask, "NetworkWorker", 8192, NULL, 1, &NetworkTaskHandle, 0);
 }
 
+// ============================================================================
+// DETERMINISTIC REAL-TIME DSP (CORE 1)
+// ============================================================================
 void loop() {
-  esp_task_wdt_reset(); 
-  server.handleClient();
-  updateBuzzerEngine();
+  esp_task_wdt_reset();
+  executeBuzzerEngine();
 
-  // 100 Hz Fast DSP Sensor Sampling & Acoustic Burst Capture
-  if (millis() - lastFastSample >= 10) {
-    lastFastSample = millis();
+  if (millis() - lastDspCycle >= 4) {
+    lastDspCycle = millis();
 
-    // Doppler Radar
     int instantRadar = digitalRead(PIN_RADAR_OUT);
-    if (instantRadar == HIGH) {
-      lastRadarTriggerTime = millis();
-      rawRadar = 1;
+    
+    if (instantRadar != lastRadarState) {
+      lastRadarTransitionTime = millis();
+      lastRadarState = instantRadar;
+    }
+    
+    if (millis() - lastRadarTransitionTime > 3000) {
+      rawRadar = 0; 
     } else {
-      rawRadar = (millis() - lastRadarTriggerTime < 1500) ? 1 : 0;
-    }
-
-    // Piezo Burst Sampling
-    int peakP = 0;
-    for (int s = 0; s < 32; s++) {
-      int p = analogRead(PIN_PIEZO);
-      if (p > peakP) peakP = p;
-      delayMicroseconds(25);
-    }
-    rawPiezo = peakP;
-
-    piezoBias = (piezoBias * 0.99f) + (rawPiezo * 0.01f);
-    float deltaSeismic = abs(rawPiezo - piezoBias);
-    float tapImpulse = (deltaSeismic * 4.5f) + (deltaJerk * 35.0f);
-
-    if (tapImpulse > 6.0f) {
-      piezoPeakEnvelope = max(piezoPeakEnvelope, tapImpulse);
-      unsigned long now = millis();
-      if (now - lastTapTime > 80 && now - lastTapTime < 1100) {
-        tapCountWindow++;
-        lastTapTime = now;
-      } else if (now - lastTapTime >= 1100) {
-        tapCountWindow = 1;
-        lastTapTime = now;
+      if (instantRadar == HIGH) {
+        rawRadar = 1;
+      } else {
+        rawRadar = 0;
       }
     }
-    piezoPeakEnvelope *= 0.88f;
 
-    seismicWave[waveHead] = (int)tapImpulse;
-    waveHead = (waveHead + 1) % SEISMIC_SAMPLES;
+    // ULTRA-HIGH SENSITIVITY SEISMIC DSP (Maxed Gain & Low Threshold)
+    int instantPiezo = analogRead(PIN_PIEZO);
+    rawPiezo = instantPiezo;
+    
+    piezoBaseline = (piezoBaseline * 0.995f) + ((float)instantPiezo * 0.005f);
+    float absolutePiezo = abs((float)instantPiezo - piezoBaseline);
+    
+    ambientSeismicFloor = (ambientSeismicFloor * 0.999f) + (absolutePiezo * 0.001f);
+    piezoInstantDelta = absolutePiezo - ambientSeismicFloor;
+    
+    float scaledImpulse = 0.0f;
+    if (piezoInstantDelta > 0) {
+      scaledImpulse = piezoInstantDelta * 12.0f; // Maxed sensitivity gain multiplier
+    }
+    
+    if (scaledImpulse > (float)piezoPeakEnvelope) {
+      piezoPeakEnvelope = scaledImpulse;
+    } else {
+      piezoPeakEnvelope = (float)piezoPeakEnvelope * 0.92f;
+    }
 
-    // HIGH-PERFORMANCE ACOUSTIC BURST SAMPLING (Replaces broken 1-sample read)
-    sampleAcousticMicrophoneBurst();
+    if (scaledImpulse > 1.5f) { // Ultra-low trigger threshold for minor ground taps
+      unsigned long now = millis();
+      if (now - lastTapTimestamp > 40 && now - lastTapTimestamp < 2000) {
+        tapCountWindow++;
+        lastTapTimestamp = now;
+      } else if (now - lastTapTimestamp >= 2000) {
+        tapCountWindow = 1;
+        lastTapTimestamp = now;
+      }
+    }
+    
+    seismicBuffer[bufferIndex] = (int)piezoPeakEnvelope;
+    bufferIndex = (bufferIndex + 1) % SEISMIC_SAMPLES;
 
-    // Composite Tactical Biological Confidence Score
-    int calculatedConfidence = 0;
-    if (aiBiologicalDetected) calculatedConfidence += 30;
-    if (heartbeatDetected) calculatedConfidence += 25;
-    if (soundClassification == "HUMAN VOICE" || soundClassification == "BREATHING") calculatedConfidence += 25;
-    if (piezoPeakEnvelope > 12.0f) calculatedConfidence += 10;
-    if (rawRadar == 1) calculatedConfidence += 10;
-    confidenceScore = constrain(calculatedConfidence, 0, 100);
+    int micMin = 4095;
+    int micMax = 0;
+    
+    for (int i = 0; i < 36; i++) {
+      int s = analogRead(PIN_MIC_OUT);
+      if (s < micMin) micMin = s;
+      if (s > micMax) micMax = s;
+      delayMicroseconds(10);
+    }
+    
+    int currentRawMic = micMax - micMin;
+    
+    micNoiseFloor = (micNoiseFloor * 0.998f) + ((float)currentRawMic * 0.002f);
+    float trueAudio = (float)currentRawMic - micNoiseFloor;
+
+    if (trueAudio > 5.0f) {
+      micEnergy = ((float)micEnergy * 0.20f) + (trueAudio * 0.80f);
+    } else {
+      micEnergy = (float)micEnergy * 0.72f;
+      if (micEnergy < 1.0f) {
+        micEnergy = 0.0f;
+      }
+    }
+
+    if (micEnergy > 60.0f) {
+        acousticSpectrum = "LOUD CRY / SHOUT";
+    } else if (micEnergy > 28.0f) {
+        acousticSpectrum = "HUMAN SPEECH / VOCAL";
+    } else if (micEnergy > 8.0f) {
+        acousticSpectrum = "FAINT BREATH / WHISPER";
+    } else {
+        acousticSpectrum = "SILENCE / NOISE FLOOR";
+    }
+
+    processSpatialIntelligence();
   }
 
-  // 5 Hz Slow Telemetry, Atmospheric Gas, & Neural Cloud Loop
-  if (millis() - lastSlowSample >= 200) {
-    lastSlowSample = millis();
-    int instantGas = analogRead(PIN_GAS_MQ135);
-    rawGas = (instantGas > 100) ? instantGas : 0; 
+  if (millis() - lastSlowCycle >= 200) {
+    lastSlowCycle = millis();
 
-    if (rawGas > 350) {
-      aiActionRec = "RESPIRATION HAZARD";
-      aiBiologicalDetected = true;
+    int instantGas = analogRead(PIN_GAS_MQ135);
+    rawGas = (instantGas > 45) ? instantGas : 0;
+    envGasPPM = 380.0f + (rawGas * 2.2f);
+    humanScentPPM = (rawGas > 150) ? ((rawGas - 150) * 0.18f) : 0.0f;
+    humanScentDetected = (humanScentPPM > 4.5f);
+
+    if (humanScentPPM > 55.0f) {
+      humanScentLabel = "GASTRO/SULFIDE";     
+    } else if (humanScentPPM > 35.0f) {
+      humanScentLabel = "HEAVY EFFLUENT";      
+    } else if (humanScentPPM > 15.0f) {
+      humanScentLabel = "SHIRT/BODY ODOR";     
+    } else if (humanScentPPM > 4.5f) {
+      humanScentLabel = "SALIVA/ORAL VOC";     
+    } else {
+      humanScentLabel = "CLEAR AMBIENT";
     }
 
     if (mpuReady) {
       sensors_event_t a, g, temp;
       mpu.getEvent(&a, &g, &temp);
       deltaJerk = sqrt(pow(a.acceleration.x - prevAx, 2) + pow(a.acceleration.y - prevAy, 2) + pow(a.acceleration.z - prevAz, 2));
-      prevAx = a.acceleration.x; prevAy = a.acceleration.y; prevAz = a.acceleration.z;
+      prevAx = a.acceleration.x; 
+      prevAy = a.acceleration.y; 
+      prevAz = a.acceleration.z;
+    } else {
+      deltaJerk = 0.0f; 
     }
 
-    if (millis() - lastTapTime > 2200) tapCountWindow = 0;
+    if (millis() - lastTapTimestamp > 3000) {
+        tapCountWindow = 0;
+    }
 
-    // Trigger Cloud AI analysis if notable acoustic/seismic/radar activity is captured
-    if (millis() - lastAiCallTime >= AI_QUERY_INTERVAL && 
-        (micRmsEnergy > 20.0f || piezoPeakEnvelope > 10.0f || rawRadar == 1 || heartbeatDetected)) {
+    if (millis() - lastAiCallTime >= AI_QUERY_INTERVAL && (survivorCount > 0 || humanScentDetected)) {
       lastAiCallTime = millis();
-      runInferenceEngine();
+      triggerCloudAiQuery = true;
     }
   }
 
-  // UI Carousel Pagination Loop
-  if (millis() - lastSlideSwitch >= SLIDE_INTERVAL) {
+  if (millis() - lastSlideSwitch >= SLIDE_INTERVAL_MS) {
     lastSlideSwitch = millis();
-    activeCard = (activeCard + 1) % TOTAL_CARDS;
+    oledCardIndex = (oledCardIndex + 1) % TOTAL_SLIDES;
   }
 
-  // 20 FPS Tactical OLED Refresh Loop
-  if (oledReady && (millis() - lastOledDraw >= 50)) {
-    lastOledDraw = millis();
-    display.clearDisplay();
-    switch (activeCard) {
-      case 0: renderCard0(); break;
-      case 1: renderCard1(); break;
-      case 2: renderCard2(); break;
-      case 3: renderCard3(); break;
-      case 4: renderCard4(); break;
-    }
-    display.display();
+  if (oledReady && (millis() - lastOledCycle >= 60)) {
+    lastOledCycle = millis();
+    renderAnimatedSlides();
   }
 }

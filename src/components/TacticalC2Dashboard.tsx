@@ -891,12 +891,14 @@ export function GeospatialLocalizationCard({
 // ══════════════════════════════════════════════════════════════════════════════
 export default function TacticalC2Dashboard({
   onExit,
-  initialNodeIp = "192.168.43.101",
+  initialNodeIp = "10.178.117.16",
   apiKey: propApiKey = ""
 }: TacticalC2Props) {
   // ── Node & Telemetry State ──
-  const [nodeIp, setNodeIp] = useState(initialNodeIp);
-  const [tempIp, setTempIp] = useState(initialNodeIp);
+  const [nodeIp, setNodeIp] = useState<string>(() => {
+    return localStorage.getItem("aura_node_ip") || initialNodeIp || "10.178.117.16";
+  });
+  const [tempIp, setTempIp] = useState(nodeIp);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [packetCount, setPacketCount] = useState(0);
@@ -969,29 +971,39 @@ export default function TacticalC2Dashboard({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
         
-        let targetUrl = "http://192.168.43.101/api/telemetry";
+        const candidateEndpoints: string[] = [];
         if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
-            targetUrl = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
+            candidateEndpoints.push(nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`);
           } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
-            targetUrl = `https://${nodeIp}/api/telemetry`;
+            candidateEndpoints.push(`https://${nodeIp}/api/telemetry`);
           } else {
-            targetUrl = `http://${nodeIp}/api/telemetry`;
+            candidateEndpoints.push(`http://${nodeIp}/api/telemetry`);
           }
         }
+        candidateEndpoints.push("/api/telemetry");
+        candidateEndpoints.push("http://10.178.117.16/api/telemetry");
 
-        const res = await fetch(targetUrl, {
-          signal: controller.signal,
-          headers: { 
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Bypass-Tunnel-Reminder": "true",
-            "ngrok-skip-browser-warning": "true"
+        let res: Response | null = null;
+        for (const ep of candidateEndpoints) {
+          try {
+            res = await fetch(ep, {
+              signal: controller.signal,
+              headers: { 
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Bypass-Tunnel-Reminder": "true",
+                "ngrok-skip-browser-warning": "true"
+              }
+            });
+            if (res && res.ok) break;
+          } catch {
+            // Try next candidate endpoint
           }
-        });
+        }
         clearTimeout(timeoutId);
 
-        if (res.ok) {
+        if (res && res.ok) {
           const data: TelemetryPayload = await res.json();
           if (isMounted) {
             setIsConnected(true);
@@ -1794,7 +1806,9 @@ Respond in STRICT JSON ONLY without markdown formatting:
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => {
-                    setNodeIp(tempIp);
+                    const clean = tempIp.trim();
+                    setNodeIp(clean);
+                    localStorage.setItem("aura_node_ip", clean);
                     setIsDrawerOpen(false);
                   }}
                   className="flex-1 py-2.5 bg-[#06B6D4] hover:bg-[#0891B2] text-black font-black rounded-lg transition-colors cursor-pointer"
