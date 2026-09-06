@@ -143,7 +143,7 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "10.178.117.16"
+  nodeIp = "192.168.43.101"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("theatre_map");
@@ -215,7 +215,7 @@ export default function AuraVoiceOrb({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        let endpoint = "http://10.178.117.16/api/telemetry";
+        let endpoint = "http://192.168.43.101/api/telemetry";
         if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;

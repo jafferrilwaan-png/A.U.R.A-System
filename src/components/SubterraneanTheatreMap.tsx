@@ -51,7 +51,7 @@ interface SubterraneanTheatreMapProps {
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "10.178.117.16",
+  nodeIp = "192.168.43.101",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -86,7 +86,7 @@ export default function SubterraneanTheatreMap({
       onSetBuzzerLevel(mode);
     }
     try {
-      let baseUrl = nodeIp || "10.178.117.16";
+      let baseUrl = nodeIp || "192.168.43.101";
       if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
         baseUrl = baseUrl.includes("loca.lt") || baseUrl.includes("ngrok") ? `https://${baseUrl}` : `http://${baseUrl}`;
       }

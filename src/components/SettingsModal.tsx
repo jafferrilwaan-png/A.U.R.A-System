@@ -37,7 +37,7 @@ export default function SettingsModal({
   onClose,
   telemetry,
   isConnected,
-  nodeIp = "10.178.117.16",
+  nodeIp = "192.168.43.101",
   buzzerLevel,
   frequencyKhz,
   isOverdrive,
