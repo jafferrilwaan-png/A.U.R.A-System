@@ -46,12 +46,13 @@ interface SubterraneanTheatreMapProps {
   onToggleBeam?: () => void;
   onSetBuzzerLevel?: (lvl: number) => void;
   onSwitchToVoice?: () => void;
+  onSetNodeIp?: (ip: string) => void;
 }
 
 export default function SubterraneanTheatreMap({
   telemetry,
   isConnected,
-  nodeIp = "192.168.43.101",
+  nodeIp = "10.178.117.16",
   buzzerLevel = 0,
   frequencyKhz = 40,
   isOverdrive = false,
@@ -62,10 +63,13 @@ export default function SubterraneanTheatreMap({
   onCycleFrequency,
   onToggleBeam,
   onSetBuzzerLevel,
-  onSwitchToVoice
+  onSwitchToVoice,
+  onSetNodeIp
 }: SubterraneanTheatreMapProps) {
   // Originkit fluid topographic wave animation speed
   const [contourSpeed, setContourSpeed] = useState<number>(18);
+  const [mapInputIp, setMapInputIp] = useState<string>(nodeIp);
+  const [mapIpSaved, setMapIpSaved] = useState<boolean>(false);
 
   // Laptop GPS Geolocation & Live Map Modal State
   const [gpsData, setGpsData] = useState<{
@@ -508,7 +512,7 @@ export default function SubterraneanTheatreMap({
           : "bg-gradient-to-b from-white/[0.04] to-[#070A10] border-white/10"
       }`}>
         
-        {/* Top Header Strip with Live Hardware State Badge */}
+        {/* Top Header Strip with Live Hardware State Badge & Direct IP Box */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : "bg-amber-400 animate-pulse"}`} />
@@ -517,9 +521,36 @@ export default function SubterraneanTheatreMap({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-mono text-white/60">
-            <span>IP: <strong className="text-cyan-400 font-bold">{nodeIp}</strong></span>
-            <span>POLLING: <strong className="text-emerald-400 font-bold">250ms</strong></span>
+          {/* Interactive IP Gateway Input & Polling Status */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (onSetNodeIp && mapInputIp.trim()) {
+                  onSetNodeIp(mapInputIp.trim());
+                  setMapIpSaved(true);
+                  setTimeout(() => setMapIpSaved(false), 2000);
+                }
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 border border-white/15 hover:border-cyan-500/40 focus-within:border-cyan-400/70 transition-all shadow-inner"
+            >
+              <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider pl-1">IP:</span>
+              <input
+                type="text"
+                value={mapInputIp}
+                onChange={(e) => setMapInputIp(e.target.value)}
+                placeholder="e.g. 10.178.117.16"
+                className="w-28 sm:w-36 bg-transparent text-xs font-mono text-cyan-300 placeholder-white/30 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm"
+              >
+                <span>{mapIpSaved ? "Linked!" : "Connect"}</span>
+              </button>
+            </form>
+
+            <span className="text-xs font-mono text-white/60 hidden sm:inline">POLLING: <strong className="text-emerald-400 font-bold">250ms</strong></span>
           </div>
         </div>
 

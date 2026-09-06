@@ -30,6 +30,7 @@ interface SettingsPageProps {
   apiKey?: string;
   aiModel?: string;
   onSaveApiKey?: (key: string, model: string) => void;
+  onSetNodeIp?: (ip: string) => void;
   onTogglePolling: () => void;
   onSetBuzzerLevel: (lvl: number) => void;
   onSetFrequency: (khz: number) => void;
@@ -40,6 +41,7 @@ interface SettingsPageProps {
 export default function SettingsPage({
   telemetry,
   isConnected,
+  nodeIp = "10.178.117.16",
   buzzerLevel,
   frequencyKhz,
   isOverdrive,
@@ -48,6 +50,7 @@ export default function SettingsPage({
   apiKey = "",
   aiModel = "google/gemini-2.5-flash",
   onSaveApiKey,
+  onSetNodeIp,
   onTogglePolling,
   onSetBuzzerLevel,
   onSetFrequency,
@@ -56,6 +59,8 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const hasGpsFix = isConnected && (Boolean(telemetry.gps_locked) || (Boolean(telemetry.lat) && telemetry.lat !== 0));
 
+  const [inputIp, setInputIp] = useState<string>(nodeIp);
+  const [ipSaved, setIpSaved] = useState<boolean>(false);
   const [customKey] = useState<string>(apiKey);
   const [selectedModel, setSelectedModel] = useState<string>(aiModel);
   const [isTesting, setIsTesting] = useState<boolean>(false);
@@ -324,6 +329,55 @@ export default function SettingsPage({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
+          {/* Card 0: ESP32 Hardware Node IP & Gateway */}
+          <div className="p-5 rounded-3xl bg-black/60 backdrop-blur-2xl border border-cyan-500/30 flex flex-col justify-between gap-4 shadow-xl hover:border-cyan-400/50 transition-all col-span-1 md:col-span-2 lg:col-span-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center shadow-lg shadow-cyan-500/10 shrink-0">
+                  <Radio className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white font-mono">ESP32 Hardware Node IP</h4>
+                  <p className="text-[11px] text-white/50 font-sans">Physical IP address of the subterranean probe</p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onSetNodeIp && inputIp.trim()) {
+                    onSetNodeIp(inputIp.trim());
+                    setIpSaved(true);
+                    setTimeout(() => setIpSaved(false), 2000);
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  value={inputIp}
+                  onChange={(e) => setInputIp(e.target.value)}
+                  placeholder="e.g. 10.178.117.16"
+                  className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/15 text-sm font-mono text-cyan-300 focus:outline-none focus:border-cyan-400/60 w-44 sm:w-56"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold transition-all cursor-pointer active:scale-95 shadow-md flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{ipSaved ? "Linked!" : "Connect"}</span>
+                </button>
+              </form>
+            </div>
+
+            <div className="text-[11px] font-mono text-white/40 flex flex-wrap justify-between items-center pt-3 border-t border-white/5 gap-2">
+              <span>Active Gateway: <strong className="text-cyan-300 font-bold">{nodeIp}</strong></span>
+              <span className={isConnected ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                {isConnected ? "● Online (Streaming 250ms)" : "○ Standby / Awaiting Connection"}
+              </span>
+            </div>
+          </div>
+
           {/* Card 1: 300ms Telemetry Stream Polling */}
           <div className="p-5 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/10 flex flex-col justify-between gap-4 shadow-xl hover:border-white/25 transition-all">
             <div className="flex items-start justify-between gap-3">

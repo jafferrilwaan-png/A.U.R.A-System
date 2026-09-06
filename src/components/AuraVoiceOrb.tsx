@@ -143,10 +143,27 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "192.168.43.101"
+  nodeIp = "10.178.117.16"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("theatre_map");
+
+  // Dynamic Hardware Node IP State (User configurable & persisted)
+  const [nodeIpState, setNodeIpState] = useState<string>(() => {
+    return localStorage.getItem("aura_node_ip") || (nodeIp !== "192.168.43.101" ? nodeIp : "10.178.117.16");
+  });
+  const [tempIpInput, setTempIpInput] = useState<string>(nodeIpState);
+
+  const handleConnectIp = (targetIp?: string) => {
+    const raw = (targetIp !== undefined ? targetIp : tempIpInput).trim();
+    if (!raw) return;
+    const cleanIp = raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").trim();
+    setNodeIpState(cleanIp);
+    setTempIpInput(cleanIp);
+    localStorage.setItem("aura_node_ip", cleanIp);
+    setIsConnected(false);
+    setIsReconnecting(true);
+  };
 
   // Hardware Control Settings State
   const [buzzerLevel, setBuzzerLevel] = useState(1);
@@ -216,8 +233,9 @@ export default function AuraVoiceOrb({
         const timeoutId = setTimeout(() => controller.abort(), 1800);
 
         const endpoints = [
-          `http://${nodeIp || "192.168.43.101"}/api/telemetry`,
+          `http://${nodeIpState || "10.178.117.16"}/api/telemetry`,
           "/api/telemetry",
+          "http://10.178.117.16/api/telemetry",
           "http://192.168.43.101/api/telemetry"
         ];
 
@@ -274,7 +292,7 @@ export default function AuraVoiceOrb({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [nodeIp, isPollingPaused]);
+  }, [nodeIpState, isPollingPaused]);
 
   // Direct Hardware Control Trigger (POST /api/control)
   const sendHardwareBuzzerCommand = async (payload: { [key: string]: any }, feedbackLabel?: string) => {
@@ -287,10 +305,12 @@ export default function AuraVoiceOrb({
 
     try {
       const endpoints = [
-        `http://${nodeIp || "192.168.43.101"}/api/control`,
+        `http://${nodeIpState || "10.178.117.16"}/api/control`,
         "/api/control",
-        `http://${nodeIp || "192.168.43.101"}/api/telemetry`,
-        "/api/telemetry"
+        `http://${nodeIpState || "10.178.117.16"}/api/telemetry`,
+        "/api/telemetry",
+        "http://10.178.117.16/api/control",
+        "http://192.168.43.101/api/control"
       ];
 
       let success = false;
@@ -947,10 +967,10 @@ OPERATIONAL DIRECTIVES:
       <div className="relative z-10 w-full max-w-5xl mx-auto min-h-screen flex flex-col justify-between p-4 sm:p-6 gap-4">
         
         {/* LUXURY macOS Tahoe GLASS NAVIGATION HEADER (PERFECT MOBILE & DESKTOP RESPONSIVE LAYOUT) */}
-        <header className="w-full bg-black/80 backdrop-blur-md border border-white/15 rounded-2xl p-2.5 sm:px-4 sm:py-2.5 flex flex-col md:flex-row items-center justify-between shadow-2xl gap-2 sm:gap-3 font-sans transform-gpu will-change-transform">
+        <header className="w-full bg-black/80 backdrop-blur-md border border-white/15 rounded-2xl p-2.5 sm:px-4 sm:py-2.5 flex flex-col lg:flex-row items-center justify-between shadow-2xl gap-2 sm:gap-3 font-sans transform-gpu will-change-transform">
           
           {/* TOP ROW (MOBILE) / LEFT SECTION (DESKTOP) */}
-          <div className="w-full md:w-auto flex items-center justify-between md:justify-start gap-2 sm:gap-3">
+          <div className="w-full lg:w-auto flex flex-wrap items-center justify-between lg:justify-start gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
               {onBack && (
                 <button
@@ -974,7 +994,31 @@ OPERATIONAL DIRECTIVES:
               </div>
             </div>
 
-            {/* Node Status Pill + Mobile Timer */}
+            {/* DIRECT HARDWARE IP CONNECT BOX */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleConnectIp();
+              }}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 border border-white/15 hover:border-cyan-500/40 focus-within:border-cyan-400/70 transition-all shadow-inner"
+            >
+              <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider pl-1 hidden sm:inline">IP:</span>
+              <input
+                type="text"
+                value={tempIpInput}
+                onChange={(e) => setTempIpInput(e.target.value)}
+                placeholder="e.g. 10.178.117.16"
+                className="w-24 sm:w-32 bg-transparent text-xs font-mono text-cyan-300 placeholder-white/30 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm"
+              >
+                <span>Connect</span>
+              </button>
+            </form>
+
+            {/* Node Status Pill */}
             <div className="flex items-center gap-2">
               <div
                 className={`font-mono text-[11px] font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all ${
@@ -993,7 +1037,7 @@ OPERATIONAL DIRECTIVES:
               {activeTab === "voice" && (
                 <button
                   onClick={() => processQuery("clear")}
-                  className="md:hidden text-white/70 hover:text-white text-xs flex items-center gap-1 px-2 py-1 rounded-xl bg-white/5 border border-white/10 active:scale-95"
+                  className="lg:hidden text-white/70 hover:text-white text-xs flex items-center gap-1 px-2 py-1 rounded-xl bg-white/5 border border-white/10 active:scale-95"
                   title="Clear Chat History"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-white/60" />
@@ -1003,10 +1047,10 @@ OPERATIONAL DIRECTIVES:
           </div>
 
           {/* CENTER SEGMENTED CAPSULE (FULL WIDTH ON MOBILE, COMPACT ON DESKTOP) */}
-          <div className="w-full md:w-auto flex items-center p-1 rounded-xl bg-black/60 border border-white/15 backdrop-blur-md shadow-inner">
+          <div className="w-full lg:w-auto flex items-center p-1 rounded-xl bg-black/60 border border-white/15 backdrop-blur-md shadow-inner">
             <button
               onClick={() => setActiveTab("voice")}
-              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
+              className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "voice"
                   ? "bg-[#C084FC] text-black shadow-[0_0_15px_rgba(192,132,252,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -1018,7 +1062,7 @@ OPERATIONAL DIRECTIVES:
 
             <button
               onClick={() => setActiveTab("theatre_map")}
-              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
+              className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "theatre_map"
                   ? "bg-[#00C2FF] text-black shadow-[0_0_15px_rgba(0,194,255,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -1030,7 +1074,7 @@ OPERATIONAL DIRECTIVES:
 
             <button
               onClick={() => setActiveTab("settings")}
-              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
+              className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all cursor-pointer text-xs whitespace-nowrap active:scale-95 ${
                 activeTab === "settings"
                   ? "bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.5)] scale-[1.02]"
                   : "text-white/60 hover:text-white"
@@ -1042,7 +1086,7 @@ OPERATIONAL DIRECTIVES:
           </div>
 
           {/* DESKTOP RIGHT ACTIONS */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             {activeTab === "voice" && (
               <button
                 onClick={() => processQuery("clear")}
@@ -1066,11 +1110,12 @@ OPERATIONAL DIRECTIVES:
           <SubterraneanTheatreMap
             telemetry={telemetry}
             isConnected={isConnected}
-            nodeIp={nodeIp}
+            nodeIp={nodeIpState}
             buzzerLevel={buzzerLevel}
             frequencyKhz={frequencyKhz}
             isOverdrive={isOverdrive}
             isBeamActive={isBeamActive}
+            onSetNodeIp={handleConnectIp}
             onToggleSettings={() => setActiveTab("settings")}
             onToggleOverdrive={() => sendHardwareControl({ overdrive: !isOverdrive })}
             onCycleBuzzer={() => sendHardwareControl({ buzzer_level: buzzerLevel >= 3 ? 0 : buzzerLevel + 1 })}
@@ -1086,7 +1131,7 @@ OPERATIONAL DIRECTIVES:
           <SettingsPage
             telemetry={telemetry}
             isConnected={isConnected}
-            nodeIp={nodeIp}
+            nodeIp={nodeIpState}
             buzzerLevel={buzzerLevel}
             frequencyKhz={frequencyKhz}
             isOverdrive={isOverdrive}
@@ -1094,6 +1139,7 @@ OPERATIONAL DIRECTIVES:
             isPollingPaused={isPollingPaused}
             apiKey={apiKey}
             aiModel={aiModel}
+            onSetNodeIp={handleConnectIp}
             onSaveApiKey={handleSaveApiKey}
             onTogglePolling={() => setIsPollingPaused(!isPollingPaused)}
             onSetBuzzerLevel={(lvl) => sendHardwareControl({ buzzer_level: lvl })}

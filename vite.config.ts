@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://192.168.43.101',
+        target: 'http://10.178.117.16',
         changeOrigin: true,
         timeout: 6000,
         proxyTimeout: 6000,
