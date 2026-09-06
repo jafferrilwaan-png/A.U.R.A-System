@@ -41,9 +41,11 @@ import AuraVoiceOrb from "./AuraVoiceOrb";
 // ─── TYPES & INTERFACES ───────────────────────────────────────────────────────
 export interface TelemetryPayload {
   survivor_count?: number;
+  detected_persons?: number;
   depth_meters?: number | string;
   range_meters?: number | string;
   zone_color?: "GREEN" | "RED" | "WHITE" | "NONE" | string;
+  threat_level?: string;
   spatial_position?: string;
   confidence?: number;
   tap_count?: number;

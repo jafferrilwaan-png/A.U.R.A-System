@@ -319,6 +319,8 @@ export default function AuraVoiceOrb({
     }
   };
 
+  const sendHardwareControl = sendHardwareBuzzerCommand;
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -600,14 +602,21 @@ export default function AuraVoiceOrb({
     let aiReply: string | null = null;
     let successfulModelName = "AURA Core";
 
-    // Extract and mathematically compute advanced bio-acoustic, strata depth, and vital telemetry
+    // 100% Genuine Hardware Telemetry Mapping (Strictly Pure ESP32 Registers)
     const rawD = telemetry.depth_meters !== undefined 
       ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0) 
       : (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 0);
-    const rawDepth: number = Number(rawD || 0);
+    const depthMeters: number = isNaN(rawD) ? 0 : Number(rawD);
+    const survivorCount = telemetry.survivor_count !== undefined 
+      ? Number(telemetry.survivor_count) 
+      : (telemetry.detected_persons !== undefined ? Number(telemetry.detected_persons) : 0);
+    const rangeMeters = telemetry.range_meters !== undefined ? Number(telemetry.range_meters) : 0;
+    const zoneColor = telemetry.zone_color || (survivorCount > 0 ? "RED" : "GREEN");
+    const threatLevel = telemetry.threat_level || (survivorCount > 0 ? "CRITICAL" : "NOMINAL");
     const micFreq = telemetry.mic_freq_hz || 0;
     const tapCount = telemetry.tap_count || 0;
-    const nh3Ppm = typeof telemetry.nh3_ppm === "number" ? telemetry.nh3_ppm : parseFloat(String(telemetry.nh3_ppm || "0")) || 0;
+    const nh3Ppm = typeof telemetry.nh3_ppm === "number" ? telemetry.nh3_ppm : (parseFloat(String(telemetry.human_scent_ppm || telemetry.nh3_ppm || "0")) || 0);
+    const scentLabel = telemetry.human_scent_label || (telemetry.human_scent_detected ? "POSITIVE BIO-VOC" : "CLEAR AMBIENT");
     const heartbeatBpm = telemetry.heartbeat_detected ? telemetry.heartbeat_bpm : null;
     const soundClass = telemetry.sound_classification || (telemetry.ai_classification ?? "Ambient Noise");
     const spectrum = telemetry.acoustic_spectrum || "AMBIENT NOISE FLOOR";
@@ -615,48 +624,12 @@ export default function AuraVoiceOrb({
     const isAskingForBio = /(\b(human|person|people|survivor|someone|anybody|voice|breathing|sound|heartbeat|bpm|pulse|alive|deep|depth|nearby|trapped)\b)/i.test(q);
     const isAskingForSensors = isAskingForBio || /(\b(gas|ppm|radar|seismic|satellite|telemetry|sensor readings|hardware readings|all readings|node status)\b)/i.test(q);
 
-    // Deterministic Hardware Life Recognition Calculation
-    let calculatedBioScore = 0;
-    if (spectrum.includes("VOICE") || spectrum.includes("SHOUT")) calculatedBioScore += 40;
-    else if (spectrum.includes("SPEECH") || spectrum.includes("BREATH")) calculatedBioScore += 30;
-    else if (spectrum.includes("FAINT") || spectrum.includes("SUB-AUDIBLE")) calculatedBioScore += 15;
-
-    if (tapCount > 0) calculatedBioScore += 25;
-    if (telemetry.human_scent_detected || nh3Ppm > 0.3) calculatedBioScore += 25;
-    if (heartbeatBpm) calculatedBioScore += 35;
-    calculatedBioScore = Math.min(Math.max(calculatedBioScore, 0), 98);
-
-    // Deterministic Victim Count & Multi-Person Analysis (Node-01 Prototype & Mesh Link)
-    let estimatedPersonCount = "0 Persons (Baseline Strata Scan)";
-    if (calculatedBioScore >= 70) {
-      if (tapCount > 5 && micRms > 60) {
-        estimatedPersonCount = "Estimated 1–2 Persons (Multiple Acoustic Distress Sources)";
-      } else {
-        estimatedPersonCount = "1 Confirmed Survivor (Individual Pulse & Acoustic Formant Locked)";
-      }
-    } else if (calculatedBioScore >= 35) {
-      estimatedPersonCount = "1 Potential Survivor (Bio-Scent & Micro-Tap Resolving)";
-    }
-
-    // Deterministic Subterranean Burial Depth Estimation
-    let calculatedDepthMeters: number = rawDepth > 0 ? rawDepth : 0;
-    let depthProximityCategory = "Scanning Debris Strata";
-
-    if (calculatedDepthMeters > 0) {
-      if (calculatedDepthMeters < 1.5) depthProximityCategory = `Surface Cavity (${calculatedDepthMeters.toFixed(1)}m)`;
-      else if (calculatedDepthMeters <= 3.0) depthProximityCategory = `Intermediate Debris (${calculatedDepthMeters.toFixed(1)}m)`;
-      else depthProximityCategory = `Deep Subterranean (${calculatedDepthMeters.toFixed(1)}m)`;
-    } else if (isConnected) {
-      if (micRms > 60 && (micFreq > 350 || tapCount > 0)) {
-        calculatedDepthMeters = 1.2;
-        depthProximityCategory = "Surface Cavity (~1.2m)";
-      } else if (micRms > 40) {
-        calculatedDepthMeters = 2.4;
-        depthProximityCategory = "Intermediate Debris (~2.4m)";
-      } else {
-        calculatedDepthMeters = 3.8;
-        depthProximityCategory = "Deep Subterranean (~3.8m)";
-      }
+    // Exact proximity description based solely on real depthMeters
+    let depthProximityCategory = "Standby (No Target Locked)";
+    if (depthMeters > 0) {
+      if (depthMeters < 1.5) depthProximityCategory = `Surface Cavity (${depthMeters.toFixed(2)}m)`;
+      else if (depthMeters <= 3.0) depthProximityCategory = `Intermediate Debris (${depthMeters.toFixed(2)}m)`;
+      else depthProximityCategory = `Deep Subterranean (${depthMeters.toFixed(2)}m)`;
     }
 
     // 4. If hardware command was executed, reply IMMEDIATELY with clean confirmation (no robot bullet dumping!)
@@ -669,28 +642,29 @@ export default function AuraVoiceOrb({
       const systemPrompt = `You are A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment).
 You are a mission-critical Search-and-Rescue tactical AI assistant dedicated to locating buried human survivors with 100% mathematical precision.
 
-NETWORK TOPOLOGY: Node-01 Tactical Probe (Primary Subterranean Link // Multi-Node Swarm Expandable)
+NETWORK TOPOLOGY: Node-01 Tactical Probe (Primary Subterranean Link // Swarm Mesh Active)
 CONNECTION STATE: ${isConnected ? `ONLINE (Active Node: ${nodeIp})` : "OFFLINE (Hardware Probe Standby)"}
 
-${isConnected ? `REAL-TIME HARDWARE SENSOR REGISTERS:
-- Estimated Trapped Survivors: ${estimatedPersonCount}
-- Biological Vital Confidence: ${calculatedBioScore}% (${calculatedBioScore >= 50 ? "CONFIRMED SURVIVOR SIGNATURE" : "BASELINE SCANNING"})
+${isConnected ? `REAL-TIME HARDWARE SENSOR REGISTERS (STRICT LIVE DATA):
+- Confirmed Survivor Count: ${survivorCount} ${survivorCount === 1 ? "Person" : "Persons"}
+- Threat Level / Zone: ${threatLevel} (Zone ${zoneColor})
+- Ultrasonic / Strata Depth: ${depthMeters > 0 ? `${depthMeters.toFixed(2)} meters (${depthProximityCategory})` : "0.00 meters (No target locked)"}
+- Search Range: ${rangeMeters > 0 ? `${rangeMeters.toFixed(2)} meters` : "Scanning"}
 - Biological Heartbeat Pulse: ${heartbeatBpm ? `${heartbeatBpm} BPM Confirmed Heart Rate` : "No pulse locked"}
-- Ultrasonic / Sonar Strata Depth: ${calculatedDepthMeters.toFixed(1)} meters (${depthProximityCategory})
-- Acoustic Sound: ${soundClass} (${micRms} dB RMS energy, ${micFreq} Hz frequency)
 - Acoustic Classification: ${spectrum}
+- Acoustic Sound: ${soundClass} (${micRms} dB RMS energy, ${micFreq} Hz)
+- Bio-Scent VOC Classification: ${scentLabel} (${nh3Ppm.toFixed(2)} PPM)
 - Seismic Impact Matrix: ${tapCount} physical taps recorded (${seismicPeak} mm/s impact peak)
-- Metabolic Bio-Scent (NH3 / Sweat): ${nh3Ppm} PPM (${telemetry.human_scent_detected ? "POSITIVE BIO-VOC DETECTED" : "NOMINAL / ZERO VOC"})
-- Air Purity / Gas Hazard: ${gasPpm} PPM (${gasPpm > 400 ? "HAZARDOUS CONCENTRATION" : "Safe / Breathable"})
+- Air Purity / Gas Level: ${gasPpm} PPM (${telemetry.air_rating || (gasPpm > 400 ? "HAZARDOUS" : "SAFE / CLEAR")})
 - Metabolic CO2 Level: ${telemetry.co2_ppm || gasPpm} PPM
 - Geographic Target Fix: ${cityStr} (${gpsCoords})` : `HARDWARE NODE STATUS: OFFLINE (Standby Mode)
 - Anchored Target Coordinates: Sriperumbudur Bus Stand (12.9665° N, 79.9450° E)
 - All live sensor registers: 0 (No active packet stream)
 CRITICAL RESCUE PROTOCOL: Never hallucinate fake survivor heartbeats, gas leaks, or depths when the hardware is offline. Truthfully state that the node is offline and provide cached target fix information.`}
 
-OPERATIONAL DIRECTIVE:
+OPERATIONAL DIRECTIVES:
 1. Deeply analyze the real-time sensor data above and answer with situational awareness.
-2. State clearly the estimated survivor count (${estimatedPersonCount}), vital heart rate, and exact depth (${calculatedDepthMeters.toFixed(1)}m, ${depthProximityCategory}) when asked about trapped persons.
+2. STRICT DATA FIDELITY: Never invent, guess, or hallucinate survivors or depths. If Survivor Count is 0, explicitly report 0 survivors. If Depth is 0.00m, report that no depth target is currently locked. If Survivor Count is ${survivorCount} > 0, report exactly ${survivorCount} survivor(s) at ${depthMeters.toFixed(2)}m.
 3. Speak in 2 to 3 concise, natural sentences without markdown symbols (*, **, _, #) for smooth voice audio synthesis.`;
 
       // Multi-turn conversational memory (remembers previous chat turns)
@@ -761,7 +735,13 @@ OPERATIONAL DIRECTIVE:
             aiReply = "I am AURA Intelligence. Operating in offline tactical mode. Subterranean target map and command systems are active.";
           }
         } else {
-          aiReply = "Hardware node is online and streaming live telemetry. Atmospheric and subterranean bio-acoustic registers are nominal.";
+          if (survivorCount > 0) {
+            aiReply = `Hardware node reports ${survivorCount} survivor signature${survivorCount > 1 ? "s" : ""} locked at depth ${depthMeters.toFixed(2)} meters. Acoustic signature is ${spectrum}, and bio-scent is ${scentLabel}.`;
+          } else if (isAskingForBio || isAskingForSensors) {
+            aiReply = `Hardware node is online with zero trapped survivors detected. Strata scan is nominal, gas level is ${gasPpm} PPM, and seismic activity is ${seismicPeak} millimeters per second.`;
+          } else {
+            aiReply = `Hardware node is online and streaming live telemetry. All atmospheric and subterranean sensor registers are operating normally.`;
+          }
         }
         successfulModelName = isConnected ? "AURA Neural Engine" : "AURA Offline Engine";
       }
@@ -813,16 +793,16 @@ OPERATIONAL DIRECTIVE:
             title: "LIVE ESP32 BIO-ACOUSTIC & MULTI-GAS AUDIT",
             metrics: [
               { label: "Mesh Topology", value: "Node-01 Link (Swarm Expandable)", color: "#38BDF8" },
-              { label: "Detected Survivors", value: estimatedPersonCount.split("(")[0].trim(), color: calculatedBioScore >= 70 ? "#10B981" : calculatedBioScore >= 35 ? "#F59E0B" : "#94A3B8" },
-              { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
+              { label: "Detected Survivors", value: `${survivorCount} Survivor${survivorCount === 1 ? "" : "s"} (${zoneColor})`, color: survivorCount > 0 ? "#EF4444" : "#10B981" },
+              { label: "Threat Assessment", value: threatLevel, color: threatLevel === "CRITICAL" ? "#EF4444" : "#10B981" },
               { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
-              { label: "Strata Depth", value: `${calculatedDepthMeters.toFixed(1)}m (${depthProximityCategory})`, color: "#00C2FF" },
+              { label: "Strata Depth", value: depthMeters > 0 ? `${depthMeters.toFixed(2)}m (${depthProximityCategory})` : "0.00m (No Target)", color: depthMeters > 0 ? "#00C2FF" : "#94A3B8" },
               { label: "Acoustic Spectrum", value: acousticSpec, color: acousticSpecColor },
               { label: "Seismic Taps", value: `${telemetry.tap_count ?? 0} Taps (${seismicPeak} mm/s)`, color: (telemetry.tap_count ?? 0) > 0 ? "#F59E0B" : "#00C2FF" },
               { label: "Gas Profile", value: gasProf, color: gasColor },
               { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
-              { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
-              { label: "Bio-Scent VOC", value: telemetry.human_scent_label || (telemetry.human_scent_detected ? "SWEAT / AMMONIA VOC" : "CLEAR AMBIENT"), color: (telemetry.human_scent_label || "").toUpperCase().includes("GASTRO") ? "#F59E0B" : (telemetry.human_scent_label || "").toUpperCase().includes("EFFLUENT") ? "#FACC15" : (telemetry.human_scent_label || "").toUpperCase().includes("SHIRT") ? "#C084FC" : (telemetry.human_scent_label || "").toUpperCase().includes("SALIVA") ? "#60A5FA" : "#94A3B8" },
+              { label: "Ammonia / VOC", value: `${nh3Ppm.toFixed(2)} PPM`, color: "#38BDF8" },
+              { label: "Bio-Scent VOC", value: scentLabel, color: scentLabel.toUpperCase().includes("GASTRO") ? "#F59E0B" : scentLabel.toUpperCase().includes("EFFLUENT") ? "#FACC15" : scentLabel.toUpperCase().includes("SHIRT") ? "#C084FC" : scentLabel.toUpperCase().includes("SALIVA") ? "#60A5FA" : "#94A3B8" },
               { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
               { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
               { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }

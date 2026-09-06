@@ -85,6 +85,7 @@ export default function SubterraneanTheatreMap({
     if (onSetBuzzerLevel) {
       onSetBuzzerLevel(mode);
     }
+    const payload = { buzzer_mode: mode, buzzer_level: mode, ...(label ? { label } : {}) };
     try {
       let baseUrl = nodeIp || "192.168.43.101";
       if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
