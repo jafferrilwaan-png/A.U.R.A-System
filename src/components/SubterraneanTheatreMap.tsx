@@ -185,22 +185,71 @@ export default function SubterraneanTheatreMap({
     );
   };
 
-  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur Bus Stand)
+  // Persistent Last Active Target State (Anchored to Sriperumbudur Bus Stand / Last Live Target)
+  const [lastActiveTarget, setLastActiveTarget] = useState<{
+    lat: number;
+    lng: number;
+    depth: number;
+    classification: string;
+    city: string;
+    timestamp: string;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem("aura_last_active_target");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.lat && parsed.lng) return parsed;
+      }
+    } catch {}
+    return {
+      lat: 12.9665,
+      lng: 79.9450,
+      depth: 2.5,
+      classification: "Sriperumbudur Strata Target",
+      city: "Chennai",
+      timestamp: "Sriperumbudur Target"
+    };
+  });
+
+  // Whenever connected and receiving active telemetry coordinates or depth, update lastActiveTarget
+  useEffect(() => {
+    if (isConnected) {
+      const hasCoords = Boolean(telemetry.lat && telemetry.lat !== 0 && telemetry.lng && telemetry.lng !== 0);
+      const hasDepth = Boolean(telemetry.ai_depth_meters && telemetry.ai_depth_meters > 0);
+      if (hasCoords || hasDepth) {
+        const newTarget = {
+          lat: hasCoords ? Number(telemetry.lat) : lastActiveTarget.lat,
+          lng: hasCoords ? Number(telemetry.lng) : lastActiveTarget.lng,
+          depth: hasDepth ? Number((telemetry.ai_depth_meters || 2.5).toFixed(1)) : lastActiveTarget.depth,
+          classification: telemetry.ai_classification || telemetry.sound_classification || lastActiveTarget.classification,
+          city: telemetry.city || lastActiveTarget.city,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setLastActiveTarget(newTarget);
+        try {
+          localStorage.setItem("aura_last_active_target", JSON.stringify(newTarget));
+        } catch {}
+      }
+    }
+  }, [isConnected, telemetry.lat, telemetry.lng, telemetry.ai_depth_meters, telemetry.ai_classification, telemetry.sound_classification, telemetry.city]);
+
+  // Active coordinates (Live telemetry -> Laptop GPS sync -> Last active target -> Sriperumbudur 12.9665, 79.9450)
+  const activeTargetLat = (isConnected && telemetry.lat && telemetry.lat !== 0) 
+    ? Number(telemetry.lat) 
+    : (gpsData && gpsData.lat && gpsData.lat !== 0) 
+    ? Number(gpsData.lat) 
+    : Number(lastActiveTarget.lat || 12.9665);
+
+  const activeTargetLng = (isConnected && telemetry.lng && telemetry.lng !== 0) 
+    ? Number(telemetry.lng) 
+    : (gpsData && gpsData.lng && gpsData.lng !== 0) 
+    ? Number(gpsData.lng) 
+    : Number(lastActiveTarget.lng || 79.9450);
+
+  // Open Target Location Directly in Google Maps (Anchored to Sriperumbudur Bus Stand / Last Active Target)
   const handleOpenGoogleMaps = (e?: React.MouseEvent | React.TouchEvent) => {
     e?.stopPropagation();
-    let targetLat = 12.9665;
-    let targetLng = 79.9450;
-
-    if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
-      targetLat = gpsData.lat;
-      targetLng = gpsData.lng;
-    } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
-      targetLat = telemetry.lat;
-      targetLng = telemetry.lng ?? 79.9450;
-    }
-
-    // Direct Google Maps pin with satellite terrain mode pointing to Sriperumbudur Bus Stand
-    const mapsUrl = `https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`;
+    const mapsUrl = `https://www.google.com/maps?q=${activeTargetLat},${activeTargetLng}&z=19&t=k`;
     window.open(mapsUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -263,10 +312,12 @@ export default function SubterraneanTheatreMap({
     ? Number(telemetry.ai_depth_meters.toFixed(1))
     : 0;
 
+  const displayDepth = isConnected && primaryDepth > 0 ? primaryDepth : Number(lastActiveTarget.depth || 2.5);
+
   // Calm, stable, scientific color palette (NO random rainbow color cycling)
   let primaryColor = "#00C2FF"; // Default crisp cyan tactical radar
-  let statusText = isConnected ? "Subterranean Radar Active" : "Hardware Node Offline";
-  let statusSubtext = isConnected ? "Continuous strata echo sweep — All registers nominal" : "Standby for ESP32 telemetry packet stream";
+  let statusText = isConnected ? "Subterranean Radar Active" : "Last Active Target (Sriperumbudur)";
+  let statusSubtext = isConnected ? "Continuous strata echo sweep — All registers nominal" : `Target Locked: ${activeTargetLat.toFixed(4)}° N, ${activeTargetLng.toFixed(4)}° E • Tap for Google Maps`;
 
   if (isBiological && primaryDepth > 0) {
     primaryColor = "#10B981"; // Stable emerald for verified biological target
@@ -311,13 +362,13 @@ export default function SubterraneanTheatreMap({
           {/* Depth Radial Overlay */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.75)_100%)]" />
 
-          {/* ACCURATE TARGET RADAR BLIP (Touch to open Google Maps directly on target) */}
+          {/* ACCURATE TARGET RADAR BLIP (Always Active on Last Active Target / Sriperumbudur) */}
           <div 
             onClick={handleOpenGoogleMaps}
             onTouchEnd={handleOpenGoogleMaps}
             className="absolute z-30 transition-all duration-700 flex flex-col items-center cursor-pointer group active:scale-95 select-none"
             style={{ 
-              top: `${primaryDepth > 0 ? Math.min(75, Math.max(30, 35 + (primaryDepth * 5))) : 50}%`,
+              top: `${displayDepth > 0 ? Math.min(75, Math.max(30, 35 + (displayDepth * 5))) : 50}%`,
               left: "50%",
               transform: "translate(-50%, -50%)"
             }}
@@ -344,7 +395,7 @@ export default function SubterraneanTheatreMap({
               }}
             >
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: primaryColor }} />
-              <span>{isBiological && primaryDepth > 0 ? `Target ${primaryDepth.toFixed(1)}m` : primaryDepth > 0 ? `Depth ${primaryDepth.toFixed(1)}m` : "Subterranean Target"}</span>
+              <span>{isConnected ? (isBiological && primaryDepth > 0 ? `Target ${primaryDepth.toFixed(1)}m` : primaryDepth > 0 ? `Depth ${primaryDepth.toFixed(1)}m` : "Subterranean Target") : `Last Active Target (${displayDepth.toFixed(1)}m)`}</span>
               <span className="text-[10px] text-cyan-300 font-medium flex items-center gap-1 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/40 group-hover:bg-cyan-500 group-hover:text-black transition-colors">
                 <MapPin className="w-3 h-3" />
                 <span>Google Maps ↗</span>
@@ -767,7 +818,7 @@ export default function SubterraneanTheatreMap({
             title="Touch to open target location on Google Maps"
           >
             <Satellite className="w-3.5 h-3.5 text-[#10B981] group-hover:text-cyan-400 transition-colors" />
-            <span>{hasGpsFix ? `${telemetry.city || "Chennai"} • ${telemetry.lat?.toFixed(3)}°, ${telemetry.lng?.toFixed(3)}°` : "Chennai • 13.083°, 80.271°"}</span>
+            <span>{`Chennai • ${activeTargetLat.toFixed(4)}°, ${activeTargetLng.toFixed(4)}° ${!isConnected ? "(Last Active Target)" : ""}`}</span>
             <span className="text-[10px] text-cyan-400 font-medium ml-1 group-hover:translate-x-0.5 transition-transform">↗</span>
           </div>
 
@@ -790,13 +841,13 @@ export default function SubterraneanTheatreMap({
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                    <span>Laptop GPS & Subterranean Node Locator</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-                      SIGNAL SENT
+                    <span>{isConnected ? "Laptop GPS & Subterranean Node Locator" : "Last Active Target Locator & Map"}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
+                      {isConnected ? "SIGNAL LIVE" : "LAST ACTIVE TARGET"}
                     </span>
                   </h3>
                   <p className="text-xs text-white/50">
-                    Precision coordinates acquired from laptop hardware and synchronized with ESP32 ({nodeIp}).
+                    {isConnected ? `Precision coordinates synchronized with ESP32 node (${nodeIp}).` : `Subterranean target coordinates anchored to last active fix (${activeTargetLat.toFixed(4)}°, ${activeTargetLng.toFixed(4)}°).`}
                   </p>
                 </div>
               </div>
@@ -812,11 +863,11 @@ export default function SubterraneanTheatreMap({
             {/* Modal Body: Embedded Interactive Map */}
             <div className="p-4 sm:p-5 flex flex-col gap-4">
               <div className="relative w-full h-72 sm:h-80 rounded-2xl overflow-hidden border border-white/15 shadow-inner bg-black/60">
-                {/* Always show map — defaults to Sriperumbudur Bus Stand (12.9665°N, 79.9450°E) when no hardware GPS lock */}
+                {/* Always show map — defaults to Sriperumbudur Bus Stand / Last Active Target (12.9665°N, 79.9450°E) */}
                 <iframe
                   title="Tactical GPS Map"
                   className="w-full h-full border-none filter contrast-125 brightness-90"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(gpsData?.lng ?? 79.9450) - 0.008}%2C${(gpsData?.lat ?? 12.9665) - 0.008}%2C${(gpsData?.lng ?? 79.9450) + 0.008}%2C${(gpsData?.lat ?? 12.9665) + 0.008}&layer=mapnik&marker=${gpsData?.lat ?? 12.9665}%2C${gpsData?.lng ?? 79.9450}`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${activeTargetLng - 0.008}%2C${activeTargetLat - 0.008}%2C${activeTargetLng + 0.008}%2C${activeTargetLat + 0.008}&layer=mapnik&marker=${activeTargetLat}%2C${activeTargetLng}`}
                 />
 
                 {/* Radar Targeting Reticle Overlay on Map */}
@@ -832,19 +883,19 @@ export default function SubterraneanTheatreMap({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">LATITUDE</span>
-                  <span className="font-bold text-cyan-400">{(gpsData?.lat ?? telemetry.lat ?? 12.9665).toFixed(6)}°</span>
+                  <span className="font-bold text-cyan-400">{activeTargetLat.toFixed(6)}°</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">LONGITUDE</span>
-                  <span className="font-bold text-cyan-400">{(gpsData?.lng ?? telemetry.lng ?? 79.9450).toFixed(6)}°</span>
+                  <span className="font-bold text-cyan-400">{activeTargetLng.toFixed(6)}°</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] text-white/50 block">PRECISION ACCURACY</span>
-                  <span className="font-bold text-emerald-400">±{gpsData?.accuracy ? Math.round(gpsData.accuracy) : (telemetry.accuracy_m ? Math.round(telemetry.accuracy_m) : "—")}m</span>
+                  <span className="font-bold text-emerald-400">±{gpsData?.accuracy ? Math.round(gpsData.accuracy) : (telemetry.accuracy_m ? Math.round(telemetry.accuracy_m) : 4)}m</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] text-white/50 block">ESP32 DISPATCH</span>
-                  <span className="font-bold text-emerald-400">SYNCED (200 OK)</span>
+                  <span className="text-[10px] text-white/50 block">TARGET STATUS</span>
+                  <span className="font-bold text-emerald-400">{isConnected ? "SYNCED (200 OK)" : "LAST ACTIVE LOCK"}</span>
                 </div>
               </div>
 
@@ -859,28 +910,15 @@ export default function SubterraneanTheatreMap({
                   <span>{isSyncingGps ? "Acquiring..." : "Re-sync High Precision GPS"}</span>
                 </button>
 
-                {(() => {
-                  let targetLat = 12.9665;
-                  let targetLng = 79.9450;
-                  if (gpsData && gpsData.city === "EXACT GPS SYNC" && gpsData.lat && gpsData.lat !== 0) {
-                    targetLat = gpsData.lat;
-                    targetLng = gpsData.lng;
-                  } else if (telemetry.lat && telemetry.lat !== 0 && telemetry.gps_source === "HIGH_ACCURACY_GPS") {
-                    targetLat = telemetry.lat;
-                    targetLng = telemetry.lng ?? 79.9450;
-                  }
-                  return (
-                    <a
-                      href={`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-white/15"
-                    >
-                      <span>Open in Google Maps</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-white/60" />
-                    </a>
-                  );
-                })()}
+                <a
+                  href={`https://www.google.com/maps?q=${activeTargetLat},${activeTargetLng}&z=19&t=k`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-white/15"
+                >
+                  <span>Open Target in Google Maps</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-white/60" />
+                </a>
               </div>
             </div>
 

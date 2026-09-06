@@ -729,8 +729,16 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       }
 
       if (!aiReply) {
-        aiReply = "Telemetry synchronized. Atmospheric and subterranean bio-acoustic monitors are running on node.";
-        successfulModelName = "AURA Offline Engine";
+        if (!isConnected) {
+          if (isAskingForSensors) {
+            aiReply = "The ESP32 hardware node is currently offline. No active sensor packet is being received. Retaining last active target lock at Sriperumbudur Bus Stand (12.9665° N, 79.9450° E).";
+          } else {
+            aiReply = "I am AURA Intelligence. Operating in offline tactical mode. Subterranean target map and command systems are active.";
+          }
+        } else {
+          aiReply = "Hardware node is online and streaming live telemetry. Atmospheric and subterranean bio-acoustic registers are nominal.";
+        }
+        successfulModelName = isConnected ? "AURA Neural Engine" : "AURA Offline Engine";
       }
     }
 
@@ -762,11 +770,11 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       q.includes("spectrum") ||
       q.includes("heartbeat");
 
-    const gasProf = telemetry.gas_profile || "AMBIENT AIR";
-    const gasColor = gasProf.includes("HAZARD") || gasProf.includes("SMOKE") ? "#EF4444" : gasProf.includes("RESPIRATION") || gasProf.includes("VOC") ? "#F59E0B" : "#10B981";
+    const gasProf = isConnected ? (telemetry.gas_profile || "AMBIENT AIR") : "OFFLINE / STANDBY";
+    const gasColor = !isConnected ? "#94A3B8" : gasProf.includes("HAZARD") || gasProf.includes("SMOKE") ? "#EF4444" : gasProf.includes("RESPIRATION") || gasProf.includes("VOC") ? "#F59E0B" : "#10B981";
 
-    const acousticSpec = telemetry.acoustic_spectrum || (micRms > 60 ? "LOUD VOICE/SHOUT" : micRms > 30 ? "HUMAN SPEECH/BREATH" : micRms > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL");
-    const acousticSpecColor = acousticSpec.includes("LOUD") || acousticSpec.includes("SHOUT") 
+    const acousticSpec = isConnected ? (telemetry.acoustic_spectrum || (micRms > 60 ? "LOUD VOICE/SHOUT" : micRms > 30 ? "HUMAN SPEECH/BREATH" : micRms > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL")) : "OFFLINE / NO STREAM";
+    const acousticSpecColor = !isConnected ? "#94A3B8" : acousticSpec.includes("LOUD") || acousticSpec.includes("SHOUT") 
       ? "#F43F5E" 
       : acousticSpec.includes("SPEECH") || acousticSpec.includes("BREATH") 
       ? "#F59E0B" 
@@ -775,24 +783,38 @@ CRITICAL RULE: Do NOT mention sensors, ESP32, or hardware readings unless specif
       : "#10B981";
 
     const telemetryCard: ChatMessage["telemetryCard"] | undefined = isHwInquiry
-      ? {
-          title: "LIVE ESP32 BIO-ACOUSTIC & MULTI-GAS AUDIT",
-          metrics: [
-            { label: "AI Neural Engine", value: `${successfulModelName.split("/").pop()} (Live)`, color: "#10B981" },
-            { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
-            { label: "Acoustic Spectrum", value: acousticSpec, color: acousticSpecColor },
-            { label: "Seismic Taps", value: `${telemetry.tap_count ?? 0} Taps (${seismicPeak} mm/s)`, color: (telemetry.tap_count ?? 0) > 0 ? "#F59E0B" : "#00C2FF" },
-            { label: "Gas Profile", value: gasProf, color: gasColor },
-            { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
-            { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
-            { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
-            { label: "Acoustic Depth", value: String(telemetry.sound_depth_cat || "Sweeping Strata"), color: "#00C2FF" },
-            { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
-            { label: "Radar Depth", value: radarDepthStr, color: "#00C2FF" },
-            { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
-            { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }
-          ]
-        }
+      ? isConnected
+        ? {
+            title: "LIVE ESP32 BIO-ACOUSTIC & MULTI-GAS AUDIT",
+            metrics: [
+              { label: "Hardware Link", value: `ONLINE (${nodeIp})`, color: "#10B981" },
+              { label: "Bio Classification", value: String(telemetry.sound_classification || telemetry.ai_classification || "Scanning").toUpperCase(), color: telemetry.ai_biological ? "#10B981" : "#94A3B8" },
+              { label: "Acoustic Spectrum", value: acousticSpec, color: acousticSpecColor },
+              { label: "Seismic Taps", value: `${telemetry.tap_count ?? 0} Taps (${seismicPeak} mm/s)`, color: (telemetry.tap_count ?? 0) > 0 ? "#F59E0B" : "#00C2FF" },
+              { label: "Gas Profile", value: gasProf, color: gasColor },
+              { label: "Metabolic CO2", value: `${telemetry.co2_ppm ?? gasPpm} PPM`, color: (telemetry.co2_ppm ?? gasPpm) > 800 ? "#F59E0B" : "#10B981" },
+              { label: "Ammonia / VOC", value: `${telemetry.nh3_ppm ?? "0.0"} PPM`, color: "#38BDF8" },
+              { label: "Air Rating", value: telemetry.air_rating || (gasPpm > 400 ? "DANGER: TOXIC" : "AIR: SAFE / CLEAR"), color: (telemetry.air_rating || "").includes("DANGER") || gasPpm > 400 ? "#EF4444" : "#10B981" },
+              { label: "Acoustic Depth", value: String(telemetry.sound_depth_cat || "Sweeping Strata"), color: "#00C2FF" },
+              { label: "Vital Heartbeat", value: telemetry.heartbeat_detected && telemetry.heartbeat_bpm ? `${telemetry.heartbeat_bpm} BPM (Pulse Locked)` : "Scanning Pulse", color: telemetry.heartbeat_detected ? "#EF4444" : "#A855F7" },
+              { label: "Radar Depth", value: radarDepthStr, color: "#00C2FF" },
+              { label: "Acoustic Beacon", value: effectiveBuzzer === 0 ? "MUTED" : `Level ${effectiveBuzzer} (${effectiveBuzzer === 3 ? "110 dB" : effectiveBuzzer === 2 ? "98 dB" : "85 dB"})`, color: "#C084FC" },
+              { label: "Precise GPS", value: gpsCoords, color: "#38BDF8" }
+            ]
+          }
+        : {
+            title: "HARDWARE AUDIT: ESP32 NODE OFFLINE",
+            metrics: [
+              { label: "Hardware Link", value: `OFFLINE (${nodeIp})`, color: "#EF4444" },
+              { label: "Telemetry Stream", value: "STANDBY (0 PACKETS)", color: "#F59E0B" },
+              { label: "Last Active Target", value: "Sriperumbudur Bus Stand", color: "#38BDF8" },
+              { label: "Target GPS Fix", value: "12.9665° N, 79.9450° E", color: "#38BDF8" },
+              { label: "Piezo Seismic Array", value: "0 mm/s (Offline)", color: "#94A3B8" },
+              { label: "Atmospheric Gas", value: "0 PPM (Offline)", color: "#94A3B8" },
+              { label: "Vital Pulse Detector", value: "None (Offline)", color: "#94A3B8" },
+              { label: "Ultrasonic Radar", value: "Standby (No Signal)", color: "#94A3B8" }
+            ]
+          }
       : undefined;
 
     const aiMsg: ChatMessage = {

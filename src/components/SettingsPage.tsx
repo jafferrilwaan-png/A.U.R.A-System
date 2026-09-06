@@ -153,7 +153,7 @@ export default function SettingsPage({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          AURA NEURAL AI & API KEY CONTROL SUITE
+          AURA NEURAL AI & MODEL CONFIGURATION SUITE (ZERO KEY SETUP NEEDED)
       ══════════════════════════════════════════════════════════════════ */}
       <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-purple-950/40 via-black/50 to-cyan-950/30 backdrop-blur-xl border border-purple-500/25 flex flex-col gap-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
@@ -163,27 +163,18 @@ export default function SettingsPage({
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                <span>A.U.R.A. AI Neural Intelligence & API Key</span>
+                <span>A.U.R.A. Neural AI Engine</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-                  LIVE REASONING
+                  INTEGRATED // ZERO SETUP
                 </span>
               </h3>
               <p className="text-xs text-white/50">
-                Powers conversational voice queries, real ESP32 telemetry reasoning, and hardware synthesis.
+                Direct conversational voice intelligence, truthful telemetry reasoning, and hardware synthesis.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleTestKey}
-              disabled={isTesting}
-              className="px-3.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-400/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-            >
-              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              <span>{isTesting ? "Testing..." : "Test Key"}</span>
-            </button>
-
             <button
               onClick={handleSave}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -193,46 +184,39 @@ export default function SettingsPage({
               }`}
             >
               <Check className="w-3.5 h-3.5" />
-              <span>{saveSuccess ? "Saved!" : "Save Key"}</span>
+              <span>{saveSuccess ? "Applied!" : "Apply Model"}</span>
             </button>
           </div>
         </div>
 
-        {/* Form Inputs: API Key & Model Selector */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-          {/* API Key Input */}
-          <div className="md:col-span-2 flex flex-col gap-1.5">
-            <label className="text-[11px] font-mono uppercase tracking-wider text-white/60 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-purple-400" />
-              <span>OpenRouter / LLM API Key</span>
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showKey ? "text" : "password"}
-                value={customKey}
-                onChange={(e) => setCustomKey(e.target.value)}
-                placeholder="sk-or-v1-..."
-                className="w-full bg-black/60 border border-white/15 focus:border-purple-400/80 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder-white/25 outline-none transition-all pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 text-white/40 hover:text-white transition-colors cursor-pointer"
-              >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+        {/* Form Inputs: Model Selector & Integrated Status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          {/* Integrated Status */}
+          <div className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-white/5 border border-white/10">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-white/60 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>AI Access Mode</span>
+            </span>
+            <span className="text-xs font-semibold text-emerald-300">
+              Direct Neural Bridge Active (No manual key input required)
+            </span>
+            <span className="text-[10px] text-white/40">
+              Queries are automatically routed with built-in hardware synthesis and truthful telemetry verification.
+            </span>
           </div>
 
           {/* Model Selector */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-white/5 border border-white/10">
             <label className="text-[11px] font-mono uppercase tracking-wider text-white/60 flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-cyan-400" />
               <span>Model Architecture</span>
             </label>
             <select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
+              onChange={(e) => {
+                setSelectedModel(e.target.value);
+                if (onSaveApiKey) onSaveApiKey(customKey, e.target.value);
+              }}
               className="w-full bg-black/60 border border-white/15 focus:border-cyan-400/80 rounded-xl px-3 py-2 text-xs font-sans text-white outline-none transition-all cursor-pointer"
             >
               <option value="google/gemini-2.5-flash" className="bg-[#0f1422] text-white">Google Gemini 2.5 Flash (Ultra Fast & Stable)</option>
@@ -243,18 +227,6 @@ export default function SettingsPage({
             </select>
           </div>
         </div>
-
-        {/* Live Test Status Banner */}
-        {testResult && (
-          <div className={`p-2.5 rounded-xl text-xs font-mono flex items-center gap-2 border ${
-            testResult.status === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-red-500/10 border-red-500/30 text-red-300"
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${testResult.status === "success" ? "bg-emerald-400" : "bg-red-400"}`} />
-            <span>{testResult.message}</span>
-          </div>
-        )}
       </div>
 
       {/* Neat Minimal Grid of Control Cards */}
