@@ -52,6 +52,7 @@ export interface TelemetryPayload {
   acoustic_energy?: number;
   acoustic_spectrum?: string; // "LOUD CRY / SHOUT" | "HUMAN SPEECH / VOCAL" | "FAINT BREATH / WHISPER" | "SILENCE / NOISE FLOOR" | string
   radar?: number;
+  motion_detected?: boolean | number;
   env_gas_ppm?: number;
   human_scent_ppm?: number | string;
   human_scent_detected?: boolean;
@@ -888,7 +889,7 @@ export function GeospatialLocalizationCard({
 // ══════════════════════════════════════════════════════════════════════════════
 export default function TacticalC2Dashboard({
   onExit,
-  initialNodeIp = "famous-meals-brake.loca.lt",
+  initialNodeIp = "192.168.43.145",
   apiKey: propApiKey = ""
 }: TacticalC2Props) {
   // ── Node & Telemetry State ──
@@ -958,7 +959,7 @@ export default function TacticalC2Dashboard({
     ip: initialNodeIp
   });
 
-  // ── 300ms High-Frequency Ingestion Poller (LocalTunnel / Direct Node) ──
+  // ── 250ms High-Frequency Ingestion Poller (LocalTunnel / Direct Node) ──
   useEffect(() => {
     let isMounted = true;
     const interval = setInterval(async () => {
@@ -966,8 +967,8 @@ export default function TacticalC2Dashboard({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
         
-        let targetUrl = "https://famous-meals-brake.loca.lt/api/telemetry";
-        if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
+        let targetUrl = "http://192.168.43.145/api/telemetry";
+        if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             targetUrl = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
           } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -981,6 +982,7 @@ export default function TacticalC2Dashboard({
           signal: controller.signal,
           headers: { 
             "Accept": "application/json",
+            "Content-Type": "application/json",
             "Bypass-Tunnel-Reminder": "true",
             "ngrok-skip-browser-warning": "true"
           }
@@ -1007,7 +1009,7 @@ export default function TacticalC2Dashboard({
       } catch {
         if (isMounted) setIsConnected(false);
       }
-    }, 300);
+    }, 250);
 
     return () => {
       isMounted = false;

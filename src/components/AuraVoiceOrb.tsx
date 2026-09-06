@@ -143,10 +143,10 @@ interface ChatMessage {
 
 export default function AuraVoiceOrb({
   onBack,
-  nodeIp = "famous-meals-brake.loca.lt"
+  nodeIp = "192.168.43.145"
 }: AuraVoiceOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("voice");
+  const [activeTab, setActiveTab] = useState<"voice" | "theatre_map" | "settings">("theatre_map");
 
   // Hardware Control Settings State
   const [buzzerLevel, setBuzzerLevel] = useState(1);
@@ -181,6 +181,7 @@ export default function AuraVoiceOrb({
   const [isRecording, setIsRecording] = useState(false);
   const [uptime, setUptime] = useState("00:00:00");
   const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [telemetry, setTelemetry] = useState<TelemetryPayload>({});
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -188,21 +189,22 @@ export default function AuraVoiceOrb({
       sender: "ai",
       text: "Hello, I am AURA Intelligence. Microphone is active. Try asking:",
       pills: [
-        "Test all hardware modules",
-        "Show all hardware settings",
+        "Tell them we are coming",
+        "Where are the survivors",
+        "Evacuation siren mode",
         "Acoustic beacon status",
         "Buzzer level 3 (110 dB)",
         "Mute buzzer",
-        "Turn on overdrive",
-        "Acquire GPS coordinates"
+        "Turn on overdrive"
       ]
     }
   ]);
 
-  // Live robust hardware telemetry poller (Direct LocalTunnel Connection with Bypass Headers)
+  // Live robust hardware telemetry poller (250ms Polling to ESP32 / Tunnel with Bypass Headers)
   useEffect(() => {
     if (isPollingPaused) {
       setIsConnected(false);
+      setIsReconnecting(false);
       return;
     }
 
@@ -211,10 +213,10 @@ export default function AuraVoiceOrb({
     const pollTelemetry = async () => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-        let endpoint = "https://famous-meals-brake.loca.lt/api/telemetry";
-        if (nodeIp && nodeIp !== "famous-meals-brake.loca.lt") {
+        let endpoint = "http://192.168.43.145/api/telemetry";
+        if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             endpoint = nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`;
           } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
@@ -230,6 +232,7 @@ export default function AuraVoiceOrb({
             signal: controller.signal,
             headers: { 
               "Accept": "application/json",
+              "Content-Type": "application/json",
               "Bypass-Tunnel-Reminder": "true",
               "ngrok-skip-browser-warning": "true" 
             }
@@ -239,6 +242,7 @@ export default function AuraVoiceOrb({
               signal: controller.signal,
               headers: { 
                 "Accept": "application/json",
+                "Content-Type": "application/json",
                 "Bypass-Tunnel-Reminder": "true",
                 "ngrok-skip-browser-warning": "true" 
               }
@@ -249,6 +253,7 @@ export default function AuraVoiceOrb({
             signal: controller.signal,
             headers: { 
               "Accept": "application/json",
+              "Content-Type": "application/json",
               "Bypass-Tunnel-Reminder": "true",
               "ngrok-skip-browser-warning": "true" 
             }
@@ -261,23 +266,28 @@ export default function AuraVoiceOrb({
           failureCount = 0;
           setTelemetry(data);
           setIsConnected(true);
+          setIsReconnecting(false);
           if (data.buzzer_level !== undefined && typeof data.buzzer_level === "number") {
             setBuzzerLevel(data.buzzer_level);
+          } else if (data.buzzer_mode !== undefined && typeof data.buzzer_mode === "number") {
+            setBuzzerLevel(data.buzzer_mode);
           }
         }
       } catch {
         if (isMounted) {
           failureCount++;
-          // Debounce 3 consecutive packet drops before flipping to offline
-          if (failureCount >= 3) {
+          if (failureCount >= 1 && failureCount < 4) {
+            setIsReconnecting(true);
+          } else if (failureCount >= 4) {
             setIsConnected(false);
+            setIsReconnecting(false);
           }
         }
       }
     };
 
     pollTelemetry();
-    const interval = setInterval(pollTelemetry, 300);
+    const interval = setInterval(pollTelemetry, 250);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -1033,11 +1043,13 @@ OPERATIONAL DIRECTIVE:
                 className={`font-mono text-[11px] font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all ${
                   isConnected
                     ? "bg-[#10B981]/15 border-[#10B981]/30 text-[#10B981]"
-                    : "bg-amber-400/10 border-amber-400/25 text-amber-300"
+                    : isReconnecting
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-300 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.3)]"
+                    : "bg-white/5 border-white/10 text-white/50"
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : "bg-amber-400"}`} />
-                <span className="tracking-tight">{isConnected ? "Online" : "Standby"}</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : isReconnecting ? "bg-amber-400 animate-pulse" : "bg-white/30"}`} />
+                <span className="tracking-tight">{isConnected ? "Online" : isReconnecting ? "Reconnecting..." : "Standby"}</span>
               </div>
 
               {/* Mobile Clear Button */}
