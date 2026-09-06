@@ -165,7 +165,7 @@ export default function SubterraneanTheatreMap({
   // 1. Pure Genuine Spatial Calculations from Live Telemetry
   const rawSurvivorCount = telemetry.survivor_count !== undefined 
     ? Number(telemetry.survivor_count) 
-    : (telemetry.ai_biological ? 1 : 0);
+    : 0;
   
   const rawDepth = telemetry.depth_meters !== undefined 
     ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0)
@@ -180,7 +180,7 @@ export default function SubterraneanTheatreMap({
     : 0;
 
   // Dynamic Triage Color Zone Selection (Pure Hardware Payload)
-  let zoneColor = (telemetry.zone_color || "NONE").toUpperCase();
+  let zoneColor = (telemetry.zone_color || (rawSurvivorCount > 0 ? "RED" : "NONE")).toUpperCase();
 
   let zoneConfig = {
     badgeClass: "bg-zinc-800 text-zinc-400 border-zinc-700",
@@ -626,9 +626,9 @@ export default function SubterraneanTheatreMap({
             <ShieldAlert className="w-4 h-4 text-[#C084FC] flex-shrink-0 mt-0.5" />
             <div>
               <strong className="text-white font-bold uppercase tracking-wider block font-mono text-[10px]">
-                {telemetry.ai_status || "AI RESCUE TRIAGE ASSESSMENT"}
+                {telemetry.ai_status || "LIVE HARDWARE TELEMETRY"}
               </strong>
-              <span>{telemetry.ai_analysis || "Edge telemetry processing confirms human acoustic and bio-signature match."}</span>
+              <span>{telemetry.ai_analysis || `${rawSurvivorCount} survivor signature(s) detected at ${rawDepth.toFixed(2)}m depth.`}</span>
             </div>
           </div>
         )}
