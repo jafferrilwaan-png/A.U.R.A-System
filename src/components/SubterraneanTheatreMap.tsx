@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TopoContour from "./TopoContour";
 import { TelemetryPayload } from "./TacticalC2Dashboard";
 import { 
