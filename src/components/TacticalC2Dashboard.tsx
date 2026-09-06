@@ -69,6 +69,8 @@ export interface TelemetryPayload {
   ai_classification?: string;
   ai_biological?: boolean;
   ai_depth_meters?: number;
+  depth_meters?: number;
+  radar_dist_cm?: number;
   ai_action?: string;
   confidence?: number;
   buzzer_level?: number;
@@ -1011,27 +1013,28 @@ export default function TacticalC2Dashboard({
   const triggerAiInference = async () => {
     setIsInferring(true);
     try {
-      const prompt = `You are A.U.R.A. Mission Command Tactical SAR AI (Autonomous Underground Reconnaissance & Assessment).
-Analyze this LIVE ESP32 search-and-rescue sensor telemetry:
-- Gas (MQ-135): ${telemetry.gas || 0} PPM
-- Microwave Bio-Radar (RCWL-0516): ${telemetry.radar === 1 ? "TARGET LOCKED (1)" : "IDLE (0)"}
-- Seismic Peak Velocity: ${telemetry.seismic_peak || 0} mm/s
-- Acoustic Energy: ${telemetry.acoustic_energy || 0} dB/Hz
-- MPU-6050 Structural Jerk: ${(telemetry.delta_jerk || 0).toFixed(2)} G
-- GPS Position: Lat ${telemetry.lat || 12.9665}, Lng ${telemetry.lng || 79.9450} (${telemetry.sats || 0} Sats, Fix: ${telemetry.gps_locked ? "LOCKED" : "SEARCHING"})
-- Edge Node Classification: ${telemetry.ai_classification || "UNKNOWN"}
-- Edge Estimated Depth: ${telemetry.ai_depth_meters || 3.2} meters
+      const depthCalc = telemetry.depth_meters || (telemetry.radar_dist_cm ? telemetry.radar_dist_cm / 100 : 2.5);
+      const prompt = `You are A.U.R.A. Mission Command Tactical Search-and-Rescue AI.
+Analyze this REAL ESP32 hardware sensor telemetry to locate trapped survivors with 100% mathematical precision:
+- Combustible Gas / Air Quality: ${telemetry.gas || 0} PPM (${(telemetry.gas || 0) > 400 ? "HAZARDOUS" : "Breathable"})
+- Human Bio-Scent VOC (NH3 / Sweat): ${telemetry.nh3_ppm || "0.0"} PPM (Bio-Scent Detected: ${telemetry.human_scent_detected ? "YES" : "NO"})
+- Acoustic Sound Spectrum: ${telemetry.acoustic_spectrum || "AMBIENT NOISE FLOOR"} (${telemetry.acoustic_energy || 0} dB)
+- Seismic Piezo Impact Taps: ${telemetry.tap_count || 0} taps detected (${telemetry.seismic_peak || 0} mm/s peak)
+- Strata Void Depth: ${depthCalc.toFixed(1)} meters
+- Biological Pulse: ${telemetry.heartbeat_detected ? `${telemetry.heartbeat_bpm} BPM locked` : "None"}
+- Structural Stability Jerk: ${(telemetry.delta_jerk || 0).toFixed(2)} G
+- GPS Target Location: Lat ${telemetry.lat || 12.9665}, Lng ${telemetry.lng || 79.9450} (Sriperumbudur Anchor)
 
-Respond in STRICT JSON ONLY:
+Respond in STRICT JSON ONLY without markdown formatting:
 {
-  "classification": "SURVIVOR CONFIRMED // BIO-ACOUSTIC TAP",
-  "threat_level": "LOW" | "MODERATE" | "CRITICAL",
-  "structural_hazard": "STABLE" | "ELEVATED" | "COLLAPSE HAZARD",
-  "tactical_directive": "EXCAVATE NORTH-NORTHWEST (320° AZIMUTH) // DEPLOY MICRO-ACOUSTIC PROBE",
-  "confidence": 91,
-  "depth_meters": 3.2,
+  "classification": "Survivor Confirmed (Bio-Acoustic Match)" or "Scanning Debris Strata",
+  "threat_level": "Low" | "Moderate" | "Critical",
+  "structural_hazard": "Stable" | "Elevated Risk" | "Collapse Hazard",
+  "tactical_directive": "Excavate North-Northwest (320° Azimuth) and deploy acoustic probe",
+  "confidence": 92,
+  "depth_meters": ${depthCalc.toFixed(1)},
   "azimuth_vector": "320° NNW",
-  "reasoning_log": "Cross-sensor synthesis confirmed biological acoustic frequency matching human distress pattern."
+  "reasoning_log": "Physical sensor synthesis calculated victim presence based on real acoustic and seismic vibration telemetry."
 }`;
 
       let resultJson: any = null;
