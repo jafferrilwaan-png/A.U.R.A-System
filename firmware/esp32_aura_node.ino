@@ -688,10 +688,22 @@ void setup() {
   delay(140); 
   setBuzzerTone(0);
 
-  // 1. Initialize I2C Bus, Set Stable 100kHz Clock Speed, and start OLED
+  // 0. I2C Bus Release / Unsticking Sequence (Clocking SCL 9 times to unhang any slave)
+  pinMode(22, OUTPUT);
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(22, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(22, LOW);
+    delayMicroseconds(5);
+  }
+  pinMode(22, INPUT_PULLUP);
+  pinMode(21, INPUT_PULLUP);
+  delay(15);
+
+  // 1. Initialize I2C Bus on GPIO 21 (SDA) & GPIO 22 (SCL)
   Wire.begin(21, 22);
-  Wire.setClock(100000); // Prevents bus corruption between OLED and MPU6050
-  Wire.setTimeOut(50);
+  Wire.setClock(100000); 
+  Wire.setTimeOut(60);
   
   if (display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     oledReady = true;
@@ -707,33 +719,33 @@ void setup() {
   delay(150);
 
   // 3. Auto-Detect MPU-6050 on Primary (0x68) and Alternate (0x69) Addresses
-  if (mpu.begin(0x68)) {
+  if (mpu.begin(0x68, &Wire)) {
     mpuReady = true;
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    Serial.println("[AURA-I2C] MPU-6050 IMU Initialized at Primary Address 0x68!");
-  } else if (mpu.begin(0x69)) {
+    Serial.println("[AURA-I2C] SUCCESS: MPU-6050 IMU Initialized at Primary Address 0x68!");
+  } else if (mpu.begin(0x69, &Wire)) {
     mpuReady = true;
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    Serial.println("[AURA-I2C] MPU-6050 IMU Initialized at Alternate Address 0x69 (AD0 High)!");
+    Serial.println("[AURA-I2C] SUCCESS: MPU-6050 IMU Initialized at Alternate Address 0x69!");
   } else {
     // Run hardware diagnostic I2C bus scan to assist user
-    Serial.println("[AURA-I2C] Scanning I2C Bus on GPIO 21 (SDA) & GPIO 22 (SCL)...");
+    Serial.println("[AURA-I2C] Running active bus scan on GPIO 21 & 22...");
     byte count = 0;
     for (byte i = 8; i < 120; i++) {
       Wire.beginTransmission(i);
       if (Wire.endTransmission() == 0) {
-        Serial.printf("  -> Detected I2C Device at: 0x%02X\n", i);
+        Serial.printf("  -> Detected active device at: 0x%02X\n", i);
         count++;
       }
     }
     if (count == 0) {
-      Serial.println("[AURA-I2C] No I2C devices detected! Check VCC (connect to 5V/VIN or 3.3V) & GND.");
+      Serial.println("[AURA-I2C] No devices responded! Check VCC (connect to 5V/VIN, not 3.3V) & GND.");
     } else {
-      Serial.println("[AURA-I2C] OLED is active, but MPU6050 did not acknowledge 0x68 or 0x69.");
-      Serial.println("[AURA-I2C] TIP: Connect MPU6050 VCC to VIN (5V) and ensure GND is shared.");
+      Serial.println("[AURA-I2C] OLED responded at 0x3C, but MPU6050 did not respond.");
+      Serial.println("[AURA-I2C] IMPORTANT HARDWARE FIX: Connect MPU-6050 VCC to VIN (5V from USB), NOT 3.3V!");
     }
     mpuReady = false;
-    Serial.println("[AURA-I2C] Notice: Using software stabilization fallback. System operational.");
+    Serial.println("[AURA-I2C] Notice: Active software stabilization fallback enabled. System running.");
   }
 
   // 4. Connect Wi-Fi with Automatic AP Mode Fallback
@@ -806,19 +818,13 @@ void loop() {
   if (millis() - lastDspCycle >= 4) {
     lastDspCycle = millis();
 
+    // HIGH-RESPONSIVENESS RCWL-0516 RADAR DETECTION (Instant Catch & 2.5s Latch)
     int instantRadar = digitalRead(PIN_RADAR_OUT);
-    
-    if (instantRadar != lastRadarState) {
+    if (instantRadar == HIGH) {
+      rawRadar = 1;
       lastRadarTransitionTime = millis();
-      lastRadarState = instantRadar;
-    }
-    
-    if (millis() - lastRadarTransitionTime > 3000) {
-      rawRadar = 0; 
     } else {
-      if (instantRadar == HIGH) {
-        rawRadar = 1;
-      } else {
+      if (millis() - lastRadarTransitionTime > 2500) {
         rawRadar = 0;
       }
     }
