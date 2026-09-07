@@ -1072,23 +1072,6 @@ export default function App() {
           />
         </section>
 
-        {/* --- FLOATING QUICK-ACCESS RADAR & IMU C2 BUTTON --- */}
-        <div className="fixed bottom-6 right-6 z-50">
-          <button
-            onClick={() => {
-              window.location.hash = 'c2';
-              setActiveView('c2');
-            }}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0E121B]/95 hover:bg-[#0E121B] border border-[#06B6D4]/70 hover:border-[#06B6D4] text-white font-mono text-xs font-bold shadow-[0_0_25px_rgba(6,182,212,0.4)] backdrop-blur-xl transition-all cursor-pointer hover:scale-105"
-            title="Open Real-Time Microwave Radar & Sensor Dashboard"
-          >
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06B6D4] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#06B6D4]"></span>
-            </span>
-            <span className="tracking-wider">LIVE RADAR &amp; IMU C2 HUD</span>
-          </button>
-        </div>
 
         {/* --- FOOTER --- */}
         <footer className="relative bg-[#05070a]/45 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-between pt-12 pb-10 sm:pt-16 sm:pb-12 px-5 sm:px-12 mt-12 z-20">

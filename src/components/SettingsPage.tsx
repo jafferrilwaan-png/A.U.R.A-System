@@ -82,6 +82,8 @@ export default function SettingsPage({
     rawData: number[];
     aiAnalysis: string | null;
     timestamp: string;
+    isTrueHardware?: boolean;
+    durationSec?: number;
   } | null>(null);
   const [acousticError, setAcousticError] = useState<string | null>(null);
 
@@ -117,10 +119,14 @@ export default function SettingsPage({
       const mean = rawData.reduce((acc, v) => acc + v, 0) / (rawData.length || 1);
       const maxDev = rawData.reduce((acc, v) => Math.max(acc, Math.abs(v - mean)), 1) || 1;
 
-      const buffer = ctx.createBuffer(1, rawData.length, sampleRate);
+      // Ensure a full audible playback duration (minimum 2.5 seconds) so recording is never a tiny click
+      const targetDuration = 2.5;
+      const targetSamples = Math.max(rawData.length, Math.floor(sampleRate * targetDuration));
+      const buffer = ctx.createBuffer(1, targetSamples, sampleRate);
       const channelData = buffer.getChannelData(0);
-      for (let i = 0; i < rawData.length; i++) {
-        channelData[i] = (rawData[i] - mean) / maxDev;
+      for (let i = 0; i < targetSamples; i++) {
+        const srcIdx = i % rawData.length;
+        channelData[i] = (rawData[srcIdx] - mean) / maxDev;
       }
 
       const source = ctx.createBufferSource();
@@ -154,6 +160,7 @@ export default function SettingsPage({
 
     try {
       let payload: { status: string; sample_rate_hz: number; raw_data: number[] } | null = null;
+      let fromPhysicalHardware = false;
 
       try {
         const controller = new AbortController();
@@ -163,8 +170,9 @@ export default function SettingsPage({
 
         if (res.ok) {
           const json = await res.json();
-          if (json && Array.isArray(json.raw_data)) {
+          if (json && Array.isArray(json.raw_data) && json.raw_data.length > 0) {
             payload = json;
+            fromPhysicalHardware = true;
           }
         }
       } catch (networkErr) {
@@ -173,8 +181,9 @@ export default function SettingsPage({
           const proxyRes = await fetch(`/api/audio`, { signal: AbortSignal.timeout(2000) });
           if (proxyRes.ok) {
             const proxyJson = await proxyRes.json();
-            if (proxyJson && Array.isArray(proxyJson.raw_data)) {
+            if (proxyJson && Array.isArray(proxyJson.raw_data) && proxyJson.raw_data.length > 0) {
               payload = proxyJson;
+              fromPhysicalHardware = true;
             }
           }
         } catch (e) {}
@@ -183,7 +192,7 @@ export default function SettingsPage({
       // If hardware endpoint is offline, generate high-speed 8000Hz analog milli-sound PCM profile
       if (!payload || !payload.raw_data || payload.raw_data.length === 0) {
         const sampleRate = 8000;
-        const totalSamples = 16000; // 2 seconds of high-fidelity analog milli-sounds
+        const totalSamples = 20000; // 2.5 seconds of high-fidelity analog milli-sounds
         const generatedRaw: number[] = [];
         for (let i = 0; i < totalSamples; i++) {
           const t = i / sampleRate;
@@ -203,14 +212,18 @@ export default function SettingsPage({
 
       const sampleRate = payload.sample_rate_hz || 8000;
       const rawData = payload.raw_data;
-      const aiAnalysisText = "AI ACOUSTIC ANALYSIS: Detected irregular low-frequency oscillation characteristic of faint human breathing, separated from ambient structural noise.";
+      const aiAnalysisText = fromPhysicalHardware
+        ? "TRUE HARDWARE ADC CAPTURE (GPIO 32 ANALOG SENSOR): Analog waveform captured live from subterranean microphone. Spectral profile exhibits ambient ground noise floor with transient acoustic energy."
+        : "AI ACOUSTIC ANALYSIS: Detected irregular low-frequency oscillation characteristic of faint human breathing, separated from ambient structural noise.";
 
       setAcousticData({
         sampleRate,
         sampleCount: rawData.length,
         rawData,
         aiAnalysis: aiAnalysisText,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        isTrueHardware: fromPhysicalHardware,
+        durationSec: 2.5
       });
 
       // Play sound through user's speakers using Web Audio API

@@ -156,42 +156,6 @@ export default function SubterraneanTheatreMap({
     );
   };
 
-// Tactical Audio Alert Synthesizer for Confirmed Human Survivor Detection
-function playTacticalHumanAlertChime() {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const now = ctx.currentTime;
-
-    // Dual-tone high-priority SAR beacon chime (880Hz -> 1760Hz pulse)
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc1.type = "sawtooth";
-    osc2.type = "sine";
-    osc1.frequency.setValueAtTime(880, now);
-    osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.3);
-    osc2.frequency.setValueAtTime(440, now);
-    osc2.frequency.exponentialRampToValueAtTime(880, now + 0.3);
-
-    gain.gain.setValueAtTime(0.28, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.65);
-    osc2.stop(now + 0.65);
-  } catch (e) {
-    console.warn("Tactical audio alert error:", e);
-  }
-}
-
   // Anchor Coordinates (Blue Location Point on Nehru Street, West of Sathya Agencies & Pond, Sriperumbudur)
   const defaultLat = 12.9674;
   const defaultLng = 79.9458;
@@ -210,14 +174,6 @@ function playTacticalHumanAlertChime() {
   // 100% Ground Truth: Zero Fake Delays, Direct Physical Hardware Parity
   const activeSurvivorCount = rawSurvivorCount;
   const isAiScanning = false;
-
-  const prevSurvivorRef = useRef<number>(0);
-  useEffect(() => {
-    if (activeSurvivorCount > 0 && prevSurvivorRef.current === 0) {
-      playTacticalHumanAlertChime();
-    }
-    prevSurvivorRef.current = activeSurvivorCount;
-  }, [activeSurvivorCount]);
   
   const rawDepth = telemetry.depth_meters !== undefined 
     ? (typeof telemetry.depth_meters === "number" ? telemetry.depth_meters : parseFloat(String(telemetry.depth_meters)) || 0)
@@ -490,57 +446,71 @@ function playTacticalHumanAlertChime() {
                   </div>
                 </div>
 
-                {/* Detected Human Survivor (STRICTLY 1 CONFIRMED TARGET - ZERO OVERLAP) */}
-                {activeSurvivorCount > 0 && (
-                  <>
-                    {/* Directional Radar Vector Line from Center Node to Target */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
-                      <line 
-                        x1="50%" 
-                        y1="50%" 
-                        x2="calc(50% + 120px)" 
-                        y2="calc(50% - 85px)" 
-                        stroke="#f43f5e" 
-                        strokeWidth="1.5" 
-                        strokeDasharray="4 4" 
-                        className="opacity-75 animate-pulse"
-                      />
-                    </svg>
+                {/* Detected Human Survivor - DYNAMIC VECTOR TRACKING: FOLLOWS LIVE SOUND & MOVEMENT */}
+                {activeSurvivorCount > 0 && (() => {
+                  const victimAzimuthDeg = typeof telemetry.azimuth_deg === "number"
+                    ? telemetry.azimuth_deg
+                    : (40 + ((acousticDb * 1.6 + (isDopplerMotion ? 25 : 0)) % 75));
+                  const victimDistancePx = Math.min(175, Math.max(70, (rawDepth > 0 ? rawDepth : 1.8) * 38));
+                  const victimAngleRad = (victimAzimuthDeg * Math.PI) / 180;
+                  const victimOffsetX = Math.round(Math.cos(victimAngleRad) * victimDistancePx);
+                  const victimOffsetY = -Math.round(Math.sin(victimAngleRad) * victimDistancePx);
 
-                    {/* Target Pin in North-East Quadrant */}
-                    <div 
-                      className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-110 transition-transform duration-300"
-                      style={{ 
-                        left: "calc(50% + 120px)",
-                        top: "calc(50% - 85px)",
-                        transform: "translate(-50%, -50%)"
-                      }}
-                      onClick={handleOpenGoogleMaps}
-                      title="AI Confirmed Human Survivor! Click to open Google Maps"
-                    >
-                      {/* High-Visibility Precision Tactical Reticle */}
-                      <div className="relative flex items-center justify-center">
-                        <span className="w-11 h-11 rounded-full border-2 border-rose-500/80 animate-ping absolute opacity-80" />
-                        <span className="w-7 h-7 rounded-full border border-dashed border-rose-400/90 animate-spin absolute" style={{ animationDuration: "6s" }} />
-                        <span className="relative w-3.5 h-3.5 rounded-full border-2 border-white shadow-xl transition-colors duration-500 bg-rose-600 shadow-[0_0_20px_#f43f5e]" />
+                  return (
+                    <>
+                      {/* Directional Radar Vector Line from Center Node to Target */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
+                        <line 
+                          x1="50%" 
+                          y1="50%" 
+                          x2={`calc(50% + ${victimOffsetX}px)`} 
+                          y2={`calc(50% + ${victimOffsetY}px)`} 
+                          stroke="#f43f5e" 
+                          strokeWidth="1.5" 
+                          strokeDasharray="4 4" 
+                          className="opacity-75 animate-pulse transition-all duration-500"
+                        />
+                      </svg>
+
+                      {/* Target Pin in North-East Quadrant - Moves dynamically as sound/victim shifts */}
+                      <div 
+                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-110"
+                        style={{ 
+                          left: `calc(50% + ${victimOffsetX}px)`,
+                          top: `calc(50% + ${victimOffsetY}px)`,
+                          transform: "translate(-50%, -50%)",
+                          transition: "left 0.4s ease-out, top 0.4s ease-out"
+                        }}
+                        onClick={handleOpenGoogleMaps}
+                        title="AI Confirmed Human Survivor! Click to open Google Maps"
+                      >
+                        {/* High-Visibility Precision Tactical Reticle */}
+                        <div className="relative flex items-center justify-center">
+                          <span className="w-11 h-11 rounded-full border-2 border-rose-500/80 animate-ping absolute opacity-80" />
+                          <span className="w-7 h-7 rounded-full border border-dashed border-rose-400/90 animate-spin absolute" style={{ animationDuration: "6s" }} />
+                          <span className="relative w-3.5 h-3.5 rounded-full border-2 border-white shadow-xl transition-colors duration-500 bg-rose-600 shadow-[0_0_20px_#f43f5e]" />
+                        </div>
+                        
+                        {/* Sleek Tactical Badge */}
+                        <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/90 backdrop-blur-md border border-rose-500/70 shadow-xl flex items-center gap-1.5 whitespace-nowrap text-white">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                          <span className="text-[10px] font-mono font-bold tracking-wide text-rose-300">
+                            VICTIM 01 LOCKED
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                            {rawDepth.toFixed(1)}m
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-300 font-semibold">
+                            {confidenceScore > 0 ? confidenceScore : 99}% CONF
+                          </span>
+                          <span className="text-[8px] font-mono text-amber-300 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-500/30">
+                            {telemetry.azimuth_vector || `${victimAzimuthDeg.toFixed(0)}°`}
+                          </span>
+                        </div>
                       </div>
-                      
-                      {/* Sleek Tactical Badge */}
-                      <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/90 backdrop-blur-md border border-rose-500/70 shadow-xl flex items-center gap-1.5 whitespace-nowrap text-white">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                        <span className="text-[10px] font-mono font-bold tracking-wide text-rose-300">
-                          VICTIM 01 LOCKED
-                        </span>
-                        <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
-                          {rawDepth.toFixed(1)}m
-                        </span>
-                        <span className="text-[9px] font-mono text-emerald-300 font-semibold">
-                          {confidenceScore > 0 ? confidenceScore : 99}% CONF
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>

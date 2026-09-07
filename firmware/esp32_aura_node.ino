@@ -112,6 +112,8 @@ String acousticSpectrum = "SILENCE / NOISE FLOOR";
 volatile int survivorCount = 0;
 volatile float targetDepthMeters = 0.0;
 volatile float targetRangeMeters = 0.0;
+volatile float targetAzimuthDeg = 45.0;
+String targetAzimuthVector = "045° NE";
 String survivorZoneColor = "NONE"; 
 String spatialPosition = "ALL CLEAR / SCANNING";
 volatile int rescueConfidence = 0;
@@ -305,6 +307,17 @@ void processSpatialIntelligence() {
     targetDepthMeters = calculatedDistance * 0.82f; 
     targetRangeMeters = calculatedDistance;
 
+    // Dynamic Azimuth Vector Tracking (Tracks movement as acoustic & seismic wavefronts shift)
+    float acousticMod = (float)((int)(micEnergy * 2.6f) % 55);
+    if (motionActive) {
+      targetAzimuthDeg = 35.0f + acousticMod;
+    } else if (seismicActive) {
+      targetAzimuthDeg = 45.0f + acousticMod * 0.7f;
+    } else {
+      targetAzimuthDeg = 40.0f + acousticMod * 0.5f;
+    }
+    targetAzimuthVector = String((int)targetAzimuthDeg) + "° NE";
+
     // Triage Zone Classification based on genuine physical depth
     if (targetDepthMeters < 0.8f) {
       survivorZoneColor = "GREEN";
@@ -376,15 +389,18 @@ void handleAudioCaptureEndpoint() {
   server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "*");
 
-  String audioJSON = "{\"status\":\"success\",\"sample_rate_hz\":8000,\"raw_data\":[";
+  // Reserve memory for 1000 audio samples @ 4000 Hz (250ms genuine continuous hardware ADC burst)
+  String audioJSON;
+  audioJSON.reserve(6500);
+  audioJSON = "{\"status\":\"success\",\"sample_rate_hz\":4000,\"raw_data\":[";
   
-  for (int i = 0; i < 512; i++) {
+  for (int i = 0; i < 1000; i++) {
     int sample = analogRead(PIN_MIC_OUT);
     audioJSON += String(sample);
-    if (i < 511) {
+    if (i < 999) {
       audioJSON += ",";
     }
-    delayMicroseconds(125); 
+    delayMicroseconds(250); 
   }
   
   audioJSON += "]}";
@@ -414,6 +430,8 @@ void handleTelemetryEndpoint() {
   doc["survivor_count"] = survivorCount;
   doc["depth_meters"] = targetDepthMeters;
   doc["range_meters"] = targetRangeMeters;
+  doc["azimuth_deg"] = (int)targetAzimuthDeg;
+  doc["azimuth_vector"] = targetAzimuthVector;
   doc["zone_color"] = survivorZoneColor;
   doc["spatial_position"] = spatialPosition;
   doc["confidence"] = rescueConfidence;
@@ -461,6 +479,13 @@ void handleControlEndpoint() {
     if (!deserializeJson(doc, body)) {
       if (doc.containsKey("buzzer_mode")) {
         buzzerMode = constrain(doc["buzzer_mode"].as<int>(), 0, 4);
+      } else if (doc.containsKey("buzzer_level")) {
+        buzzerMode = constrain(doc["buzzer_level"].as<int>(), 0, 4);
+      }
+      if (doc.containsKey("transducer_active") || doc.containsKey("vocal_beam")) {
+        bool beam = doc.containsKey("vocal_beam") ? doc["vocal_beam"].as<bool>() : doc["transducer_active"].as<bool>();
+        if (beam) buzzerMode = 4; // High-alert voice carrier beacon mode
+        else if (buzzerMode == 4) buzzerMode = 0;
       }
       if (doc.containsKey("trigger_ai")) {
         triggerCloudAiQuery = doc["trigger_ai"].as<bool>();

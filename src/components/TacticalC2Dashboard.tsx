@@ -65,6 +65,8 @@ export interface TelemetryPayload {
   buzzer_mode?: number;
   ai_status?: string;
   ai_analysis?: string;
+  azimuth_deg?: number;
+  azimuth_vector?: string;
   ip?: string;
   // Extended / GPS / Legacy fields
   card?: number | string;
@@ -1233,11 +1235,36 @@ Respond in STRICT JSON ONLY without markdown formatting:
             isBeamActive={isBeamActive}
             onSetNodeIp={(ip) => setNodeIp(ip)}
             onToggleSettings={() => setActiveDashboardMode("hud")}
-            onToggleOverdrive={() => sendHardwareControl({ overdrive: !isOverdrive })}
-            onCycleBuzzer={() => sendHardwareControl({ buzzer_level: buzzerLevel >= 3 ? 0 : buzzerLevel + 1 })}
-            onSetBuzzerLevel={(lvl) => sendHardwareControl({ buzzer_level: lvl })}
-            onCycleFrequency={() => sendHardwareControl({ ultrasonic_khz: frequencyKhz === 40 ? 60 : frequencyKhz === 60 ? 80 : 40 })}
-            onToggleBeam={() => sendHardwareControl({ transducer_active: !isBeamActive })}
+            onToggleOverdrive={() => {
+              const next = !isOverdrive;
+              setIsOverdrive(next);
+              sendHardwareControl({ overdrive: next });
+            }}
+            onCycleBuzzer={() => {
+              const next = buzzerLevel >= 3 ? 0 : buzzerLevel + 1;
+              setBuzzerLevel(next);
+              sendHardwareControl({ buzzer_mode: next, buzzer_level: next });
+            }}
+            onSetBuzzerLevel={(lvl) => {
+              setBuzzerLevel(lvl);
+              sendHardwareControl({ buzzer_mode: lvl, buzzer_level: lvl });
+            }}
+            onCycleFrequency={() => {
+              const next = frequencyKhz === 40 ? 60 : frequencyKhz === 60 ? 80 : 40;
+              setFrequencyKhz(next);
+              sendHardwareControl({ ultrasonic_khz: next });
+            }}
+            onToggleBeam={() => {
+              const next = !isBeamActive;
+              setIsBeamActive(next);
+              sendHardwareControl({ transducer_active: next, vocal_beam: next, buzzer_mode: next ? 4 : 0 });
+              if (next && typeof window !== "undefined" && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance("Emergency Vocal Beam Active. Rescue teams are drilling to your location. Tap to confirm.");
+                u.rate = 1.0;
+                window.speechSynthesis.speak(u);
+              }
+            }}
             onSwitchToVoice={() => setActiveDashboardMode("voice_terminal")}
           />
         </div>

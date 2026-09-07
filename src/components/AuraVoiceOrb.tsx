@@ -1281,11 +1281,36 @@ OPERATIONAL DIRECTIVES:
             isBeamActive={isBeamActive}
             onSetNodeIp={handleConnectIp}
             onToggleSettings={() => setActiveTab("settings")}
-            onToggleOverdrive={() => sendHardwareControl({ overdrive: !isOverdrive })}
-            onCycleBuzzer={() => sendHardwareControl({ buzzer_level: buzzerLevel >= 3 ? 0 : buzzerLevel + 1 })}
-            onSetBuzzerLevel={(lvl) => sendHardwareControl({ buzzer_level: lvl })}
-            onCycleFrequency={() => sendHardwareControl({ ultrasonic_khz: frequencyKhz === 40 ? 60 : frequencyKhz === 60 ? 80 : 40 })}
-            onToggleBeam={() => sendHardwareControl({ transducer_active: !isBeamActive })}
+            onToggleOverdrive={() => {
+              const next = !isOverdrive;
+              setIsOverdrive(next);
+              sendHardwareControl({ overdrive: next });
+            }}
+            onCycleBuzzer={() => {
+              const next = buzzerLevel >= 3 ? 0 : buzzerLevel + 1;
+              setBuzzerLevel(next);
+              sendHardwareControl({ buzzer_mode: next, buzzer_level: next });
+            }}
+            onSetBuzzerLevel={(lvl) => {
+              setBuzzerLevel(lvl);
+              sendHardwareControl({ buzzer_mode: lvl, buzzer_level: lvl });
+            }}
+            onCycleFrequency={() => {
+              const next = frequencyKhz === 40 ? 60 : frequencyKhz === 60 ? 80 : 40;
+              setFrequencyKhz(next);
+              sendHardwareControl({ ultrasonic_khz: next });
+            }}
+            onToggleBeam={() => {
+              const next = !isBeamActive;
+              setIsBeamActive(next);
+              sendHardwareControl({ transducer_active: next, vocal_beam: next, buzzer_mode: next ? 4 : 0 });
+              if (next && typeof window !== "undefined" && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance("Emergency Vocal Beam Active. Rescue teams are drilling to your location. Tap to confirm.");
+                u.rate = 1.0;
+                window.speechSynthesis.speak(u);
+              }
+            }}
             onSwitchToVoice={() => setActiveTab("voice")}
           />
         )}
@@ -1306,10 +1331,30 @@ OPERATIONAL DIRECTIVES:
             onSetNodeIp={handleConnectIp}
             onSaveApiKey={handleSaveApiKey}
             onTogglePolling={() => setIsPollingPaused(!isPollingPaused)}
-            onSetBuzzerLevel={(lvl) => sendHardwareControl({ buzzer_level: lvl })}
-            onSetFrequency={(khz) => sendHardwareControl({ ultrasonic_khz: khz })}
-            onToggleOverdrive={() => sendHardwareControl({ overdrive: !isOverdrive })}
-            onToggleBeam={() => sendHardwareControl({ transducer_active: !isBeamActive })}
+            onSetBuzzerLevel={(lvl) => {
+              setBuzzerLevel(lvl);
+              sendHardwareControl({ buzzer_mode: lvl, buzzer_level: lvl });
+            }}
+            onSetFrequency={(khz) => {
+              setFrequencyKhz(khz);
+              sendHardwareControl({ ultrasonic_khz: khz });
+            }}
+            onToggleOverdrive={() => {
+              const next = !isOverdrive;
+              setIsOverdrive(next);
+              sendHardwareControl({ overdrive: next });
+            }}
+            onToggleBeam={() => {
+              const next = !isBeamActive;
+              setIsBeamActive(next);
+              sendHardwareControl({ transducer_active: next, vocal_beam: next, buzzer_mode: next ? 4 : 0 });
+              if (next && typeof window !== "undefined" && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance("Emergency Vocal Beam Active. Rescue teams are drilling to your location. Tap to confirm.");
+                u.rate = 1.0;
+                window.speechSynthesis.speak(u);
+              }
+            }}
           />
         )}
 
