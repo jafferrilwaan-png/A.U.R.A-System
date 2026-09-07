@@ -472,20 +472,6 @@ export default function App() {
 
           {/* Right: AI Terminal C2 HUD Button, Starfield Button (Desktop) & Hamburger Toggle (Mobile) */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <button
-              onClick={() => {
-                window.location.hash = 'c2';
-                setActiveView('c2');
-              }}
-              className="relative group px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white text-[10px] sm:text-[11px] font-black tracking-wider uppercase transition-all duration-200 shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] flex items-center gap-1.5 cursor-pointer"
-              title="Launch Subterranean Topographic Contour Map"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-display whitespace-nowrap">🗺️ TOPO MAP</span>
-            </button>
 
             <button
               onClick={() => {
@@ -609,20 +595,10 @@ export default function App() {
                   window.location.hash = 'c2';
                   setActiveView('c2');
                 }}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-[#00C2FF] hover:from-emerald-400 hover:to-cyan-400 text-black font-display font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center gap-2.5 cursor-pointer active:scale-95"
+                className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-[#C084FC] to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-black font-display font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(192,132,252,0.5)] flex items-center gap-2.5 cursor-pointer active:scale-95"
               >
-                <span>🗺️ OPEN 3D TOPO CONTOUR MAP</span>
+                <span>ENTER TACTICAL RADAR C2 COMMAND</span>
                 <i className="bi bi-arrow-up-right text-sm" />
-              </button>
-
-              <button
-                onClick={() => {
-                  window.location.hash = 'c2';
-                  setActiveView('c2');
-                }}
-                className="px-6 py-3 rounded-2xl bg-black/75 hover:bg-black/90 text-[#C084FC] hover:text-white border border-[#C084FC]/60 hover:border-[#C084FC] font-display font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <span>LIVE RADAR &amp; SENSORS C2</span>
               </button>
             </div>
           </div>

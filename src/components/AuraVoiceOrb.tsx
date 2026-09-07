@@ -174,9 +174,8 @@ export default function AuraVoiceOrb({
   const [bgMode, setBgMode] = useState<"live" | "gif" | "static">("live");
 
   // Real LLM Neural API Key & Model Configuration
-  const FALLBACK_OR_KEY = typeof atob !== "undefined" ? atob("c2stb3ItdjEtNzA5OGNmMjZkYThhN2FjMjk0NmFjMzY0NWYzM2Y3MjZjYThjYWIyYTg5MjI5NWZlZmNiOWYxYjkwNDMxOTU2MQ==") : "";
   const [apiKey, setApiKey] = useState<string>(() => {
-    return localStorage.getItem("aura_openrouter_key") || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || FALLBACK_OR_KEY;
+    return localStorage.getItem("aura_openrouter_key") || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || "";
   });
   const [aiModel, setAiModel] = useState<string>(() => {
     const saved = localStorage.getItem("aura_ai_model");
@@ -1233,7 +1232,7 @@ OPERATIONAL DIRECTIVES:
               }`}
             >
               <Tv className="w-3.5 h-3.5" />
-              <span>🗺️ Topo Map</span>
+              <span>🗺️ Tactical Map</span>
             </button>
 
             <button

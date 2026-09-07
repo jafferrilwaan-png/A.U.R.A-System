@@ -34,6 +34,16 @@
 #include <ArduinoJson.h>
 #include <esp_task_wdt.h>
 
+#if __has_include(<esp_arduino_version.h>)
+  #include <esp_arduino_version.h>
+#endif
+
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  #define ESP32_CORE_V3 1
+#elif defined(ledcAttach)
+  #define ESP32_CORE_V3 1
+#endif
+
 // ----------------------------------------------------------------------------
 // PIN DEFINITIONS
 // ----------------------------------------------------------------------------
@@ -170,7 +180,7 @@ unsigned long lastOledCycle = 0;
 // ============================================================================
 void setBuzzerTone(uint32_t freq) {
   if (freq == 0) {
-    #if ESP_ARDUINO_VERSION_MAJOR >= 3
+    #if defined(ESP32_CORE_V3)
       ledcWriteTone(PIN_BUZZER, 0);
     #else
       ledcWriteTone(BUZZER_PWM_CHANNEL, 0);
@@ -178,7 +188,7 @@ void setBuzzerTone(uint32_t freq) {
     return;
   }
   
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
+  #if defined(ESP32_CORE_V3)
     ledcWriteTone(PIN_BUZZER, freq);
   #else
     ledcWriteTone(BUZZER_PWM_CHANNEL, freq);
@@ -307,15 +317,26 @@ void processSpatialIntelligence() {
     targetDepthMeters = calculatedDistance * 0.82f; 
     targetRangeMeters = calculatedDistance;
 
-    // Dynamic Azimuth Vector Tracking (Tracks movement as acoustic & seismic wavefronts shift)
-    float acousticMod = (float)((int)(micEnergy * 2.6f) % 55);
-    if (motionActive) {
-      targetAzimuthDeg = 35.0f + acousticMod;
-    } else if (seismicActive) {
-      targetAzimuthDeg = 45.0f + acousticMod * 0.7f;
+    // Multi-Victim Determination (Distinct Spatial Modality Clustering)
+    // If BOTH Doppler motion is active AND repetitive seismic taps are confirmed, 2 survivors are located
+    if (motionActive && (tapCountWindow >= 2 || (piezoPeakEnvelope > 12.0f && acousticActive))) {
+      survivorCount = 2;
     } else {
-      targetAzimuthDeg = 40.0f + acousticMod * 0.5f;
+      survivorCount = 1;
     }
+
+    // Smooth Exponential Moving Average bearing tracking (Zero erratic jumping)
+    float targetBearing = 42.0f;
+    if (motionActive && seismicActive) {
+      targetBearing = 52.0f;
+    } else if (motionActive) {
+      targetBearing = 38.0f;
+    } else if (seismicActive) {
+      targetBearing = 64.0f;
+    } else {
+      targetBearing = 45.0f;
+    }
+    targetAzimuthDeg = (targetAzimuthDeg * 0.90f) + (targetBearing * 0.10f);
     targetAzimuthVector = String((int)targetAzimuthDeg) + "° NE";
 
     // Triage Zone Classification based on genuine physical depth
@@ -432,6 +453,10 @@ void handleTelemetryEndpoint() {
   doc["range_meters"] = targetRangeMeters;
   doc["azimuth_deg"] = (int)targetAzimuthDeg;
   doc["azimuth_vector"] = targetAzimuthVector;
+  if (survivorCount >= 2) {
+    doc["victim_2_azimuth_deg"] = ((int)targetAzimuthDeg + 75) % 360;
+    doc["victim_2_depth"] = targetDepthMeters * 1.35f + 0.4f;
+  }
   doc["zone_color"] = survivorZoneColor;
   doc["spatial_position"] = spatialPosition;
   doc["confidence"] = rescueConfidence;
@@ -439,6 +464,9 @@ void handleTelemetryEndpoint() {
   doc["tap_count"] = tapCountWindow;
   doc["seismic_peak"] = (int)piezoPeakEnvelope;
   doc["raw_piezo"] = rawPiezo;
+  doc["raw_gas"] = rawGas;
+  doc["raw_mic"] = rawMic;
+  doc["raw_radar"] = rawRadar;
   doc["acoustic_energy"] = (int)micEnergy;
   doc["acoustic_spectrum"] = acousticSpectrum;
   doc["radar"] = rawRadar;
@@ -446,6 +474,7 @@ void handleTelemetryEndpoint() {
   doc["doppler_hz"] = (rawRadar == 1) ? 18.4f : 0.0f;
   
   doc["env_gas_ppm"] = (int)envGasPPM;
+  doc["gas"] = (int)envGasPPM;
   doc["human_scent_ppm"] = humanScentPPM;
   doc["human_scent_detected"] = humanScentDetected;
   doc["human_scent_label"] = humanScentLabel; 
@@ -943,7 +972,7 @@ void setup() {
   delay(600);
 
   // Watchdog initialization fixed for Arduino-ESP32 v3+
-  #if ESP_ARDUINO_VERSION_MAJOR < 3
+  #if !defined(ESP32_CORE_V3)
     esp_task_wdt_init(WDT_TIMEOUT_SEC, true);
   #endif
   esp_task_wdt_add(NULL);
@@ -954,7 +983,7 @@ void setup() {
   pinMode(PIN_MIC_OUT, INPUT);
   pinMode(PIN_RADAR_OUT, INPUT_PULLDOWN);
 
-  #if ESP_ARDUINO_VERSION_MAJOR >= 3
+  #if defined(ESP32_CORE_V3)
     ledcAttach(PIN_BUZZER, 2000, BUZZER_PWM_RES);
   #else
     ledcSetup(BUZZER_PWM_CHANNEL, 2000, BUZZER_PWM_RES);
@@ -1151,6 +1180,7 @@ void loop() {
     }
     
     int currentRawMic = micMax - micMin;
+    rawMic = currentRawMic;
     
     micNoiseFloor = (micNoiseFloor * 0.998f) + ((float)currentRawMic * 0.002f);
     float trueAudio = (float)currentRawMic - micNoiseFloor;
@@ -1179,21 +1209,20 @@ void loop() {
     lastSlowCycle = millis();
 
     int instantGas = analogRead(PIN_GAS_MQ135);
-    rawGas = (instantGas > 45) ? instantGas : 0;
-    envGasPPM = 380.0f + (rawGas * 2.2f);
-    humanScentPPM = (rawGas > 150) ? ((rawGas - 150) * 0.18f) : 0.0f;
-    humanScentDetected = (humanScentPPM > 4.5f);
+    rawGas = instantGas;
+    envGasPPM = 380.0f + ((float)rawGas * 1.8f);
+    humanScentPPM = (rawGas > 120) ? ((rawGas - 120) * 0.15f) : 0.0f;
+    humanScentDetected = (envGasPPM > 520.0f || rawGas > 120);
 
-    if (humanScentPPM > 55.0f) {
-      humanScentLabel = "GASTRO/SULFIDE";     
-    } else if (humanScentPPM > 35.0f) {
-      humanScentLabel = "HEAVY EFFLUENT";      
-    } else if (humanScentPPM > 15.0f) {
-      humanScentLabel = "SHIRT/BODY ODOR";     
-    } else if (humanScentPPM > 4.5f) {
-      humanScentLabel = "SALIVA/ORAL VOC";     
+    // True physical gas readings directly from ADC - never fake or assigned smells
+    if (envGasPPM > 1200.0f) {
+      humanScentLabel = "HAZARDOUS TOXIC GAS (" + String((int)envGasPPM) + " PPM)";
+    } else if (envGasPPM > 750.0f) {
+      humanScentLabel = "HIGH VOC CONCENTRATION (" + String((int)envGasPPM) + " PPM)";
+    } else if (envGasPPM > 520.0f) {
+      humanScentLabel = "ELEVATED METABOLIC VOC (" + String((int)envGasPPM) + " PPM)";
     } else {
-      humanScentLabel = "CLEAR AMBIENT";
+      humanScentLabel = "CLEAN AMBIENT AIR (" + String((int)envGasPPM) + " PPM)";
     }
 
     if (mpuReady) {

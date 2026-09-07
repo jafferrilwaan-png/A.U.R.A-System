@@ -67,6 +67,8 @@ export interface TelemetryPayload {
   ai_analysis?: string;
   azimuth_deg?: number;
   azimuth_vector?: string;
+  victim_2_azimuth_deg?: number;
+  victim_2_depth?: number;
   ip?: string;
   // Extended / GPS / Legacy fields
   card?: number | string;
@@ -1125,8 +1127,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
 }`;
 
       let resultJson: any = null;
-      const fallbackKey = typeof atob !== "undefined" ? atob("c2stb3ItdjEtNzA5OGNmMjZkYThhN2FjMjk0NmFjMzY0NWYzM2Y3MjZjYThjYWIyYTg5MjI5NWZlZmNiOWYxYjkwNDMxOTU2MQ==") : "";
-      const openRouterKey = propApiKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || fallbackKey;
+      const openRouterKey = propApiKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string) || "";
       const c2Models = ["google/gemini-2.5-flash", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat", "qwen/qwen-2.5-72b-instruct"];
       
       let usedModelName = "Google Gemini 2.5 Flash";
@@ -1369,7 +1370,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
               }`}
             >
               <Compass className="w-3.5 h-3.5" />
-              <span>🗺️ TOPO MAP</span>
+              <span>🗺️ TACTICAL MAP</span>
             </button>
 
             <button
@@ -1448,7 +1449,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h2 className="text-sm sm:text-base font-black text-white tracking-wide">
-                  SUBTERRANEAN THEATRE TOPOGRAPHIC CONTOUR MAP
+                  SUBTERRANEAN THEATRE RADAR & GEOSPATIAL MAP
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
                   PORTAL ONLINE
@@ -1460,7 +1461,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
                 )}
               </div>
               <p className="text-xs text-slate-300 mt-1 font-mono">
-                Real-time 3D contour terrain strata • Blue Location Point on Nehru St (Sriperumbudur) • Live AI survivor beacon tracking
+                Real-time 3D subterranean terrain strata • Blue Location Point on Nehru St (Sriperumbudur) • Live AI survivor beacon tracking
               </p>
             </div>
           </div>
@@ -1468,7 +1469,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
             onClick={() => setActiveDashboardMode("theatre_map")}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-mono font-black text-xs transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2 cursor-pointer active:scale-95 z-10"
           >
-            <span>🗺️ OPEN FULLSCREEN TOPO MAP PORTAL</span>
+            <span>🗺️ OPEN FULLSCREEN TACTICAL MAP</span>
             <ExternalLink className="w-4 h-4" />
           </button>
         </div>

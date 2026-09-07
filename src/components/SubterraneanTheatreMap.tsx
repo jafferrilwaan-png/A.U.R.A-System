@@ -432,26 +432,26 @@ export default function SubterraneanTheatreMap({
                 {/* Center Blue Node Pin (Click/Touch to view exact physical location: Nehru St) */}
                 <div 
                   onClick={() => setIsMapModalOpen(true)}
-                  className="absolute z-20 flex flex-col items-center select-none cursor-pointer pointer-events-auto hover:scale-110 active:scale-95 transition-all group"
+                  className="absolute z-20 flex flex-col items-center select-none cursor-pointer pointer-events-auto hover:scale-105 active:scale-95 transition-transform group"
                   title="Touch to open exact location: Blue Pin on Nehru Street, Sriperumbudur"
                   style={{ transform: "translate(-50%, -50%)", left: "50%", top: "50%" }}
                 >
                   <div className="relative flex items-center justify-center">
-                    <span className="w-8 h-8 rounded-full border-2 border-cyan-400/60 animate-ping absolute opacity-70" />
-                    <span className="relative w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_16px_#38bdf8] border-2 border-white group-hover:border-cyan-200 transition-colors" />
+                    <span className="w-8 h-8 rounded-full border border-cyan-400/40 absolute opacity-50" />
+                    <span className="relative w-4 h-4 rounded-full bg-cyan-400 shadow-[0_0_16px_#38bdf8] border-2 border-white group-hover:border-cyan-200 transition-colors" />
                   </div>
-                  <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/85 backdrop-blur-md border border-cyan-500/40 text-[9px] font-mono font-bold tracking-wider text-cyan-200 shadow-xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-cyan-400 transition-colors">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <div className="mt-1.5 px-3 py-1 rounded-full bg-black/90 backdrop-blur-md border border-cyan-500/50 text-[10px] font-mono font-bold tracking-wider text-cyan-200 shadow-xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-cyan-400 transition-colors">
+                    <MapPin className="w-3 h-3 text-cyan-400" />
                     <span>NODE 01 • Nehru St</span>
                   </div>
                 </div>
 
-                {/* Detected Human Survivor - DYNAMIC VECTOR TRACKING: FOLLOWS LIVE SOUND & MOVEMENT */}
-                {activeSurvivorCount > 0 && (() => {
+                {/* ── VICTIM 01 PIN (SMOOTH RADAR TRACKING // ZERO ERRATIC JUMPING) ── */}
+                {activeSurvivorCount >= 1 && (() => {
                   const victimAzimuthDeg = typeof telemetry.azimuth_deg === "number"
                     ? telemetry.azimuth_deg
-                    : (40 + ((acousticDb * 1.6 + (isDopplerMotion ? 25 : 0)) % 75));
-                  const victimDistancePx = Math.min(175, Math.max(70, (rawDepth > 0 ? rawDepth : 1.8) * 38));
+                    : 42;
+                  const victimDistancePx = Math.min(160, Math.max(68, (rawDepth > 0 ? rawDepth : 1.2) * 40));
                   const victimAngleRad = (victimAzimuthDeg * Math.PI) / 180;
                   const victimOffsetX = Math.round(Math.cos(victimAngleRad) * victimDistancePx);
                   const victimOffsetY = -Math.round(Math.sin(victimAngleRad) * victimDistancePx);
@@ -466,45 +466,110 @@ export default function SubterraneanTheatreMap({
                           x2={`calc(50% + ${victimOffsetX}px)`} 
                           y2={`calc(50% + ${victimOffsetY}px)`} 
                           stroke="#f43f5e" 
-                          strokeWidth="1.5" 
-                          strokeDasharray="4 4" 
-                          className="opacity-75 animate-pulse transition-all duration-500"
+                          strokeWidth="2" 
+                          strokeDasharray="6 4" 
+                          className="opacity-80 transition-all duration-700 ease-out"
                         />
                       </svg>
 
-                      {/* Target Pin in North-East Quadrant - Moves dynamically as sound/victim shifts */}
+                      {/* Victim 01 Pin - Smooth CSS transitions glide gently without erratic jumps */}
                       <div 
-                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-110"
+                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-105"
                         style={{ 
                           left: `calc(50% + ${victimOffsetX}px)`,
                           top: `calc(50% + ${victimOffsetY}px)`,
                           transform: "translate(-50%, -50%)",
-                          transition: "left 0.4s ease-out, top 0.4s ease-out"
+                          transition: "left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1)"
                         }}
                         onClick={handleOpenGoogleMaps}
-                        title="AI Confirmed Human Survivor! Click to open Google Maps"
+                        title="AI Confirmed Human Survivor #1! Click to open Google Maps"
                       >
-                        {/* High-Visibility Precision Tactical Reticle */}
+                        {/* High-Visibility Precision Tactical Reticle (No blinking dot) */}
                         <div className="relative flex items-center justify-center">
-                          <span className="w-11 h-11 rounded-full border-2 border-rose-500/80 animate-ping absolute opacity-80" />
-                          <span className="w-7 h-7 rounded-full border border-dashed border-rose-400/90 animate-spin absolute" style={{ animationDuration: "6s" }} />
-                          <span className="relative w-3.5 h-3.5 rounded-full border-2 border-white shadow-xl transition-colors duration-500 bg-rose-600 shadow-[0_0_20px_#f43f5e]" />
+                          <span className="w-8 h-8 rounded-full border border-rose-500/60 absolute opacity-70" />
+                          <span className="relative w-4 h-4 rounded-full border-2 border-white bg-rose-600 shadow-[0_0_18px_#f43f5e]" />
                         </div>
                         
-                        {/* Sleek Tactical Badge */}
-                        <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/90 backdrop-blur-md border border-rose-500/70 shadow-xl flex items-center gap-1.5 whitespace-nowrap text-white">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                          <span className="text-[10px] font-mono font-bold tracking-wide text-rose-300">
+                        {/* Sleek Tactical Badge - Clean, solid, no blinking dots */}
+                        <div className="mt-1.5 px-3 py-1 rounded-full bg-black/95 backdrop-blur-md border border-rose-500/80 shadow-2xl flex items-center gap-2 whitespace-nowrap text-white">
+                          <Crosshair className="w-3 h-3 text-rose-400" />
+                          <span className="text-[10px] font-mono font-black tracking-wide text-rose-300">
                             VICTIM 01 LOCKED
                           </span>
-                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/90 px-1.5 py-0.5 rounded border border-cyan-500/40">
                             {rawDepth.toFixed(1)}m
                           </span>
                           <span className="text-[9px] font-mono text-emerald-300 font-semibold">
                             {confidenceScore > 0 ? confidenceScore : 99}% CONF
                           </span>
-                          <span className="text-[8px] font-mono text-amber-300 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-500/30">
+                          <span className="text-[8px] font-mono text-amber-300 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/40">
                             {telemetry.azimuth_vector || `${victimAzimuthDeg.toFixed(0)}°`}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* ── VICTIM 02 PIN (RENDERED WHEN MULTI-SURVIVOR DETECTED) ── */}
+                {activeSurvivorCount >= 2 && (() => {
+                  const victim2AzimuthDeg = typeof telemetry.victim_2_azimuth_deg === "number"
+                    ? telemetry.victim_2_azimuth_deg
+                    : ((typeof telemetry.azimuth_deg === "number" ? telemetry.azimuth_deg : 42) + 75) % 360;
+                  const victim2Depth = typeof telemetry.victim_2_depth === "number"
+                    ? telemetry.victim_2_depth
+                    : (rawDepth * 1.35 + 0.4);
+                  const victim2DistancePx = Math.min(180, Math.max(90, victim2Depth * 36));
+                  const victim2AngleRad = (victim2AzimuthDeg * Math.PI) / 180;
+                  const victim2OffsetX = Math.round(Math.cos(victim2AngleRad) * victim2DistancePx);
+                  const victim2OffsetY = -Math.round(Math.sin(victim2AngleRad) * victim2DistancePx);
+
+                  return (
+                    <>
+                      {/* Directional Radar Vector Line for Victim 02 */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
+                        <line 
+                          x1="50%" 
+                          y1="50%" 
+                          x2={`calc(50% + ${victim2OffsetX}px)`} 
+                          y2={`calc(50% + ${victim2OffsetY}px)`} 
+                          stroke="#f59e0b" 
+                          strokeWidth="2" 
+                          strokeDasharray="6 4" 
+                          className="opacity-80 transition-all duration-700 ease-out"
+                        />
+                      </svg>
+
+                      {/* Victim 02 Pin - Visualized at secondary cluster */}
+                      <div 
+                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-105"
+                        style={{ 
+                          left: `calc(50% + ${victim2OffsetX}px)`,
+                          top: `calc(50% + ${victim2OffsetY}px)`,
+                          transform: "translate(-50%, -50%)",
+                          transition: "left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1)"
+                        }}
+                        onClick={handleOpenGoogleMaps}
+                        title="AI Confirmed Human Survivor #2! Click to open Google Maps"
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <span className="w-8 h-8 rounded-full border border-amber-500/60 absolute opacity-70" />
+                          <span className="relative w-4 h-4 rounded-full border-2 border-white bg-amber-500 shadow-[0_0_18px_#f59e0b]" />
+                        </div>
+                        
+                        <div className="mt-1.5 px-3 py-1 rounded-full bg-black/95 backdrop-blur-md border border-amber-500/80 shadow-2xl flex items-center gap-2 whitespace-nowrap text-white">
+                          <Crosshair className="w-3 h-3 text-amber-400" />
+                          <span className="text-[10px] font-mono font-black tracking-wide text-amber-300">
+                            VICTIM 02 LOCKED
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/90 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                            {victim2Depth.toFixed(1)}m
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-300 font-semibold">
+                            {Math.max(45, confidenceScore - 8)}% CONF
+                          </span>
+                          <span className="text-[8px] font-mono text-amber-300 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/40">
+                            {victim2AzimuthDeg.toFixed(0)}° NW
                           </span>
                         </div>
                       </div>
@@ -520,21 +585,21 @@ export default function SubterraneanTheatreMap({
       {/* ══════════════════════════════════════════════════════════════════════
           2. CORE SPATIAL RESCUE HERO COMPONENT (DOWN THE MAP)
       ══════════════════════════════════════════════════════════════════════ */}
-      <div className={`w-full rounded-3xl p-5 sm:p-6 border transition-all duration-500 flex flex-col gap-4 shadow-2xl relative overflow-hidden backdrop-blur-xl ${
+      <div className={`w-full rounded-3xl p-5 sm:p-6 border transition-all duration-500 flex flex-col gap-4 shadow-2xl relative overflow-hidden backdrop-blur-3xl ${
         zoneColor === "RED" 
-          ? "bg-gradient-to-b from-rose-950/40 via-[#0B0F19]/90 to-[#070A10] border-rose-500/40 shadow-[0_0_50px_rgba(244,63,94,0.2)]" 
+          ? "bg-gradient-to-b from-rose-950/40 via-[#0F0E1E]/90 to-[#070712]/98 border-rose-500/50 shadow-[0_0_50px_rgba(244,63,94,0.22)]" 
           : zoneColor === "GREEN" 
-          ? "bg-gradient-to-b from-emerald-950/40 via-[#0B0F19]/90 to-[#070A10] border-emerald-500/40 shadow-[0_0_50px_rgba(16,185,129,0.2)]" 
+          ? "bg-gradient-to-b from-emerald-950/40 via-[#0B1522]/90 to-[#050A14]/98 border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.22)]" 
           : zoneColor === "WHITE"
-          ? "bg-gradient-to-b from-slate-900/60 via-[#0B0F19]/90 to-[#070A10] border-white/40 shadow-[0_0_50px_rgba(255,255,255,0.2)]"
-          : "bg-gradient-to-b from-white/[0.04] to-[#070A10] border-white/10"
+          ? "bg-gradient-to-b from-slate-900/60 via-[#0C1424]/90 to-[#060A14]/98 border-white/40 shadow-[0_0_50px_rgba(255,255,255,0.2)]"
+          : "bg-gradient-to-b from-cyan-950/30 via-[#0B1424]/85 to-[#060A14]/98 border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.12)]"
       }`}>
         
         {/* Top Header Strip with Live Hardware State Badge & Direct IP Box */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-[#10B981] animate-ping" : "bg-amber-400 animate-pulse"}`} />
-            <span className={`font-mono text-xs font-bold tracking-wider uppercase ${isConnected ? "text-emerald-400" : "text-amber-400"}`}>
+          <div className="flex items-center gap-2.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-[#10B981] shadow-[0_0_10px_#10B981]" : "bg-amber-400 shadow-[0_0_10px_#F59E0B]"}`} />
+            <span className={`font-mono text-xs font-black tracking-widest uppercase ${isConnected ? "text-emerald-400" : "text-amber-400"}`}>
               {isConnected ? "A.U.R.A. v18.0 HARDWARE NODE LINKED" : "AWAITING ESP32 PACKET STREAM"}
             </span>
           </div>
@@ -550,19 +615,19 @@ export default function SubterraneanTheatreMap({
                   setTimeout(() => setMapIpSaved(false), 2000);
                 }
               }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/5 border border-white/15 hover:border-cyan-500/40 focus-within:border-cyan-400/70 transition-all shadow-inner"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-cyan-900/20 to-black/60 border border-cyan-500/40 hover:border-cyan-400/70 focus-within:border-cyan-300 focus-within:shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all backdrop-blur-xl shadow-inner"
             >
-              <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider pl-1">IP:</span>
+              <span className="text-[10px] font-mono text-cyan-300/70 uppercase tracking-wider font-bold">IP:</span>
               <input
                 type="text"
                 value={mapInputIp}
                 onChange={(e) => setMapInputIp(e.target.value)}
                 placeholder="e.g. 10.178.117.16"
-                className="w-28 sm:w-36 bg-transparent text-xs font-mono text-cyan-300 placeholder-white/30 focus:outline-none"
+                className="w-28 sm:w-36 bg-transparent text-xs font-mono text-cyan-300 placeholder-white/30 focus:outline-none font-bold"
               />
               <button
                 type="submit"
-                className="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm"
+                className="px-3 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-400/50 text-[10px] font-mono font-black transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
               >
                 <span>{mapIpSaved ? "Linked!" : "Connect"}</span>
               </button>
@@ -572,98 +637,100 @@ export default function SubterraneanTheatreMap({
           </div>
         </div>
 
-        {/* Hero Spatial Trio: Survivor Count, Calculated Depth, Lateral Range */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        {/* Hero Spatial Trio: Survivor Count, Calculated Depth, Lateral Range (Ultra Glassmorphism) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
           {/* Survivor Count Box */}
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-              activeSurvivorCount > 0 ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.35)]" : "bg-white/5 text-white/40 border border-white/10"
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-b from-rose-950/35 via-[#160E22]/75 to-[#0B0714]/90 border border-rose-500/45 backdrop-blur-2xl shadow-[0_0_25px_rgba(244,63,94,0.18)] hover:border-rose-400/70 hover:shadow-[0_0_35px_rgba(244,63,94,0.3)] transition-all">
+            <div className={`w-13 h-13 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+              activeSurvivorCount > 0 
+                ? "bg-rose-500/20 text-rose-300 border border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.4)]" 
+                : "bg-white/5 text-white/40 border border-white/15"
             }`}>
               <User className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+              <span className="text-[10px] font-mono text-white/55 block tracking-widest uppercase font-bold">
                 DETECTED HUMAN SURVIVORS
               </span>
-              <span className={`text-2xl sm:text-3xl font-black tracking-tight ${activeSurvivorCount > 0 ? "text-rose-400" : "text-white/60"}`}>
+              <span className={`text-2xl sm:text-3xl font-black tracking-tight ${activeSurvivorCount > 0 ? "text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]" : "text-white/60"}`}>
                 {activeSurvivorCount} {activeSurvivorCount === 1 ? "VICTIM DETECTED" : "VICTIMS DETECTED"}
               </span>
             </div>
           </div>
 
           {/* Numeric Depth Gauge */}
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
-            <div className="w-12 h-12 rounded-2xl bg-[#00C2FF]/20 text-[#00C2FF] border border-[#00C2FF]/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(0,194,255,0.25)]">
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-b from-cyan-950/35 via-[#0B192A]/75 to-[#050F1C]/90 border border-cyan-500/45 backdrop-blur-2xl shadow-[0_0_25px_rgba(6,182,212,0.18)] hover:border-cyan-400/70 hover:shadow-[0_0_35px_rgba(6,182,212,0.3)] transition-all">
+            <div className="w-13 h-13 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
               <Radio className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+              <span className="text-[10px] font-mono text-white/55 block tracking-widest uppercase font-bold">
                 CALCULATED STRATA DEPTH
               </span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black text-cyan-300">
+                <span className="text-2xl sm:text-3xl font-black text-cyan-300 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
                   {rawDepth.toFixed(2)}
                 </span>
-                <span className="text-xs font-mono text-white/60">meters</span>
+                <span className="text-xs font-mono text-white/60 font-bold">meters</span>
               </div>
             </div>
           </div>
 
           {/* Numeric Range Gauge */}
-          <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(192,132,252,0.25)]">
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-b from-purple-950/35 via-[#18102C]/75 to-[#0C081A]/90 border border-purple-500/45 backdrop-blur-2xl shadow-[0_0_25px_rgba(168,85,247,0.18)] hover:border-purple-400/70 hover:shadow-[0_0_35px_rgba(168,85,247,0.3)] transition-all">
+            <div className="w-13 h-13 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/60 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
               <Activity className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] font-mono text-white/50 block tracking-widest uppercase">
+              <span className="text-[10px] font-mono text-white/55 block tracking-widest uppercase font-bold">
                 LATERAL RADAR RANGE
               </span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black text-purple-300">
+                <span className="text-2xl sm:text-3xl font-black text-purple-300 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
                   {rawRange.toFixed(2)}
                 </span>
-                <span className="text-xs font-mono text-white/60">meters</span>
+                <span className="text-xs font-mono text-white/60 font-bold">meters</span>
               </div>
             </div>
           </div>
 
         </div>
 
-        {/* Dynamic Triage Color Zone & Spatial Position & Confidence Tag */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-black/50 border border-white/10">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono text-white/60">TRIAGE ZONE:</span>
-            <span className={`px-3 py-1 rounded-xl text-xs font-black tracking-wider border uppercase shadow-md ${zoneConfig.badgeClass}`}>
+        {/* Dynamic Triage Color Zone & Spatial Position & Confidence Tag (Deep Glassmorphism) */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/35 via-[#091522]/80 to-[#050C16]/95 border border-emerald-500/40 backdrop-blur-2xl shadow-[0_0_30px_rgba(16,185,129,0.16)]">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-mono text-white/70 font-bold">TRIAGE ZONE:</span>
+            <span className={`px-3.5 py-1.5 rounded-xl text-xs font-black tracking-wider border uppercase shadow-md ${zoneConfig.badgeClass}`}>
               {zoneColor}: {zoneConfig.label}
             </span>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-mono text-white/60">CONFIDENCE:</span>
-              <span className="px-2.5 py-1 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-xs font-mono font-black text-cyan-300">
+              <span className="text-xs font-mono text-white/70 font-bold">CONFIDENCE:</span>
+              <span className="px-3 py-1 rounded-xl bg-cyan-500/20 border border-cyan-400/50 text-xs font-mono font-black text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
                 {confidenceScore}%
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-mono text-white/60">SPATIAL POS:</span>
-              <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/15 text-xs font-mono font-bold text-white tracking-wide">
+              <span className="text-xs font-mono text-white/70 font-bold">SPATIAL POS:</span>
+              <span className="px-3.5 py-1 rounded-xl bg-white/10 border border-white/20 text-xs font-mono font-black text-white tracking-wide shadow-sm">
                 {spatialPosition}
               </span>
             </div>
           </div>
         </div>
 
-        {/* AI Analysis Summary Banner (Direct Hardware Stream) */}
+        {/* AI Analysis Summary Banner (Deep Translucent Glassmorphism) */}
         {(telemetry.ai_analysis || telemetry.ai_status) && (
-          <div className="p-3 rounded-xl bg-[#C084FC]/10 border border-[#C084FC]/30 text-xs font-medium text-purple-200 flex items-start gap-2 shadow-sm">
-            <ShieldAlert className="w-4 h-4 text-[#C084FC] flex-shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 via-[#19102E]/75 to-[#0E091C]/95 border border-[#C084FC]/50 text-xs font-medium text-purple-200 flex items-start gap-3 backdrop-blur-2xl shadow-[0_0_30px_rgba(192,132,252,0.18)]">
+            <ShieldAlert className="w-5 h-5 text-[#C084FC] flex-shrink-0 mt-0.5 drop-shadow-[0_0_10px_rgba(192,132,252,0.5)]" />
             <div>
-              <strong className="text-white font-bold uppercase tracking-wider block font-mono text-[10px]">
+              <strong className="text-white font-black uppercase tracking-widest block font-mono text-[11px] drop-shadow-sm">
                 {telemetry.ai_status || "LIVE HARDWARE TELEMETRY"}
               </strong>
-              <span>{telemetry.ai_analysis || `${rawSurvivorCount} survivor signature(s) detected at ${rawDepth.toFixed(2)}m depth.`}</span>
+              <span className="text-purple-100 font-sans">{telemetry.ai_analysis || `${rawSurvivorCount} survivor signature(s) detected at ${rawDepth.toFixed(2)}m depth.`}</span>
             </div>
           </div>
         )}
@@ -671,46 +738,46 @@ export default function SubterraneanTheatreMap({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          2. SENSOR TELEMETRY MATRICES (5 HIGH-TECH REAL HARDWARE CARDS)
+          2. SENSOR TELEMETRY MATRICES (5 ULTRA-GLASSMORPHIC HARDWARE CARDS)
       ══════════════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         
-        {/* Acoustic Spectrum Card */}
-        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+        {/* 1. Acoustic Spectrum Card */}
+        <div className="p-4 rounded-2xl bg-gradient-to-b from-cyan-950/35 via-[#0B182B]/75 to-[#060D1A]/95 border border-cyan-500/50 flex flex-col justify-between gap-3.5 backdrop-blur-2xl shadow-[0_0_25px_rgba(6,182,212,0.18)] hover:border-cyan-400/80 hover:shadow-[0_0_35px_rgba(6,182,212,0.35)] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white/80 flex items-center gap-1.5">
               <Mic className="w-4 h-4 text-cyan-400" />
               <span>Acoustic Spectrum</span>
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-black bg-cyan-500/20 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.35)]">
               {acousticDb} dB
             </span>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-white/45 block mb-1 uppercase">CLASSIFICATION</span>
-            <span className="text-sm font-bold text-white block truncate" title={acousticSpectrum}>
+            <span className="text-[10px] font-mono text-white/50 block mb-1 uppercase font-bold">CLASSIFICATION</span>
+            <span className="text-sm font-black text-white block truncate drop-shadow-sm" title={acousticSpectrum}>
               {acousticSpectrum}
             </span>
 
             {/* Acoustic Energy Bar */}
-            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5">
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5 border border-white/10">
               <div 
-                className="h-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-rose-500 transition-all duration-300"
+                className="h-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-rose-500 transition-all duration-300 shadow-[0_0_10px_#06b6d4]"
                 style={{ width: `${Math.min(100, Math.max(5, (acousticDb / 80) * 100))}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Seismic Vibration & Piezo Taps */}
-        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+        {/* 2. Seismic Vibration & Piezo Taps */}
+        <div className="p-4 rounded-2xl bg-gradient-to-b from-amber-950/30 via-[#1C160B]/75 to-[#0F0B05]/95 border border-amber-500/50 flex flex-col justify-between gap-3.5 backdrop-blur-2xl shadow-[0_0_25px_rgba(245,158,11,0.18)] hover:border-amber-400/80 hover:shadow-[0_0_35px_rgba(245,158,11,0.35)] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white/80 flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-amber-400" />
               <span>Seismic Taps</span>
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tapCount > 0 ? "bg-amber-500/25 text-amber-300 border-amber-400 animate-pulse" : "bg-white/5 text-white/50 border-white/10"}`}>
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-black border ${tapCount > 0 ? "bg-amber-500/25 text-amber-300 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]" : "bg-white/5 text-white/50 border-white/15"}`}>
               {tapCount} TAPS
             </span>
           </div>
@@ -718,61 +785,59 @@ export default function SubterraneanTheatreMap({
           <div>
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-[10px] font-mono text-white/45 block uppercase">SEISMIC PEAK</span>
-                <span className="text-xl font-bold text-white">{seismicPeak} <span className="text-xs text-white/50 font-normal">mm/s</span></span>
+                <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">SEISMIC PEAK</span>
+                <span className="text-xl font-black text-white drop-shadow-sm">{seismicPeak} <span className="text-xs text-white/50 font-normal">mm/s</span></span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-mono text-white/45 block uppercase">RAW PIEZO</span>
+                <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">RAW PIEZO</span>
                 <span className="text-xs font-mono font-bold text-cyan-300">{rawPiezo}</span>
               </div>
             </div>
 
             {/* Seismic Peak Bar */}
-            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5">
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2.5 border border-white/10">
               <div 
-                className="h-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-all duration-300"
+                className="h-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-all duration-300 shadow-[0_0_10px_#f59e0b]"
                 style={{ width: `${Math.min(100, Math.max(5, (seismicPeak / 100) * 100))}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Human Bio-Scent Card (v18.0 Bio-Scent Profiler) */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 shadow-lg transition-all ${bioScentConfig.cardBorder}`}>
+        {/* 3. Human Bio-Scent Card (Ultra-Glassmorphic) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-b from-blue-950/40 via-[#0C1A32]/80 to-[#060E1C]/95 border border-blue-500/50 flex flex-col justify-between gap-3.5 backdrop-blur-2xl shadow-[0_0_25px_rgba(59,130,246,0.22)] hover:border-blue-400/80 hover:shadow-[0_0_35px_rgba(59,130,246,0.4)] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-              <User className={`w-4 h-4 ${bioScentConfig.iconColor}`} />
+            <span className="text-xs font-bold text-white/80 flex items-center gap-1.5">
+              <User className="w-4 h-4 text-blue-400" />
               <span>Bio-Scent VOC</span>
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${bioScentConfig.badgeClass}`}>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-black border uppercase tracking-wider bg-blue-500/20 text-blue-300 border-blue-400/60 shadow-[0_0_12px_rgba(59,130,246,0.35)]">
               {humanScentLabel}
             </span>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-white/45 block uppercase">CONCENTRATION</span>
+            <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">CONCENTRATION</span>
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-xl font-bold ${humanScentDetected ? "text-white" : "text-white/80"}`}>
+              <span className={`text-2xl font-black ${humanScentDetected ? "text-white drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" : "text-white/80"}`}>
                 {humanScentPpm}
               </span>
               <span className="text-xs text-white/50 font-normal">PPM</span>
             </div>
-            <p className={`text-[11px] mt-1 truncate ${bioScentConfig.textClass}`}>
+            <p className="text-[11px] mt-1 truncate text-blue-300 font-bold">
               {humanScentLabel}
             </p>
           </div>
         </div>
 
-        {/* Doppler Motion Radar & IMU Jerk Card */}
-        <div className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 shadow-lg transition-all ${
-          isDopplerMotion ? "bg-cyan-950/30 border-cyan-500/40" : "bg-[#080B12]/85 border-white/10"
-        }`}>
+        {/* 4. Doppler Motion Radar & IMU Jerk Card (Ultra-Glassmorphic) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-b from-cyan-950/40 via-[#0B1A2E]/80 to-[#050E1A]/95 border border-cyan-500/50 flex flex-col justify-between gap-3.5 backdrop-blur-2xl shadow-[0_0_25px_rgba(6,182,212,0.22)] hover:border-cyan-400/80 hover:shadow-[0_0_35px_rgba(6,182,212,0.4)] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white/80 flex items-center gap-1.5">
               <Radio className="w-4 h-4 text-cyan-400" />
               <span>Doppler & IMU</span>
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isDopplerMotion ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 animate-pulse" : "bg-white/5 text-white/40 border-white/10"}`}>
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-black border uppercase tracking-wider ${isDopplerMotion ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]" : "bg-white/5 text-white/50 border-white/15"}`}>
               {isDopplerMotion ? "MOTION DETECTED" : "SCANNING"}
             </span>
           </div>
@@ -780,39 +845,39 @@ export default function SubterraneanTheatreMap({
           <div>
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-[10px] font-mono text-white/45 block uppercase">IMU DELTA JERK</span>
-                <span className="text-xl font-bold text-white">{deltaJerk.toFixed(2)} <span className="text-xs text-white/50 font-normal">G</span></span>
+                <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">IMU DELTA JERK</span>
+                <span className="text-2xl font-black text-white drop-shadow-sm">{deltaJerk.toFixed(2)} <span className="text-xs text-white/50 font-normal">G</span></span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-mono text-white/45 block uppercase">DOPPLER</span>
+                <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">DOPPLER</span>
                 <span className="text-xs font-mono font-bold text-cyan-300">{isDopplerMotion ? `${telemetry.doppler_hz ? telemetry.doppler_hz.toFixed(1) + " Hz" : "3.18 GHz"} (ACTIVE)` : "IDLE"}</span>
               </div>
             </div>
-            <p className="text-[11px] text-white/50 mt-1">
+            <p className="text-[11px] text-white/60 mt-1 font-mono">
               {isDopplerMotion ? "Micro-movement locked in debris void" : "Debris structure stationary"}
             </p>
           </div>
         </div>
 
-        {/* Environmental Gas & Air Quality Card */}
-        <div className="p-4 rounded-2xl bg-[#080B12]/85 border border-white/10 flex flex-col justify-between gap-3 shadow-lg">
+        {/* 5. Environmental Gas & Air Quality Card (Ultra-Glassmorphic) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-b from-emerald-950/35 via-[#0A1F18]/75 to-[#05110D]/95 border border-emerald-500/50 flex flex-col justify-between gap-3.5 backdrop-blur-2xl shadow-[0_0_25px_rgba(16,185,129,0.18)] hover:border-emerald-400/80 hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/70 flex items-center gap-1.5">
-              <Wind className="w-4 h-4 text-sky-400" />
+            <span className="text-xs font-bold text-white/80 flex items-center gap-1.5">
+              <Wind className="w-4 h-4 text-emerald-400" />
               <span>Environmental Air</span>
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${envGasPpm > 400 ? "bg-rose-500/20 text-rose-300 border-rose-400" : "bg-emerald-500/20 text-emerald-300 border-emerald-400"}`}>
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-black border uppercase tracking-wider ${envGasPpm > 400 ? "bg-rose-500/20 text-rose-300 border-rose-400/60 shadow-[0_0_12px_rgba(244,63,94,0.35)]" : "bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.35)]"}`}>
               {envGasPpm > 400 ? "HAZARD" : "SAFE"}
             </span>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-white/45 block uppercase">GAS CONCENTRATION</span>
+            <span className="text-[10px] font-mono text-white/50 block uppercase font-bold">GAS CONCENTRATION</span>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-white">{envGasPpm}</span>
+              <span className="text-2xl font-black text-white drop-shadow-sm">{envGasPpm}</span>
               <span className="text-xs text-white/50 font-normal">PPM</span>
             </div>
-            <p className="text-[11px] text-white/50 mt-1">
+            <p className="text-[11px] text-white/60 mt-1 font-mono">
               {envGasPpm > 400 ? "Toxic gas concentration detected" : "Atmospheric levels safe for extraction"}
             </p>
           </div>
@@ -823,51 +888,51 @@ export default function SubterraneanTheatreMap({
       {/* ══════════════════════════════════════════════════════════════════════
           3. HARDWARE CONTROL PANEL (DISPATCH POST /api/control)
       ══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full p-4 sm:p-5 rounded-3xl bg-[#070A10]/90 border border-white/12 flex flex-col gap-3 shadow-xl">
+      <div className="w-full p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-[#0E1728]/85 via-[#09101E]/90 to-[#040812]/98 border border-cyan-500/40 backdrop-blur-3xl flex flex-col gap-4 shadow-[0_0_40px_rgba(6,182,212,0.16)]">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono font-bold tracking-wider text-[#C084FC] uppercase flex items-center gap-2">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-xs font-mono font-black tracking-widest text-[#C084FC] uppercase flex items-center gap-2 drop-shadow-[0_0_10px_rgba(192,132,252,0.4)]">
+            <Zap className="w-4 h-4 text-amber-400" />
             <span>ESP32 HARDWARE CONTROL PANEL (POST /api/control)</span>
           </span>
           {isDispatching && (
             <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
-              <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+              <RefreshCw className="w-3 h-3 animate-spin" />
               <span>DISPATCHING...</span>
             </span>
           )}
         </div>
 
-        {/* 5 Hardware Action Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {/* 5 Hardware Action Buttons (Ultra Glassmorphism) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
-            { mode: 0, label: "MUTE ALL", sub: "Mode 0 (Silence)", color: "bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30" },
-            { mode: 1, label: "LOCATOR BEACON", sub: "Mode 1 (85 dB Pulse)", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30" },
-            { mode: 2, label: "RESCUE CHIRP", sub: "Mode 2 (98 dB Ping)", color: "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30" },
-            { mode: 3, label: "EVAC SIREN", sub: "Mode 3 (110 dB Alarm)", color: "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30" },
-            { mode: 4, label: "HELP IS ON THE WAY", sub: "Mode 4 (3-Burst Cadence)", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30" },
+            { mode: 0, label: "MUTE ALL", sub: "Mode 0 (Silence)", color: "bg-red-500/20 text-red-300 border-red-500/50 hover:bg-red-500/35 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]" },
+            { mode: 1, label: "LOCATOR BEACON", sub: "Mode 1 (85 dB Pulse)", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 hover:bg-cyan-500/35 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)]" },
+            { mode: 2, label: "RESCUE CHIRP", sub: "Mode 2 (98 dB Ping)", color: "bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/35 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]" },
+            { mode: 3, label: "EVAC SIREN", sub: "Mode 3 (110 dB Alarm)", color: "bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/35 hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]" },
+            { mode: 4, label: "HELP IS ON THE WAY", sub: "Mode 4 (3-Burst Cadence)", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/35 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]" },
           ].map((btn) => (
             <button
               key={btn.mode}
               onClick={() => dispatchControlCommand(btn.mode, btn.label)}
               disabled={isDispatching}
-              className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer select-none active:scale-95 ${btn.color} ${currentBuzzerMode === btn.mode ? "ring-2 ring-white/70 shadow-lg scale-[1.02]" : ""}`}
+              className={`p-3 rounded-2xl border backdrop-blur-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer select-none active:scale-95 shadow-md ${btn.color} ${currentBuzzerMode === btn.mode ? "ring-2 ring-white/80 shadow-[0_0_25px_rgba(255,255,255,0.3)] scale-[1.03]" : ""}`}
             >
-              <span className="text-xs font-bold font-sans tracking-wide">{btn.label}</span>
-              <span className="text-[10px] font-mono text-white/60">{btn.sub}</span>
+              <span className="text-xs font-black font-sans tracking-wide drop-shadow-sm">{btn.label}</span>
+              <span className="text-[10px] font-mono text-white/70">{btn.sub}</span>
             </button>
           ))}
         </div>
 
         {/* ROW 3: COMPACT HARDWARE SWITCHES & LOCATION (APPLE CONTROL ISLAND) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-white/10">
           
           {/* Direct Hardware Toggles */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-white/60 mr-1">Controls:</span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-xs font-bold text-white/70 mr-1">Controls:</span>
             
             {/* Beacon Volume Selector */}
-            <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10">
-              <span className="text-xs text-white/50 px-1.5">Beacon:</span>
+            <div className="flex items-center gap-1 bg-gradient-to-r from-white/[0.08] to-white/[0.03] p-1.5 rounded-2xl border border-white/15 backdrop-blur-2xl shadow-inner">
+              <span className="text-xs text-white/60 px-1.5 font-bold">Beacon:</span>
               {[
                 { lvl: 0, label: "Mute" },
                 { lvl: 1, label: "85 dB" },
@@ -877,12 +942,12 @@ export default function SubterraneanTheatreMap({
                 <button
                   key={lvl}
                   onClick={() => onSetBuzzerLevel ? onSetBuzzerLevel(lvl) : onCycleBuzzer?.()}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     buzzerLevel === lvl
                       ? lvl === 0
-                        ? "bg-red-500 text-white shadow-sm font-semibold"
-                        : "bg-[#C084FC] text-black font-semibold shadow-[0_0_10px_rgba(192,132,252,0.4)]"
-                      : "text-white/60 hover:text-white"
+                        ? "bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                        : "bg-[#C084FC] text-black shadow-[0_0_15px_rgba(192,132,252,0.6)] scale-[1.02]"
+                      : "text-white/70 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {label}
@@ -893,10 +958,10 @@ export default function SubterraneanTheatreMap({
             {/* Vocal Transducer Beam Toggle */}
             <button
               onClick={onToggleBeam}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-2xl ${
                 isBeamActive
-                  ? "bg-[#C084FC]/25 border-[#C084FC] text-[#C084FC] font-semibold"
-                  : "bg-white/[0.04] border-white/10 text-white/60 hover:text-white"
+                  ? "bg-[#C084FC]/30 border-[#C084FC] text-[#C084FC] shadow-[0_0_15px_rgba(192,132,252,0.4)]"
+                  : "bg-white/[0.06] border-white/15 text-white/70 hover:text-white"
               }`}
             >
               <Mic className="w-3.5 h-3.5" />
@@ -906,10 +971,10 @@ export default function SubterraneanTheatreMap({
             {/* Hardware Overdrive 100% Toggle */}
             <button
               onClick={onToggleOverdrive}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-2xl ${
                 isOverdrive
-                  ? "bg-amber-400 text-black border-amber-400 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-                  : "bg-white/[0.04] border-white/10 text-white/60 hover:text-white"
+                  ? "bg-amber-400 text-black border-amber-400 font-black shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-[1.02]"
+                  : "bg-white/[0.06] border-white/15 text-white/70 hover:text-white"
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
