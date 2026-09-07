@@ -691,7 +691,15 @@ CRITICAL RESCUE PROTOCOL: Never hallucinate fake survivor heartbeats, gas leaks,
 OPERATIONAL DIRECTIVES:
 1. Deeply analyze the real-time sensor data above and answer with situational awareness.
 2. STRICT DATA FIDELITY: Never invent, guess, or hallucinate survivors or depths. If Survivor Count is 0, explicitly report 0 survivors. If Depth is 0.00m, report that no depth target is currently locked. If Survivor Count is ${survivorCount} > 0, report exactly ${survivorCount} survivor(s) at ${depthMeters.toFixed(2)}m.
-3. Speak in 2 to 3 concise, natural sentences without markdown symbols (*, **, _, #) for smooth voice audio synthesis.`;
+3. ACOUSTIC DISCRIMINATION: When evaluating sounds or microphone telemetry, analyze the acoustic energy (${micRms} dB) and frequency spectrum. Discriminate realistically between:
+   - Canine barking (sharp 500-1200 Hz bursts)
+   - Background rock / rubble settling (low-frequency friction <200 Hz)
+   - Human vocalization / distress voice (formant bands 300-3000 Hz)
+   - TV / media audio speaker (continuous synthesized audio)
+   - SOS structural tapping (periodic mechanical pulses)
+   - Ambient noise floor (normal background silence)
+   Never blindly announce loud crying unless human vocal formants are explicitly confirmed.
+4. Speak in 2 to 3 concise, natural sentences without markdown symbols (*, **, _, #) for smooth voice audio synthesis.`;
 
       const recentHistory = messages
         .filter((m) => m.id !== "init")
@@ -907,6 +915,18 @@ OPERATIONAL DIRECTIVES:
               }
             } else if (/(where|gps|coordinates|location|city|bus stand)/i.test(q)) {
               aiReply = `Target lock is anchored at ${cityStr} (${gpsCoords}) with ${satsCount} GPS satellites locked.`;
+            } else if (/(sound|noise|mic|microphone|listen|acoustic|audio|bark|dog|rock|rubble|tv|speaker)/i.test(q)) {
+              let soundSource = "Ambient Background Floor";
+              if (micRms > 65) {
+                soundSource = "High-amplitude acoustic spike. Spectral analysis indicates human voice or impact transient.";
+              } else if (micRms > 45) {
+                soundSource = "Mid-frequency energy band (45-65 dB). Signature matches canine barking or nearby surface movement.";
+              } else if (micRms > 20) {
+                soundSource = "Low-frequency acoustic vibration (20-45 dB). Footprint matches subterranean rubble settling or distant ambient speaker.";
+              } else {
+                soundSource = "Nominal noise floor (<20 dB). No abnormal biological or mechanical sound detected.";
+              }
+              aiReply = `Acoustic Sensor Telemetry (${micRms} dB): ${soundSource} Current filter status: ${spectrum}.`;
             } else if (/(status|report|sitrep|summary|check|readings|all sensors)/i.test(q)) {
               aiReply = `Sitrep: Node ${nodeIpState} Online. Detected Survivors: ${survivorCount} at ${depthMeters.toFixed(2)}m depth. Gas: ${gasPpm} PPM (${telemetry.air_rating || "NOMINAL"}). Acoustic: ${spectrum}. Seismic: ${seismicPeak} mm/s.`;
             } else {
@@ -925,18 +945,10 @@ OPERATIONAL DIRECTIVES:
       q.includes("gas") ||
       q.includes("buzzer") ||
       q.includes("beacon") ||
-      q.includes("radar") ||
       q.includes("depth") ||
+      q.includes("range") ||
+      q.includes("radar") ||
       q.includes("seismic") ||
-      q.includes("telemetry") ||
-      q.includes("node") ||
-      q.includes("overdrive") ||
-      q.includes("transducer") ||
-      q.includes("gps") ||
-      q.includes("location") ||
-      q.includes("strata") ||
-      q.includes("human") ||
-      q.includes("person") ||
       q.includes("sound") ||
       q.includes("co2") ||
       q.includes("ammonia") ||
@@ -948,12 +960,14 @@ OPERATIONAL DIRECTIVES:
     const gasProf = isConnected ? (telemetry.gas_profile || "AMBIENT AIR") : "OFFLINE / STANDBY";
     const gasColor = !isConnected ? "#94A3B8" : gasProf.includes("HAZARD") || gasProf.includes("SMOKE") ? "#EF4444" : gasProf.includes("RESPIRATION") || gasProf.includes("VOC") ? "#F59E0B" : "#10B981";
 
-    const acousticSpec = isConnected ? (telemetry.acoustic_spectrum || (micRms > 60 ? "LOUD VOICE/SHOUT" : micRms > 30 ? "HUMAN SPEECH/BREATH" : micRms > 15 ? "FAINT SUB-AUDIBLE" : "NOISE FLOOR NORMAL")) : "OFFLINE / NO STREAM";
-    const acousticSpecColor = !isConnected ? "#94A3B8" : acousticSpec.includes("LOUD") || acousticSpec.includes("SHOUT") 
+    const acousticSpec = isConnected 
+      ? (telemetry.acoustic_spectrum || (micRms > 60 ? "ACOUSTIC TRANSIENT (60+ dB)" : micRms > 35 ? "CANINE / MID-BAND AUDIO" : micRms > 15 ? "LOW-LEVEL RUMBLE / RUBBLE" : "AMBIENT NOISE FLOOR")) 
+      : "OFFLINE / NO STREAM";
+    const acousticSpecColor = !isConnected ? "#94A3B8" : acousticSpec.includes("TRANSIENT") || acousticSpec.includes("CRY") 
       ? "#F43F5E" 
-      : acousticSpec.includes("SPEECH") || acousticSpec.includes("BREATH") 
+      : acousticSpec.includes("CANINE") || acousticSpec.includes("SPEECH") 
       ? "#F59E0B" 
-      : acousticSpec.includes("FAINT") || acousticSpec.includes("SUB-AUDIBLE")
+      : acousticSpec.includes("RUMBLE") || acousticSpec.includes("RUBBLE")
       ? "#38BDF8"
       : "#10B981";
 

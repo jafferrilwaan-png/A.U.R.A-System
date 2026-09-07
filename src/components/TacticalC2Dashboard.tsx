@@ -56,6 +56,7 @@ export interface TelemetryPayload {
   acoustic_spectrum?: string; // "LOUD CRY / SHOUT" | "HUMAN SPEECH / VOCAL" | "FAINT BREATH / WHISPER" | "SILENCE / NOISE FLOOR" | string
   radar?: number;
   motion_detected?: boolean | number;
+  doppler_hz?: number;
   env_gas_ppm?: number;
   human_scent_ppm?: number | string;
   human_scent_detected?: boolean;
@@ -301,7 +302,7 @@ export function BreathingDots({
   isRadarLocked = false,
   depthMeters = 3,
   confidence = 88,
-  classification = "HUMAN_VOICE",
+  classification = "BIO-ACOUSTIC LOCK",
   className = ""
 }: {
   isBiological?: boolean;
@@ -1906,7 +1907,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
                   <span className="text-[#94A3B8]">Classification:</span>
                   <span className="text-[#10B981] font-bold">
                     {isConnected
-                      ? (aiResult?.classification || telemetry.ai_classification || "HUMAN_VOICE")
+                      ? (aiResult?.classification || telemetry.ai_classification || (telemetry.survivor_count && telemetry.survivor_count > 0 ? "SURVIVOR CONFIRMED" : (telemetry.acoustic_spectrum || "AMBIENT / SCANNING")))
                       : "AWAITING HARDWARE LINK"}
                   </span>
                 </div>

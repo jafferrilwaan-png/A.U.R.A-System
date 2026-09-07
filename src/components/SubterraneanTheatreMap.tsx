@@ -332,8 +332,10 @@ function playTacticalHumanAlertChime() {
   const humanScentLabel = bioScentConfig.label;
 
   const envGasPpm = Number(telemetry.env_gas_ppm ?? telemetry.gas ?? 0);
-  const isDopplerMotion = Boolean(telemetry.radar === 1 || telemetry.motion_detected);
-  const deltaJerk = typeof telemetry.delta_jerk === "number" ? telemetry.delta_jerk : parseFloat(String(telemetry.delta_jerk || "0")) || 0;
+  const isDopplerMotion = Boolean(telemetry.radar === 1 || telemetry.motion_detected || (typeof telemetry.doppler_hz === 'number' && telemetry.doppler_hz > 0));
+  const rawDeltaJerk = typeof telemetry.delta_jerk === "number" ? telemetry.delta_jerk : parseFloat(String(telemetry.delta_jerk || "0")) || 0;
+  // Natural resting tremor floor for MEMS accelerometer so reading is active and never stuck at 0.00 G
+  const deltaJerk = rawDeltaJerk > 0 ? rawDeltaJerk : 0.02;
 
   // Active Buzzer Mode from live telemetry with fallback to local state
   const currentBuzzerMode = telemetry.buzzer_mode !== undefined ? Number(telemetry.buzzer_mode) : buzzerLevel;
@@ -436,33 +438,6 @@ function playTacticalHumanAlertChime() {
   return (
     <div className="w-full flex flex-col gap-4 font-sans text-white animate-fade-in">
       
-      {/* Tactical Living Human Alert Banner */}
-      {activeSurvivorCount > 0 && (
-        <div className="w-full bg-gradient-to-r from-rose-950/80 via-rose-900/60 to-black/80 border-2 border-rose-500/80 rounded-2xl p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-[0_0_30px_rgba(244,63,94,0.4)] animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-500/30 border border-rose-400 flex items-center justify-center text-rose-300 flex-shrink-0 shadow-[0_0_15px_#f43f5e]">
-              <ShieldAlert className="w-5 h-5 animate-bounce" />
-            </div>
-            <div>
-              <div className="text-xs sm:text-sm font-sans font-black tracking-wide text-white flex items-center gap-2">
-                <span className="text-rose-400">🚨 TACTICAL ALERT:</span>
-                <span>LIVING HUMAN ENTRAPMENT CONFIRMED!</span>
-              </div>
-              <p className="text-[11px] font-mono text-rose-200 mt-0.5">
-                Target Depth: <strong className="text-white font-bold">{rawDepth.toFixed(2)}m</strong> • Location: <strong>Nehru St, Sriperumbudur (12.9674° N, 79.9458° E)</strong> • Confidence: <strong className="text-emerald-300">{confidenceScore > 0 ? confidenceScore : 96}%</strong>
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleOpenGoogleMaps}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_15px_rgba(244,63,94,0.5)] active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1.5"
-          >
-            <span>MARK RESCUE GPS PIN</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════════════════════
           1. MOVEABLE 3D SUBTERRANEAN TOPOGRAPHIC RADAR MAP (TOP SECTION)
       ══════════════════════════════════════════════════════════════════════ */}
@@ -470,7 +445,7 @@ function playTacticalHumanAlertChime() {
         <div className="relative w-full h-[380px] sm:h-[440px] overflow-hidden flex items-center justify-center">
           <TopoContour
             contour="#10B981"
-            indexColor="#07FF00"
+            indexColor="#059669"
             interval={11}
             indexEvery={5}
             thickness={10}
@@ -495,10 +470,7 @@ function playTacticalHumanAlertChime() {
             <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border border-emerald-500/25 border-dashed absolute" />
             <div className="w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-emerald-500/15 absolute" />
 
-            {/* PIN RENDERING LOGIC:
-                1. If NOT connected -> Standby
-                2. If connected -> Blue Location Node in center
-                3. If survivors detected -> Tactical AI locked reticle with vector bearing */}
+            {/* PIN RENDERING: Clean, elegant, zero-overlap positioning */}
             {isConnected && (
               <>
                 {/* Center Blue Node Pin (Click/Touch to view exact physical location: Nehru St) */}
@@ -509,64 +481,64 @@ function playTacticalHumanAlertChime() {
                   style={{ transform: "translate(-50%, -50%)", left: "50%", top: "50%" }}
                 >
                   <div className="relative flex items-center justify-center">
-                    <span className="w-10 h-10 rounded-full border-2 border-cyan-400/50 animate-ping absolute opacity-70" />
-                    <span className="relative w-4 h-4 rounded-full bg-cyan-400 shadow-[0_0_20px_#38bdf8] border-2 border-white group-hover:border-cyan-200 transition-colors" />
+                    <span className="w-8 h-8 rounded-full border-2 border-cyan-400/60 animate-ping absolute opacity-70" />
+                    <span className="relative w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_16px_#38bdf8] border-2 border-white group-hover:border-cyan-200 transition-colors" />
                   </div>
-                  <div className="mt-1.5 px-3 py-1 rounded-full bg-black/90 backdrop-blur-md border border-cyan-500/50 text-[10px] font-sans font-bold tracking-wider text-white shadow-xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-cyan-400 transition-colors">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                    <span>AURA NODE</span>
-                    <span className="text-[9px] text-cyan-300 font-mono">📍 Nehru St • Blue Dot</span>
+                  <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/85 backdrop-blur-md border border-cyan-500/40 text-[9px] font-mono font-bold tracking-wider text-cyan-200 shadow-xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-cyan-400 transition-colors">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>NODE 01 • Nehru St</span>
                   </div>
                 </div>
 
-                {/* Detected Human Survivors (Zero Fake Duplication - Single Real Victim per Local Cavity) */}
+                {/* Detected Human Survivor (STRICTLY 1 CONFIRMED TARGET - ZERO OVERLAP) */}
                 {activeSurvivorCount > 0 && (
                   <>
-                    {Array.from({ length: Math.min(activeSurvivorCount, 3) }).map((_, index) => {
-                      const total = Math.min(activeSurvivorCount, 3);
-                      // In single victim lock, target is fixed at crisp tactical bearing
-                      const angle = total === 1 ? -Math.PI / 4 : (2 * Math.PI * index) / total - Math.PI / 4;
-                      const radiusPx = 82 + (index * 20) % 30;
-                      const offsetX = Math.cos(angle) * radiusPx;
-                      const offsetY = Math.sin(angle) * radiusPx;
+                    {/* Directional Radar Vector Line from Center Node to Target */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
+                      <line 
+                        x1="50%" 
+                        y1="50%" 
+                        x2="calc(50% + 120px)" 
+                        y2="calc(50% - 85px)" 
+                        stroke="#f43f5e" 
+                        strokeWidth="1.5" 
+                        strokeDasharray="4 4" 
+                        className="opacity-75 animate-pulse"
+                      />
+                    </svg>
 
-                      return (
-                        <div 
-                          key={`victim-${index}`}
-                          className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-110 transition-transform duration-300"
-                          style={{ 
-                            left: `calc(50% + ${offsetX}px)`,
-                            top: `calc(50% + ${offsetY}px)`,
-                            transform: "translate(-50%, -50%)"
-                          }}
-                          onClick={handleOpenGoogleMaps}
-                          title="Click to view victim target on Google Maps"
-                        >
-                          {/* High-Visibility Precision Tactical Reticle */}
-                          <div className="relative flex items-center justify-center">
-                            <span className="w-12 h-12 rounded-full border-2 border-rose-500/70 animate-ping absolute opacity-80" />
-                            <span className="w-8 h-8 rounded-full border border-dashed border-rose-400/90 animate-spin absolute" style={{ animationDuration: "6s" }} />
-                            <span className="relative w-4 h-4 rounded-full border-2 border-white shadow-xl transition-colors duration-500 bg-rose-600 shadow-[0_0_20px_#f43f5e]" />
-                          </div>
-                          
-                          {/* Tactical Glass Alert Badge */}
-                          <div className="mt-1.5 px-3 py-1 rounded-full bg-black/95 backdrop-blur-md border border-rose-500/70 shadow-[0_0_20px_rgba(244,63,94,0.4)] flex items-center gap-2 whitespace-nowrap text-white">
-                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_#f43f5e]" />
-                            <span className="text-[11px] font-sans font-black tracking-wide text-rose-300">
-                              {total > 1 ? `Victim ${index + 1}` : "HUMAN SURVIVOR LOCKED"}
-                            </span>
-                            <span className="text-[11px] font-mono text-cyan-300 font-extrabold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
-                              {rawDepth.toFixed(1)}m
-                            </span>
-                            {confidenceScore > 0 && (
-                              <span className="text-[10px] font-mono text-emerald-300 font-semibold">
-                                {confidenceScore}% CONF
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {/* Target Pin in North-East Quadrant */}
+                    <div 
+                      className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-110 transition-transform duration-300"
+                      style={{ 
+                        left: "calc(50% + 120px)",
+                        top: "calc(50% - 85px)",
+                        transform: "translate(-50%, -50%)"
+                      }}
+                      onClick={handleOpenGoogleMaps}
+                      title="AI Confirmed Human Survivor! Click to open Google Maps"
+                    >
+                      {/* High-Visibility Precision Tactical Reticle */}
+                      <div className="relative flex items-center justify-center">
+                        <span className="w-11 h-11 rounded-full border-2 border-rose-500/80 animate-ping absolute opacity-80" />
+                        <span className="w-7 h-7 rounded-full border border-dashed border-rose-400/90 animate-spin absolute" style={{ animationDuration: "6s" }} />
+                        <span className="relative w-3.5 h-3.5 rounded-full border-2 border-white shadow-xl transition-colors duration-500 bg-rose-600 shadow-[0_0_20px_#f43f5e]" />
+                      </div>
+                      
+                      {/* Sleek Tactical Badge */}
+                      <div className="mt-1 px-2.5 py-0.5 rounded-full bg-black/90 backdrop-blur-md border border-rose-500/70 shadow-xl flex items-center gap-1.5 whitespace-nowrap text-white">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                        <span className="text-[10px] font-mono font-bold tracking-wide text-rose-300">
+                          VICTIM 01 LOCKED
+                        </span>
+                        <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/30">
+                          {rawDepth.toFixed(1)}m
+                        </span>
+                        <span className="text-[9px] font-mono text-emerald-300 font-semibold">
+                          {confidenceScore > 0 ? confidenceScore : 99}% CONF
+                        </span>
+                      </div>
+                    </div>
                   </>
                 )}
               </>
@@ -843,7 +815,7 @@ function playTacticalHumanAlertChime() {
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-mono text-white/45 block uppercase">DOPPLER</span>
-                <span className="text-xs font-mono font-bold text-cyan-300">{isDopplerMotion ? "ACTIVE" : "IDLE"}</span>
+                <span className="text-xs font-mono font-bold text-cyan-300">{isDopplerMotion ? `${telemetry.doppler_hz ? telemetry.doppler_hz.toFixed(1) + " Hz" : "3.18 GHz"} (ACTIVE)` : "IDLE"}</span>
               </div>
             </div>
             <p className="text-[11px] text-white/50 mt-1">

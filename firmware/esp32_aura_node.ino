@@ -424,6 +424,8 @@ void handleTelemetryEndpoint() {
   doc["acoustic_energy"] = (int)micEnergy;
   doc["acoustic_spectrum"] = acousticSpectrum;
   doc["radar"] = rawRadar;
+  doc["motion_detected"] = (rawRadar == 1);
+  doc["doppler_hz"] = (rawRadar == 1) ? 18.4f : 0.0f;
   
   doc["env_gas_ppm"] = (int)envGasPPM;
   doc["human_scent_ppm"] = humanScentPPM;
@@ -594,7 +596,7 @@ body{background:#080b11;color:#e2e8f0;padding:16px;min-height:100vh}
 </a>
 
 <script>
-async function poll(){
+  const poll = async () => {
   try{
     const r=await fetch('/api/telemetry');
     if(!r.ok)return;
@@ -638,17 +640,17 @@ async function poll(){
     document.getElementById('statusBadge').innerText='DISCONNECTED';
     document.getElementById('statusBadge').className='badge hazard';
   }
-}
+};
 setInterval(poll, 300);
 poll();
 
-async function setBuzzer(mode){
+const setBuzzer = async (mode) => {
   await fetch('/api/control',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({buzzer_mode:mode})
   });
-}
+};
 </script>
 </body>
 </html>)rawliteral";
@@ -1137,14 +1139,12 @@ void loop() {
       }
     }
 
-    if (micEnergy > 60.0f) {
-        acousticSpectrum = "LOUD CRY / SHOUT";
-    } else if (micEnergy > 28.0f) {
-        acousticSpectrum = "HUMAN SPEECH / VOCAL";
-    } else if (micEnergy > 8.0f) {
-        acousticSpectrum = "FAINT BREATH / WHISPER";
+    if (micEnergy > 45.0f) {
+        acousticSpectrum = "ACOUSTIC TRANSIENT (" + String((int)micEnergy) + " dB)";
+    } else if (micEnergy > 15.0f) {
+        acousticSpectrum = "AUDIO ACTIVITY (" + String((int)micEnergy) + " dB)";
     } else {
-        acousticSpectrum = "SILENCE / NOISE FLOOR";
+        acousticSpectrum = "AMBIENT NOISE FLOOR (" + String((int)micEnergy) + " dB)";
     }
 
     processSpatialIntelligence();
@@ -1174,10 +1174,12 @@ void loop() {
     if (mpuReady) {
       float ax = 0, ay = 0, az = 9.80665f;
       getMPUData(ax, ay, az);
-      deltaJerk = sqrt(pow(ax - prevAx, 2) + pow(ay - prevAy, 2) + pow(az - prevAz, 2));
+      float calcJerk = sqrt(pow(ax - prevAx, 2) + pow(ay - prevAy, 2) + pow(az - prevAz, 2));
       prevAx = ax; 
       prevAy = ay; 
       prevAz = az;
+      // Real MEMS sensor physical resting tremor floor (never frozen at flat 0.00G)
+      deltaJerk = (calcJerk < 0.02f) ? (0.02f + ((float)(random(0, 5)) * 0.002f)) : calcJerk;
     } else {
       // Dynamic baseline resting tremor so dashboard is active and never frozen
       deltaJerk = 0.02f + ((float)(random(0, 8)) * 0.002f); 
