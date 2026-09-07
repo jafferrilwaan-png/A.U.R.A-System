@@ -904,11 +904,13 @@ export default function TacticalC2Dashboard({
   const [packetCount, setPacketCount] = useState(0);
   const [activeDashboardMode, setActiveDashboardMode] = useState<"hud" | "voice_terminal">("hud");
 
-  // ── HUD Controls ──
+  // ── HUD Controls & Diagnostic Test Simulation ──
   const [rangeCeiling, setRangeCeiling] = useState<number>(30);
   const [showStrata, setShowStrata] = useState(true);
   const [showParticles, setShowParticles] = useState(true);
   const [showBioSense, setShowBioSense] = useState(true);
+  const [simulatedRadarLock, setSimulatedRadarLock] = useState(false);
+  const [simulatedShock, setSimulatedShock] = useState(false);
 
   // ── Buzzer 2-Min Timer ──
   const [buzzerSeconds, setBuzzerSeconds] = useState(120);
@@ -1287,127 +1289,276 @@ Respond in STRICT JSON ONLY without markdown formatting:
         {/* ── LEFT COLUMN: MICROWAVE RADAR, GAS & JERK SENSORS (3 COLS) ── */}
         <section className="md:col-span-3 flex flex-col gap-4">
           
-          {/* 1. MICROWAVE RADAR SWEEP RETICLE */}
-          <div className="bg-[#0E121B] border border-[#1E2433] rounded-xl p-4 flex flex-col items-center justify-between shadow-xl relative overflow-hidden">
-            <div className="w-full flex items-center justify-between mb-1 z-10">
-              <span className="font-mono text-xs font-bold text-[#94A3B8] flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-[#06B6D4]" />
-                RCWL-0516 BIO-RADAR
-              </span>
+          {/* 1. UPGRADED RCWL-0516 MICROWAVE BIO-RADAR CARD */}
+          <div className="bg-[#0E121B] border border-[#1E2433] hover:border-[#06B6D4]/40 transition-colors rounded-2xl p-4 flex flex-col items-center justify-between shadow-2xl relative overflow-hidden group">
+            {/* Background Ambient Glow on Lock */}
+            <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
+              (telemetry.radar === 1 || simulatedRadarLock) ? "bg-[#EF4444]/10" : "bg-[#06B6D4]/5"
+            }`} />
+
+            {/* Header */}
+            <div className="w-full flex items-center justify-between mb-2 z-10">
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all ${
+                  (telemetry.radar === 1 || simulatedRadarLock)
+                    ? "bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444] shadow-[0_0_10px_#EF4444]"
+                    : "bg-[#06B6D4]/15 border-[#06B6D4]/30 text-[#06B6D4]"
+                }`}>
+                  <Radio className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <span className="font-mono text-xs font-bold text-white block tracking-wide">
+                    RCWL-0516 RADAR
+                  </span>
+                  <span className="text-[10px] font-mono text-[#64748B]">3.18 GHz Doppler Wave</span>
+                </div>
+              </div>
+
               <span
-                className={`text-[10px] font-mono font-black px-2 py-0.5 rounded ${
-                  telemetry.radar === 1
-                    ? "bg-[#EF4444] text-white animate-pulse"
-                    : "bg-[#1E2433] text-[#64748B]"
+                className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border transition-all ${
+                  (telemetry.radar === 1 || simulatedRadarLock)
+                    ? "bg-[#EF4444] text-white border-[#EF4444] animate-pulse shadow-[0_0_12px_#EF4444]"
+                    : "bg-[#06B6D4]/10 text-[#06B6D4] border-[#06B6D4]/30"
                 }`}
               >
-                {telemetry.radar === 1 ? "TARGET LOCK" : "SWEEPING"}
+                {(telemetry.radar === 1 || simulatedRadarLock) ? "TARGET LOCKED" : "SWEEPING VOID"}
               </span>
             </div>
 
-            {/* Radar Scope */}
-            <div className="relative w-36 h-36 my-2 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border border-[#06B6D4]/20" />
-              <div className="absolute inset-4 rounded-full border border-[#06B6D4]/30" />
-              <div className="absolute inset-8 rounded-full border border-[#06B6D4]/40" />
-              <div className="absolute inset-12 rounded-full border border-[#06B6D4]/50" />
-              <div className="absolute w-full h-[1px] bg-[#06B6D4]/30" />
-              <div className="absolute h-full w-[1px] bg-[#06B6D4]/30" />
+            {/* 360° Circular Radar Scope with Distance Rings */}
+            <div className="relative w-40 h-40 my-1 flex items-center justify-center">
+              {/* Range Rings with Depth Markers */}
+              <div className="absolute inset-0 rounded-full border border-[#06B6D4]/20 flex items-start justify-center pt-0.5">
+                <span className="text-[8px] font-mono text-[#06B6D4]/60">6.0m</span>
+              </div>
+              <div className="absolute inset-4 rounded-full border border-[#06B6D4]/30 flex items-start justify-center pt-0.5">
+                <span className="text-[8px] font-mono text-[#06B6D4]/70">2.5m</span>
+              </div>
+              <div className="absolute inset-9 rounded-full border border-[#06B6D4]/40 flex items-start justify-center pt-0.5">
+                <span className="text-[8px] font-mono text-[#06B6D4]/80">0.5m</span>
+              </div>
+              <div className="absolute inset-14 rounded-full border border-[#06B6D4]/60" />
+              
+              {/* Crosshair Grids */}
+              <div className="absolute w-full h-[1px] bg-[#06B6D4]/25" />
+              <div className="absolute h-full w-[1px] bg-[#06B6D4]/25" />
 
-              {/* Rotating Sweep Line */}
+              {/* Rotating Sweep Beam */}
               <div
                 className="absolute inset-0 rounded-full pointer-events-none"
                 style={{
                   background:
                     "conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6, 182, 212, 0.45) 360deg)",
-                  animation: "radarSweep 3s linear infinite"
+                  animation: "radarSweep 2.8s linear infinite"
                 }}
               />
 
-              {/* Target Blip */}
-              {telemetry.radar === 1 && (
-                <div className="absolute z-20 w-4 h-4 rounded-full bg-[#EF4444] shadow-[0_0_15px_#EF4444] animate-ping" />
+              {/* Target Reflection Blip */}
+              {(telemetry.radar === 1 || simulatedRadarLock) && (
+                <div className="absolute z-20 flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full bg-[#EF4444]/40 animate-ping absolute" />
+                  <div className="w-3 h-3 rounded-full bg-[#EF4444] shadow-[0_0_15px_#EF4444]" />
+                </div>
               )}
             </div>
 
-            <div className="w-full text-[10px] font-mono text-[#64748B] flex justify-between z-10">
-              <span>MICROWAVE 3.18 GHz</span>
-              <span>FOV: 360° VOID</span>
+            {/* Doppler Waveform Oscilloscope & Live Status */}
+            <div className="w-full bg-black/40 rounded-xl p-2.5 border border-white/10 my-1">
+              <div className="flex items-center justify-between text-[10px] font-mono mb-1.5">
+                <span className="text-[#94A3B8]">DOPPLER CARRIER:</span>
+                <span className={(telemetry.radar === 1 || simulatedRadarLock) ? "text-[#EF4444] font-bold" : "text-[#10B981]"}>
+                  {(telemetry.radar === 1 || simulatedRadarLock) ? "CHEST FLUTTER DETECTED" : "NOMINAL CARRIER"}
+                </span>
+              </div>
+
+              {/* Mini Animated Wave Oscilloscope */}
+              <div className="h-6 flex items-center justify-between gap-1 px-1 bg-[#090D16] rounded-lg overflow-hidden border border-white/5">
+                {[4, 12, 8, 16, 22, 14, 28, 18, 10, 24, 16, 8, 20, 12, 6, 14, 22, 10].map((h, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-1 rounded-full transition-all duration-150 ${
+                      (telemetry.radar === 1 || simulatedRadarLock)
+                        ? "bg-[#EF4444] animate-pulse"
+                        : "bg-[#06B6D4]/50"
+                    }`}
+                    style={{
+                      height: (telemetry.radar === 1 || simulatedRadarLock)
+                        ? `${Math.min(22, (h * 1.5) % 24 + 4)}px`
+                        : `${(h % 8) + 3}px`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Interactive Test Trigger Button & Specs */}
+            <div className="w-full flex items-center justify-between pt-2 border-t border-[#1E2433] z-10">
+              <span className="text-[10px] font-mono text-[#64748B]">PENETRATION: 0.5-6.0M</span>
+              <button
+                onClick={() => {
+                  setSimulatedRadarLock(true);
+                  setTimeout(() => setSimulatedRadarLock(false), 3500);
+                }}
+                className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#06B6D4]/20 hover:bg-[#06B6D4]/30 text-[#06B6D4] border border-[#06B6D4]/40 transition-colors cursor-pointer"
+                title="Click to simulate victim chest flutter"
+              >
+                TEST PULSE
+              </button>
             </div>
           </div>
 
-          {/* 2. MQ-135 TOXIC GAS RADIAL GAUGE */}
-          <div className="bg-[#0E121B] border border-[#1E2433] rounded-xl p-4 flex flex-col justify-between shadow-xl">
+          {/* 2. MQ-135 TOXIC & BIO-SCENT GAS SENSOR */}
+          <div className="bg-[#0E121B] border border-[#1E2433] hover:border-[#F59E0B]/40 transition-colors rounded-2xl p-4 flex flex-col justify-between shadow-2xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-mono text-xs font-bold text-[#94A3B8] flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-[#F59E0B]" />
-                MQ-135 TOXIC GAS
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#F59E0B]/15 border border-[#F59E0B]/30 flex items-center justify-center text-[#F59E0B]">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-mono text-xs font-bold text-white block">MQ-135 GAS MATRIX</span>
+                  <span className="text-[10px] font-mono text-[#64748B]">Metabolic VOC & CO₂</span>
+                </div>
+              </div>
+
+              {/* Status Badge */}
               <span
                 className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                  (telemetry.gas || 0) > 500
+                  (telemetry.env_gas_ppm ?? telemetry.gas ?? 400) > 600
                     ? "bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]"
-                    : (telemetry.gas || 0) > 350
+                    : (telemetry.env_gas_ppm ?? telemetry.gas ?? 400) > 450
                     ? "bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]"
                     : "bg-[#10B981]/20 text-[#10B981] border-[#10B981]"
                 }`}
               >
-                {(telemetry.gas || 0) > 500 ? "LETHAL" : (telemetry.gas || 0) > 350 ? "ELEVATED" : "CLEAN"}
+                {(telemetry.env_gas_ppm ?? telemetry.gas ?? 400) > 600
+                  ? "LETHAL HAZARD"
+                  : (telemetry.env_gas_ppm ?? telemetry.gas ?? 400) > 450
+                  ? "ELEVATED VOC"
+                  : "BREATHABLE"}
               </span>
             </div>
 
-            <div className="my-2">
-              <div className="flex items-baseline gap-2 font-mono">
-                <span className="text-3xl font-black text-white">{telemetry.gas}</span>
-                <span className="text-xs text-[#64748B]">PPM</span>
+            <div className="my-1.5 flex items-baseline justify-between font-mono">
+              <div>
+                <span className="text-3xl font-black text-white">
+                  {telemetry.env_gas_ppm ?? telemetry.gas ?? 400}
+                </span>
+                <span className="text-xs text-[#64748B] ml-1">PPM</span>
               </div>
-              <div className="w-full bg-[#1E2433] h-1.5 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#10B981] via-[#F59E0B] to-[#EF4444] transition-all duration-300"
-                  style={{ width: `${Math.min(100, ((telemetry.gas || 0) / 800) * 100)}%` }}
-                />
+              <div className="text-right">
+                <span className="text-xs text-[#94A3B8] block">BIO-SCENT:</span>
+                <span className="text-xs font-bold text-[#C084FC]">
+                  {telemetry.human_scent_ppm ? `${telemetry.human_scent_ppm} PPM` : "0.0 PPM"}
+                </span>
               </div>
+            </div>
+
+            {/* Gradient Level Bar */}
+            <div className="w-full bg-[#1E2433] h-2 rounded-full overflow-hidden my-1">
+              <div
+                className="h-full bg-gradient-to-r from-[#10B981] via-[#F59E0B] to-[#EF4444] transition-all duration-300"
+                style={{
+                  width: `${Math.min(100, (((telemetry.env_gas_ppm ?? telemetry.gas ?? 400) - 300) / 700) * 100)}%`
+                }}
+              />
             </div>
 
             <div className="text-[10px] font-mono text-[#64748B] flex justify-between pt-1 border-t border-[#1E2433]/50">
-              <span>BASE: 150-350</span>
-              <span>ALERT: 450+</span>
+              <span>SOURCE: {telemetry.human_scent_label || "CLEAR AMBIENT"}</span>
+              <span className="text-[#94A3B8]">ALERT: 450+ PPM</span>
             </div>
           </div>
 
-          {/* 3. MPU-6050 STRUCTURAL JERK STABILITY INDEX */}
-          <div className="bg-[#0E121B] border border-[#1E2433] rounded-xl p-4 flex flex-col justify-between shadow-xl">
+          {/* 3. UPGRADED MPU-6050 6-AXIS IMU & STRUCTURAL STABILITY CARD */}
+          <div className={`bg-[#0E121B] border transition-colors rounded-2xl p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden ${
+            ((telemetry.delta_jerk || 0) > 1.2 || simulatedShock)
+              ? "border-[#EF4444] shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+              : "border-[#1E2433] hover:border-[#38BDF8]/40"
+          }`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="font-mono text-xs font-bold text-[#94A3B8] flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-[#06B6D4]" />
-                STRUCTURAL STABILITY
-              </span>
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all ${
+                  ((telemetry.delta_jerk || 0) > 1.2 || simulatedShock)
+                    ? "bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444]"
+                    : "bg-[#38BDF8]/15 border-[#38BDF8]/30 text-[#38BDF8]"
+                }`}>
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-mono text-xs font-bold text-white block">MPU-6050 IMU</span>
+                  <span className="text-[10px] font-mono text-[#64748B]">Structural Jerk & Tilt</span>
+                </div>
+              </div>
+
+              {/* Status Badge */}
               <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                  (telemetry.delta_jerk || 0) > 1.2
-                    ? "bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]"
+                className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border transition-all ${
+                  ((telemetry.delta_jerk || 0) > 1.2 || simulatedShock)
+                    ? "bg-[#EF4444] text-white border-[#EF4444] animate-bounce shadow-[0_0_12px_#EF4444]"
+                    : ((telemetry.delta_jerk || 0) > 0.45)
+                    ? "bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]"
                     : "bg-[#10B981]/20 text-[#10B981] border-[#10B981]"
                 }`}
               >
-                {(telemetry.delta_jerk || 0) > 1.2 ? "COLLAPSE HAZARD" : "STABLE"}
+                {((telemetry.delta_jerk || 0) > 1.2 || simulatedShock)
+                  ? "COLLAPSE HAZARD"
+                  : ((telemetry.delta_jerk || 0) > 0.45)
+                  ? "VIBRATION SHIFT"
+                  : "STABLE BEDROCK"}
               </span>
             </div>
 
-            <div className="my-2">
-              <div className="flex items-baseline gap-2 font-mono">
+            {/* Shock Vector Value & Tilt Angle */}
+            <div className="my-1.5 flex items-baseline justify-between font-mono">
+              <div>
                 <span className="text-3xl font-black text-white">
-                  {(telemetry.delta_jerk || 0).toFixed(2)}
+                  {simulatedShock ? "1.82" : (telemetry.delta_jerk || 0.02).toFixed(2)}
                 </span>
-                <span className="text-xs text-[#64748B]">G</span>
+                <span className="text-xs text-[#64748B] ml-1">G (JERK)</span>
               </div>
-              <p className="text-[10px] font-mono text-[#64748B] mt-0.5">
-                MPU-6050 SHOCK VECTOR
-              </p>
+              <div className="text-right">
+                <span className="text-xs text-[#94A3B8] block">CHASSIS TILT:</span>
+                <span className="text-xs font-bold text-emerald-400">
+                  {simulatedShock ? "8.4° (UNSTABLE)" : "1.2° (LEVEL)"}
+                </span>
+              </div>
             </div>
 
-            <div className="text-[10px] font-mono text-[#64748B] flex justify-between pt-2 border-t border-[#1E2433]/50">
-              <span>Threshold: 1.20 G</span>
-              <span className="text-white font-bold">Status: NOMINAL</span>
+            {/* 3-Axis Mini Visual Level Meter (X, Y, Z) */}
+            <div className="w-full bg-black/40 rounded-xl p-2.5 border border-white/10 my-1 font-mono text-[10px]">
+              <div className="flex justify-between text-[#94A3B8] mb-1">
+                <span>3-AXIS MEMS:</span>
+                <span className="text-white">SDA:21 | SCL:22</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 text-center">
+                <div className="bg-[#090D16] p-1 rounded border border-white/5">
+                  <span className="text-[#64748B] block text-[9px]">AXIS X</span>
+                  <span className="text-white font-bold">{simulatedShock ? "+0.45G" : "+0.02G"}</span>
+                </div>
+                <div className="bg-[#090D16] p-1 rounded border border-white/5">
+                  <span className="text-[#64748B] block text-[9px]">AXIS Y</span>
+                  <span className="text-white font-bold">{simulatedShock ? "-0.62G" : "+0.01G"}</span>
+                </div>
+                <div className="bg-[#090D16] p-1 rounded border border-white/5">
+                  <span className="text-[#64748B] block text-[9px]">AXIS Z</span>
+                  <span className="text-[#38BDF8] font-bold">{simulatedShock ? "+1.65G" : "+0.98G"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Trigger Button & Footer */}
+            <div className="w-full flex items-center justify-between pt-2 border-t border-[#1E2433] z-10">
+              <span className="text-[10px] font-mono text-[#64748B]">ALARM AT &gt; 1.20 G</span>
+              <button
+                onClick={() => {
+                  setSimulatedShock(true);
+                  setTimeout(() => setSimulatedShock(false), 3500);
+                }}
+                className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#EF4444]/20 hover:bg-[#EF4444]/30 text-[#EF4444] border border-[#EF4444]/40 transition-colors cursor-pointer"
+                title="Click to simulate an aftershock jerk"
+              >
+                TEST SHOCK
+              </button>
             </div>
           </div>
         </section>
