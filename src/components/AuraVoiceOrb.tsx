@@ -233,8 +233,9 @@ export default function AuraVoiceOrb({
         const timeoutId = setTimeout(() => controller.abort(), 1800);
 
         const endpoints = [
-          `http://${nodeIpState || "10.178.117.16"}/api/telemetry`,
+          `http://${nodeIpState || "192.168.4.1"}/api/telemetry`,
           "/api/telemetry",
+          "http://192.168.4.1/api/telemetry",
           "http://10.178.117.16/api/telemetry",
           "http://192.168.43.101/api/telemetry"
         ];
@@ -305,10 +306,12 @@ export default function AuraVoiceOrb({
 
     try {
       const endpoints = [
-        `http://${nodeIpState || "10.178.117.16"}/api/control`,
+        `http://${nodeIpState || "192.168.4.1"}/api/control`,
         "/api/control",
-        `http://${nodeIpState || "10.178.117.16"}/api/telemetry`,
+        "http://192.168.4.1/api/control",
+        `http://${nodeIpState || "192.168.4.1"}/api/telemetry`,
         "/api/telemetry",
+        "http://192.168.4.1/api/telemetry",
         "http://10.178.117.16/api/control",
         "http://192.168.43.101/api/control"
       ];

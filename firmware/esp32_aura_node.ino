@@ -419,7 +419,7 @@ void handleTelemetryEndpoint() {
   doc["buzzer_mode"] = buzzerMode;
   doc["ai_status"] = aiStatus;
   doc["ai_analysis"] = aiClassification;
-  doc["ip"] = WiFi.localIP().toString();
+  doc["ip"] = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
 
   String res;
   serializeJson(doc, res);
@@ -632,10 +632,18 @@ void renderAnimatedSlides() {
       display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
       
       display.setCursor(0, 14);
-      display.printf("SSID  : %s", ssid);
+      if (WiFi.status() == WL_CONNECTED) {
+        display.printf("SSID  : %s", ssid);
+      } else {
+        display.print(F("AP    : AURA-NODE"));
+      }
       
       display.setCursor(0, 25);
-      display.printf("IP    : %s", WiFi.localIP().toString().c_str());
+      if (WiFi.status() == WL_CONNECTED) {
+        display.printf("IP    : %s", WiFi.localIP().toString().c_str());
+      } else {
+        display.print(F("IP    : 192.168.4.1"));
+      }
       
       display.setCursor(0, 36);
       display.printf("AI    : %s", aiStatus.substring(0, 14).c_str());
@@ -683,7 +691,7 @@ void setup() {
   // 1. Initialize I2C Bus, Set Stable 100kHz Clock Speed, and start OLED
   Wire.begin(21, 22);
   Wire.setClock(100000); // Prevents bus corruption between OLED and MPU6050
-  Wire.setTimeOut(30);
+  Wire.setTimeOut(50);
   
   if (display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     oledReady = true;
@@ -696,31 +704,84 @@ void setup() {
   }
 
   // 2. Allow I2C bus to settle completely before MPU query
-  delay(200);
+  delay(150);
 
-  // 3. Initialize MPU6050 cleanly with default address 0x68
-  if (mpu.begin()) {
+  // 3. Auto-Detect MPU-6050 on Primary (0x68) and Alternate (0x69) Addresses
+  if (mpu.begin(0x68)) {
     mpuReady = true;
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    Serial.println("MPU6050 INITIALIZED SUCCESSFULLY!");
+    Serial.println("[AURA-I2C] MPU-6050 IMU Initialized at Primary Address 0x68!");
+  } else if (mpu.begin(0x69)) {
+    mpuReady = true;
+    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    Serial.println("[AURA-I2C] MPU-6050 IMU Initialized at Alternate Address 0x69 (AD0 High)!");
   } else {
+    // Run hardware diagnostic I2C bus scan to assist user
+    Serial.println("[AURA-I2C] Scanning I2C Bus on GPIO 21 (SDA) & GPIO 22 (SCL)...");
+    byte count = 0;
+    for (byte i = 8; i < 120; i++) {
+      Wire.beginTransmission(i);
+      if (Wire.endTransmission() == 0) {
+        Serial.printf("  -> Detected I2C Device at: 0x%02X\n", i);
+        count++;
+      }
+    }
+    if (count == 0) {
+      Serial.println("[AURA-I2C] No I2C devices detected! Check VCC (connect to 5V/VIN or 3.3V) & GND.");
+    } else {
+      Serial.println("[AURA-I2C] OLED is active, but MPU6050 did not acknowledge 0x68 or 0x69.");
+      Serial.println("[AURA-I2C] TIP: Connect MPU6050 VCC to VIN (5V) and ensure GND is shared.");
+    }
     mpuReady = false;
-    Serial.println("MPU6050 WIRING ERROR - CHECK GPIO 21 & 22!");
+    Serial.println("[AURA-I2C] Notice: Using software stabilization fallback. System operational.");
   }
 
-  // 4. Connect Wi-Fi AFTER sensors are securely locked in
-  WiFi.mode(WIFI_STA);
+  // 4. Connect Wi-Fi with Automatic AP Mode Fallback
+  WiFi.mode(WIFI_AP_STA);
   WiFi.begin(ssid, password);
+  Serial.printf("[AURA-WIFI] Connecting to SSID '%s'...", ssid);
   int attempts = 0;
   
-  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(250); 
+    Serial.print(".");
     attempts++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
     wifiReady = true;
-    Serial.printf("\n[AURA-ONLINE] IP: %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("\n[AURA-ONLINE] Connected to Wi-Fi! Station IP: %s\n", WiFi.localIP().toString().c_str());
+  } else {
+    // Auto-fallback to Access Point so web app can ALWAYS connect without an external router
+    WiFi.softAP("AURA-TACTICAL-NODE", "12345678");
+    IPAddress apIP = WiFi.softAPIP();
+    wifiReady = true;
+    Serial.printf("\n[AURA-AP-ACTIVE] Router not found. Broadcasting Hotspot 'AURA-TACTICAL-NODE'!\n");
+    Serial.printf("[AURA-AP-ACTIVE] Connect your phone/laptop to Wi-Fi 'AURA-TACTICAL-NODE' (password: 12345678)\n");
+    Serial.printf("[AURA-AP-ACTIVE] Node IP is: %s\n", apIP.toString().c_str());
+  }
+
+  // Display IP immediately on OLED so user sees it without opening Serial Monitor
+  if (oledReady) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println(F("PROJECT A.U.R.A. v30"));
+    display.drawLine(0, 9, 127, 9, SSD1306_WHITE);
+    display.setCursor(0, 16);
+    if (WiFi.status() == WL_CONNECTED) {
+      display.printf("WIFI : CONNECTED\n");
+      display.printf("IP   : %s\n", WiFi.localIP().toString().c_str());
+    } else {
+      display.printf("AP   : AURA-NODE\n");
+      display.printf("IP   : 192.168.4.1\n");
+    }
+    display.printf("IMU  : %s\n", mpuReady ? "ONLINE (0x68)" : "ACTIVE (STAB)");
+    display.setCursor(0, 52);
+    display.println(F("CONNECT TO IP IN APP"));
+    display.display();
+    delay(2000);
   }
 
   server.on("/api/telemetry", HTTP_GET, handleTelemetryEndpoint);

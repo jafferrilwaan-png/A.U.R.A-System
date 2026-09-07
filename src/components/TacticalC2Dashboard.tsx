@@ -981,7 +981,7 @@ export default function TacticalC2Dashboard({
             candidateEndpoints.push(`http://${nodeIp}/api/telemetry`);
           }
         }
-        candidateEndpoints.push("/api/telemetry");
+        candidateEndpoints.push("http://192.168.4.1/api/telemetry");
         candidateEndpoints.push("http://10.178.117.16/api/telemetry");
 
         let res: Response | null = null;
