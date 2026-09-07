@@ -232,10 +232,10 @@ export default function AuraVoiceOrb({
         const timeoutId = setTimeout(() => controller.abort(), 1800);
 
         const endpoints = [
-          `http://${nodeIpState || "192.168.4.1"}/api/telemetry`,
           "/api/telemetry",
-          "http://192.168.4.1/api/telemetry",
+          `http://${nodeIpState || "10.178.117.16"}/api/telemetry`,
           "http://10.178.117.16/api/telemetry",
+          "http://192.168.4.1/api/telemetry",
           "http://192.168.43.101/api/telemetry"
         ];
 
@@ -305,13 +305,11 @@ export default function AuraVoiceOrb({
 
     try {
       const endpoints = [
-        `http://${nodeIpState || "192.168.4.1"}/api/control`,
         "/api/control",
-        "http://192.168.4.1/api/control",
-        `http://${nodeIpState || "192.168.4.1"}/api/telemetry`,
         "/api/telemetry",
-        "http://192.168.4.1/api/telemetry",
+        `http://${nodeIpState || "10.178.117.16"}/api/control`,
         "http://10.178.117.16/api/control",
+        "http://192.168.4.1/api/control",
         "http://192.168.43.101/api/control"
       ];
 
@@ -659,9 +657,9 @@ export default function AuraVoiceOrb({
       aiReply = hwActionExecuted;
       successfulModelName = "ESP32 Hardware Direct";
     } else {
-      const activeApiKey = (apiKey && apiKey !== FALLBACK_OR_KEY) 
+      const activeApiKey = (apiKey && apiKey.trim().length > 0) 
         ? apiKey.trim() 
-        : (import.meta.env.VITE_OPENROUTER_API_KEY as string) || (import.meta.env.VITE_GEMINI_API_KEY as string) || "";
+        : ((import.meta.env.VITE_OPENROUTER_API_KEY as string) || (import.meta.env.VITE_GEMINI_API_KEY as string) || "");
 
       const systemPrompt = `You are A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment).
 You are a mission-critical Search-and-Rescue tactical AI assistant dedicated to locating buried human survivors with 100% mathematical precision.

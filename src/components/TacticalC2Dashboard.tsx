@@ -954,15 +954,35 @@ export default function TacticalC2Dashboard({
 
   const sendHardwareControl = async (payload: any) => {
     try {
-      let baseUrl = nodeIp || "10.178.117.16";
-      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-        baseUrl = `http://${baseUrl}`;
+      const endpoints: string[] = [
+        "/api/control",
+        "/api/telemetry"
+      ];
+      if (nodeIp) {
+        if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
+          endpoints.push(nodeIp.endsWith("/api/control") ? nodeIp : `${nodeIp}/api/control`);
+        } else {
+          endpoints.push(`http://${nodeIp}/api/control`);
+        }
       }
-      await fetch(`${baseUrl}/api/control`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      endpoints.push("http://10.178.117.16/api/control");
+      endpoints.push("http://192.168.4.1/api/control");
+
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Bypass-Tunnel-Reminder": "true" 
+            },
+            body: JSON.stringify(payload)
+          });
+          if (res && res.ok) break;
+        } catch {
+          // try next candidate
+        }
+      }
     } catch (e) {
       console.warn("Hardware control failed", e);
     }
@@ -1037,18 +1057,18 @@ export default function TacticalC2Dashboard({
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 900);
         
-        const candidateEndpoints: string[] = [];
+        const candidateEndpoints: string[] = ["/api/telemetry"];
         if (nodeIp) {
           if (nodeIp.startsWith("http://") || nodeIp.startsWith("https://")) {
             candidateEndpoints.push(nodeIp.endsWith("/api/telemetry") ? nodeIp : `${nodeIp}/api/telemetry`);
-          } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("vercel.app")) {
+          } else if (nodeIp.includes("loca.lt") || nodeIp.includes("ngrok") || nodeIp.includes("trycloudflare") || nodeIp.includes("vercel.app")) {
             candidateEndpoints.push(`https://${nodeIp}/api/telemetry`);
           } else {
             candidateEndpoints.push(`http://${nodeIp}/api/telemetry`);
           }
         }
-        candidateEndpoints.push("http://192.168.4.1/api/telemetry");
         candidateEndpoints.push("http://10.178.117.16/api/telemetry");
+        candidateEndpoints.push("http://192.168.4.1/api/telemetry");
 
         let res: Response | null = null;
         for (const ep of candidateEndpoints) {

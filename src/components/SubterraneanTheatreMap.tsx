@@ -95,16 +95,13 @@ export default function SubterraneanTheatreMap({
     }
     const payload = { buzzer_mode: mode, buzzer_level: mode, ...(label ? { label } : {}) };
     try {
-      let baseUrl = nodeIp || "192.168.43.101";
-      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-        baseUrl = baseUrl.includes("loca.lt") || baseUrl.includes("ngrok") ? `https://${baseUrl}` : `http://${baseUrl}`;
-      }
       const endpoints = [
-        `${baseUrl}/api/control`,
         "/api/control",
-        `${baseUrl}/api/telemetry`,
-        "/api/telemetry"
-      ];
+        "/api/telemetry",
+        nodeIp ? (nodeIp.startsWith("http") ? `${nodeIp}/api/control` : `http://${nodeIp}/api/control`) : null,
+        "http://10.178.117.16/api/control",
+        "http://192.168.4.1/api/control"
+      ].filter(Boolean) as string[];
       let res;
       for (const ep of endpoints) {
         try {
