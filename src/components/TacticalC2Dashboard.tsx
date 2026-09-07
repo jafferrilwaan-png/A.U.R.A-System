@@ -37,6 +37,7 @@ import {
   Compass
 } from "lucide-react";
 import AuraVoiceOrb from "./AuraVoiceOrb";
+import SubterraneanTheatreMap from "./SubterraneanTheatreMap";
 
 // ─── TYPES & INTERFACES ───────────────────────────────────────────────────────
 export interface TelemetryPayload {
@@ -902,7 +903,65 @@ export default function TacticalC2Dashboard({
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [packetCount, setPacketCount] = useState(0);
-  const [activeDashboardMode, setActiveDashboardMode] = useState<"hud" | "voice_terminal">("hud");
+  const [activeDashboardMode, setActiveDashboardMode] = useState<"hud" | "theatre_map" | "voice_terminal">("hud");
+
+  // Tactical Audio Alert Synthesizer for Confirmed Human Survivor Detection
+  const playTacticalHumanAlertChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const now = ctx.currentTime;
+
+      // Dual-tone high-priority SAR beacon chime (880Hz -> 1760Hz pulse)
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = "sawtooth";
+      osc2.type = "sine";
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.3);
+      osc2.frequency.setValueAtTime(440, now);
+      osc2.frequency.exponentialRampToValueAtTime(880, now + 0.3);
+
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.65);
+      osc2.stop(now + 0.65);
+    } catch (e) {
+      console.warn("Tactical audio alert error:", e);
+    }
+  };
+
+  // ── Hardware Transceiver Controls ──
+  const [buzzerLevel, setBuzzerLevel] = useState<number>(0);
+  const [frequencyKhz, setFrequencyKhz] = useState<number>(40);
+  const [isOverdrive, setIsOverdrive] = useState<boolean>(false);
+  const [isBeamActive, setIsBeamActive] = useState<boolean>(false);
+
+  const sendHardwareControl = async (payload: any) => {
+    try {
+      let baseUrl = nodeIp || "10.178.117.16";
+      if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+        baseUrl = `http://${baseUrl}`;
+      }
+      await fetch(`${baseUrl}/api/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn("Hardware control failed", e);
+    }
+  };
 
   // ── HUD Controls & Diagnostic Test Simulation ──
   const [rangeCeiling, setRangeCeiling] = useState<number>(30);
@@ -1048,7 +1107,7 @@ Analyze this REAL ESP32 hardware sensor telemetry to locate trapped survivors wi
 - Strata Void Depth: ${depthCalc.toFixed(1)} meters
 - Biological Pulse: ${telemetry.heartbeat_detected ? `${telemetry.heartbeat_bpm} BPM locked` : "None"}
 - Structural Stability Jerk: ${(telemetry.delta_jerk || 0).toFixed(2)} G
-- GPS Target Location: Lat ${telemetry.lat || 12.9665}, Lng ${telemetry.lng || 79.9450} (Sriperumbudur Anchor)
+- GPS Target Location: Lat ${telemetry.lat || 12.9674}, Lng ${telemetry.lng || 79.9458} (Sriperumbudur Anchor - Nehru St)
 
 Respond in STRICT JSON ONLY without markdown formatting:
 {
@@ -1098,6 +1157,10 @@ Respond in STRICT JSON ONLY without markdown formatting:
       }
 
       if (resultJson) {
+        const isSurvivorLocked = (resultJson.classification || "").toLowerCase().includes("survivor");
+        if (isSurvivorLocked) {
+          playTacticalHumanAlertChime();
+        }
         setAiResult({
           classification: resultJson.classification || "SURVIVOR CONFIRMED // RESPIRATION DETECTED",
           threatLevel: resultJson.threat_level || ((telemetry.gas || 0) > 400 ? "CRITICAL" : "MODERATE"),
@@ -1111,8 +1174,12 @@ Respond in STRICT JSON ONLY without markdown formatting:
         });
       } else {
         // Fallback computation strictly using real live hardware signals
+        const hasHardwareLife = (telemetry.radar === 1 || (telemetry.acoustic_energy || 0) > 40 || telemetry.human_scent_detected);
+        if (hasHardwareLife) {
+          playTacticalHumanAlertChime();
+        }
         setAiResult({
-          classification: (telemetry.radar === 1 || (telemetry.acoustic_energy || 0) > 40) ? "SURVIVOR CONFIRMED // BIO-ACOUSTIC MATCH" : "STRUCTURAL VOID SCAN",
+          classification: hasHardwareLife ? "SURVIVOR CONFIRMED // BIO-ACOUSTIC MATCH" : "STRUCTURAL VOID SCAN",
           threatLevel: (telemetry.gas || 0) > 450 ? "CRITICAL" : "MODERATE",
           structuralHazard: (telemetry.delta_jerk || 0) > 1.2 ? "COLLAPSE HAZARD" : "STABLE",
           tacticalDirective: "EXCAVATE NORTH-NORTHWEST (320° AZIMUTH) // DEPLOY MICRO-ACOUSTIC PROBE",
@@ -1130,6 +1197,52 @@ Respond in STRICT JSON ONLY without markdown formatting:
       setIsInferring(false);
     }
   };
+
+  if (activeDashboardMode === "theatre_map") {
+    return (
+      <div className="min-h-screen bg-[#080B10] p-4 sm:p-6 text-white selection:bg-[#10B981] selection:text-black">
+        <header className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-white/10 max-w-7xl mx-auto">
+          <button
+            onClick={() => setActiveDashboardMode("hud")}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-2 active:scale-95 border border-white/15"
+          >
+            <span>&larr; BACK TO SENSORS HUD</span>
+          </button>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="font-mono text-xs text-emerald-400 font-bold">SUBTERRANEAN THEATRE CONTOUR PORTAL</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveDashboardMode("voice_terminal")}
+              className="px-4 py-2 rounded-xl bg-[#C084FC]/20 hover:bg-[#C084FC]/30 text-[#C084FC] border border-[#C084FC]/40 font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <span>AI VOICE ORB &rarr;</span>
+            </button>
+          </div>
+        </header>
+        <div className="max-w-7xl mx-auto">
+          <SubterraneanTheatreMap
+            telemetry={telemetry}
+            isConnected={isConnected}
+            nodeIp={nodeIp}
+            buzzerLevel={buzzerLevel}
+            frequencyKhz={frequencyKhz}
+            isOverdrive={isOverdrive}
+            isBeamActive={isBeamActive}
+            onSetNodeIp={(ip) => setNodeIp(ip)}
+            onToggleSettings={() => setActiveDashboardMode("hud")}
+            onToggleOverdrive={() => sendHardwareControl({ overdrive: !isOverdrive })}
+            onCycleBuzzer={() => sendHardwareControl({ buzzer_level: buzzerLevel >= 3 ? 0 : buzzerLevel + 1 })}
+            onSetBuzzerLevel={(lvl) => sendHardwareControl({ buzzer_level: lvl })}
+            onCycleFrequency={() => sendHardwareControl({ ultrasonic_khz: frequencyKhz === 40 ? 60 : frequencyKhz === 60 ? 80 : 40 })}
+            onToggleBeam={() => sendHardwareControl({ transducer_active: !isBeamActive })}
+            onSwitchToVoice={() => setActiveDashboardMode("voice_terminal")}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (activeDashboardMode === "voice_terminal") {
     return (
@@ -1216,7 +1329,19 @@ Respond in STRICT JSON ONLY without markdown formatting:
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>SENSORY C2</span>
+              <span>SENSORS C2</span>
+            </button>
+
+            <button
+              onClick={() => setActiveDashboardMode("theatre_map")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                (activeDashboardMode as string) === "theatre_map"
+                  ? "bg-[#10B981] text-black shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-[1.02]"
+                  : "text-[#10B981] hover:text-white hover:bg-[#10B981]/20 border border-[#10B981]/30"
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>🗺️ TOPO MAP</span>
             </button>
 
             <button
@@ -1224,7 +1349,7 @@ Respond in STRICT JSON ONLY without markdown formatting:
               className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 text-[#94A3B8] hover:text-[#C084FC] hover:bg-[#C084FC]/10"
             >
               <Mic className="w-3.5 h-3.5" />
-              <span>AI VOICE ORB</span>
+              <span>AI VOICE</span>
             </button>
           </div>
 
@@ -1286,6 +1411,40 @@ Respond in STRICT JSON ONLY without markdown formatting:
       ══════════════════════════════════════════════════════════════════════ */}
       <main className="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-5 relative z-10">
         
+        {/* ── TOPOGRAPHIC CONTOUR MAP PORTAL HERO BANNER (12 COLS) ── */}
+        <div className="col-span-1 md:col-span-12 bg-gradient-to-r from-emerald-950/70 via-[#0B151E] to-black/80 border border-emerald-500/40 hover:border-emerald-400/80 transition-all rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden group">
+          <div className="flex items-center gap-4 z-10">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-transform">
+              <Compass className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black text-white tracking-wide">
+                  SUBTERRANEAN THEATRE TOPOGRAPHIC CONTOUR MAP
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                  PORTAL ONLINE
+                </span>
+                {telemetry.survivor_count !== undefined && Number(telemetry.survivor_count) > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/60 text-[10px] font-mono font-black animate-pulse">
+                    🚨 {telemetry.survivor_count} VICTIM CONFIRMED
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-1 font-mono">
+                Real-time 3D contour terrain strata • Blue Location Point on Nehru St (Sriperumbudur) • Live AI survivor beacon tracking
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveDashboardMode("theatre_map")}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-mono font-black text-xs transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center gap-2 cursor-pointer active:scale-95 z-10"
+          >
+            <span>🗺️ OPEN FULLSCREEN TOPO MAP PORTAL</span>
+            <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* ── LEFT COLUMN: MICROWAVE RADAR, GAS & JERK SENSORS (3 COLS) ── */}
         <section className="md:col-span-3 flex flex-col gap-4">
           

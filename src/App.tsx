@@ -477,6 +477,21 @@ export default function App() {
                 window.location.hash = 'c2';
                 setActiveView('c2');
               }}
+              className="relative group px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white text-[10px] sm:text-[11px] font-black tracking-wider uppercase transition-all duration-200 shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.6)] flex items-center gap-1.5 cursor-pointer"
+              title="Launch Subterranean Topographic Contour Map"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-display whitespace-nowrap">🗺️ TOPO MAP</span>
+            </button>
+
+            <button
+              onClick={() => {
+                window.location.hash = 'c2';
+                setActiveView('c2');
+              }}
               className="relative group px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#C084FC]/15 hover:bg-[#C084FC]/25 border border-[#C084FC]/50 hover:border-[#C084FC] text-[#C084FC] hover:text-white text-[10px] sm:text-[11px] font-black tracking-wider sm:tracking-widest uppercase transition-all duration-200 shadow-[0_0_12px_rgba(192,132,252,0.3)] hover:shadow-[0_0_20px_rgba(192,132,252,0.6)] flex items-center gap-1.5 sm:gap-2 cursor-pointer"
               title="Launch A.U.R.A. AI Voice & Hardware Terminal"
             >
@@ -484,7 +499,7 @@ export default function App() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C084FC] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A855F7]"></span>
               </span>
-              <span className="font-display whitespace-nowrap">LIVE RADAR &amp; SENSORS C2</span>
+              <span className="font-display whitespace-nowrap">RADAR C2</span>
             </button>
 
             <div className="hidden sm:block">
@@ -587,6 +602,29 @@ export default function App() {
             <p className="max-w-2xl text-base sm:text-lg text-white font-normal leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
               A.U.R.A. maps active void spaces, acoustic signatures, and structural collapse zones into a single real-time tactical intelligence layer.
             </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  window.location.hash = 'c2';
+                  setActiveView('c2');
+                }}
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-[#00C2FF] hover:from-emerald-400 hover:to-cyan-400 text-black font-display font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center gap-2.5 cursor-pointer active:scale-95"
+              >
+                <span>🗺️ OPEN 3D TOPO CONTOUR MAP</span>
+                <i className="bi bi-arrow-up-right text-sm" />
+              </button>
+
+              <button
+                onClick={() => {
+                  window.location.hash = 'c2';
+                  setActiveView('c2');
+                }}
+                className="px-6 py-3 rounded-2xl bg-black/75 hover:bg-black/90 text-[#C084FC] hover:text-white border border-[#C084FC]/60 hover:border-[#C084FC] font-display font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <span>LIVE RADAR &amp; SENSORS C2</span>
+              </button>
+            </div>
           </div>
         </section>
 

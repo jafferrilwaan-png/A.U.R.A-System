@@ -683,8 +683,9 @@ ${isConnected ? `REAL-TIME HARDWARE SENSOR REGISTERS (STRICT LIVE DATA):
 - Air Purity / Gas Level: ${gasPpm} PPM (${telemetry.air_rating || (gasPpm > 400 ? "HAZARDOUS" : "SAFE / CLEAR")})
 - Metabolic CO2 Level: ${telemetry.co2_ppm || gasPpm} PPM
 - Geographic Target Fix: ${cityStr} (${gpsCoords})` : `HARDWARE NODE STATUS: OFFLINE (Standby Mode)
-- Anchored Target Coordinates: Sriperumbudur Bus Stand (12.9665° N, 79.9450° E)
+- Anchored Target Coordinates: Nehru Street, Sriperumbudur (12.9674° N, 79.9458° E)
 - All live sensor registers: 0 (No active packet stream)
+- Blue Location Point: Nehru St west of Sathya Agencies
 CRITICAL RESCUE PROTOCOL: Never hallucinate fake survivor heartbeats, gas leaks, or depths when the hardware is offline. Truthfully state that the node is offline and provide cached target fix information.`}
 
 OPERATIONAL DIRECTIVES:
@@ -852,7 +853,7 @@ OPERATIONAL DIRECTIVES:
         if (!aiReply) {
           if (!isConnected) {
             if (isAskingForSensors || /(\b(depth|gas|survivor|victim|node|status)\b)/i.test(q)) {
-              aiReply = `The ESP32 hardware node is currently offline. No active sensor packets are being received. Retaining last active target lock at Sriperumbudur Bus Stand (12.9665° N, 79.9450° E).`;
+              aiReply = `The ESP32 hardware node is currently offline. No active sensor packets are being received. Retaining last active target lock at Nehru Street, Sriperumbudur (12.9674° N, 79.9458° E).`;
             } else if (/who (are|is)|what is aura/i.test(q)) {
               aiReply = `I am A.U.R.A. Intelligence (Autonomous Underground Reconnaissance & Assessment). I monitor subterranean seismic, acoustic, and bio-scent sensors to locate trapped survivors.`;
             } else {
@@ -984,8 +985,8 @@ OPERATIONAL DIRECTIVES:
               { label: "Detected Survivors", value: "0 Locked (Node Offline)", color: "#94A3B8" },
               { label: "Hardware Link", value: `OFFLINE (${nodeIp})`, color: "#EF4444" },
               { label: "Telemetry Stream", value: "STANDBY (0 PACKETS)", color: "#F59E0B" },
-              { label: "Last Active Target", value: "Sriperumbudur Bus Stand", color: "#38BDF8" },
-              { label: "Target GPS Fix", value: "12.9665° N, 79.9450° E", color: "#38BDF8" },
+              { label: "Last Active Target", value: "Nehru St, Sriperumbudur", color: "#38BDF8" },
+              { label: "Target GPS Fix", value: "12.9674° N, 79.9458° E", color: "#38BDF8" },
               { label: "Piezo Seismic Array", value: "0 mm/s (Offline)", color: "#94A3B8" },
               { label: "Atmospheric Gas", value: "0 PPM (Offline)", color: "#94A3B8" },
               { label: "Vital Pulse Detector", value: "None (Offline)", color: "#94A3B8" },
@@ -1218,7 +1219,7 @@ OPERATIONAL DIRECTIVES:
               }`}
             >
               <Tv className="w-3.5 h-3.5" />
-              <span>3D Map</span>
+              <span>🗺️ Topo Map</span>
             </button>
 
             <button
@@ -1409,11 +1410,11 @@ OPERATIONAL DIRECTIVES:
                                 <div 
                                   key={j} 
                                   onClick={isGps ? () => {
-                                    let targetLat = 12.9665;
-                                    let targetLng = 79.9450;
+                                    let targetLat = 12.9674;
+                                    let targetLng = 79.9458;
                                     if (telemetry.gps_source === "HIGH_ACCURACY_GPS" && telemetry.lat && telemetry.lat !== 0) {
                                       targetLat = telemetry.lat;
-                                      targetLng = telemetry.lng ?? 79.9450;
+                                      targetLng = telemetry.lng ?? 79.9458;
                                     }
                                     window.open(`https://www.google.com/maps?q=${targetLat},${targetLng}&z=19&t=k`, "_blank", "noopener,noreferrer");
                                   } : undefined}

@@ -62,9 +62,9 @@ const char* password = "12345678";
 const String OPENROUTER_KEY = "YOUR_OPENROUTER_API_KEY"; // Replace with your OpenRouter sk-or-v1-... key before flashing
 const char* OPENROUTER_MODEL = "google/gemini-flash-1.5";
 
-// Target Coordinates: Small Pond, Nehru Street Sector
-const float GPS_LATITUDE  = 12.9676;
-const float GPS_LONGITUDE = 79.9462;
+// Target Coordinates: Blue Location Point on Nehru Street (West of Sathya Agencies & Pond), Sriperumbudur
+const float GPS_LATITUDE  = 12.9674;
+const float GPS_LONGITUDE = 79.9458;
 
 // ----------------------------------------------------------------------------
 // GLOBAL OBJECTS & STATE FLAGS
@@ -234,73 +234,88 @@ void executeBuzzerEngine() {
 }
 
 // ============================================================================
-// V20.0 TRUE VARIANCE SPATIAL ALGORITHM
+// V25.0 SCIENTIFIC MULTI-SENSOR BIO-PHYSICAL CONSENSUS ALGORITHM
 // ============================================================================
 void processSpatialIntelligence() {
   bool motionActive = (rawRadar == 1);
-  bool acousticActive = (micEnergy > 12.0f); 
+  bool acousticActive = (micEnergy > 14.0f); 
   bool seismicActive = (piezoPeakEnvelope > 2.0f || tapCountWindow > 0); 
   bool bioScentActive = humanScentDetected;
 
-  int confirmed = 0;
-  
-  if (motionActive) {
-    confirmed++; 
-  }
-  
-  if (seismicActive && tapCountWindow >= 1) {
-    confirmed++; 
-  }
-  
-  if (seismicActive && tapCountWindow >= 4) {
-    confirmed++; 
-  }
-  
-  if (acousticActive && micEnergy > 30.0f) {
-    confirmed++;  
-  }
-  
-  if (confirmed == 0 && bioScentActive) {
-    confirmed = 1; 
-  }
-  
-  survivorCount = constrain(confirmed, 0, 3);
+  // MULTI-SENSOR CONSENSUS LOGIC:
+  // A single localized AURA node monitors 1 physical entrapment cavity envelope.
+  // When multiple sensors (Radar + Seismic + Acoustic + Bio-Scent) detect signals,
+  // they are sensing the SAME trapped human being from different physical modalities!
+  // Multiple sensor triggers = 1 VICTIM with HIGH RESCUE CONFIDENCE %, NOT 3 separate people!
 
-  if (survivorCount == 0) {
+  bool anyVitalSign = motionActive || acousticActive || seismicActive || bioScentActive;
+
+  if (!anyVitalSign) {
+    survivorCount = 0;
     targetDepthMeters = 0.0f;
     targetRangeMeters = 0.0f;
     survivorZoneColor = "NONE";
     spatialPosition = "ALL CLEAR / MONITORING";
     rescueConfidence = 0;
   } else {
+    // 1 Real Human Being Localized in the Void
+    survivorCount = 1;
+
+    // Calculate Multi-Modal Sensor Agreement Score
+    int score = 0;
+    int modalitiesAgreed = 0;
+
+    if (motionActive) {
+      score += 28;
+      modalitiesAgreed++;
+    }
+    if (seismicActive) {
+      score += (tapCountWindow >= 2) ? 35 : 25;
+      modalitiesAgreed++;
+    }
+    if (acousticActive) {
+      score += (micEnergy > 25.0f) ? 30 : 20;
+      modalitiesAgreed++;
+    }
+    if (bioScentActive) {
+      score += 25;
+      modalitiesAgreed++;
+    }
+
+    // Cross-Modal Consensus Bonus (e.g. Radar + Geophone + Acoustic all agreeing)
+    if (modalitiesAgreed >= 3) {
+      score += 15;
+    } else if (modalitiesAgreed >= 2) {
+      score += 10;
+    }
+
+    rescueConfidence = constrain(score, 45, 99);
+
+    // Calculate True Physical Void Depth from Acoustic Attenuation & Geophone Energy
     float mE = (float)micEnergy;
     float pP = (float)piezoPeakEnvelope;
     float maxEnergy = (mE > pP) ? mE : pP;
     if (maxEnergy < 1.0f) {
       maxEnergy = 1.0f; 
     }
-    
-    float calculatedDistance = constrain(12.0f / sqrt(maxEnergy), 0.15f, 6.0f);
-    targetDepthMeters = calculatedDistance * 0.8f; 
+
+    // Physical propagation law through concrete/rubble:
+    // Distance constrained between 0.35m and 6.0m
+    float calculatedDistance = constrain(12.0f / sqrt(maxEnergy), 0.35f, 6.0f);
+    targetDepthMeters = calculatedDistance * 0.82f; 
     targetRangeMeters = calculatedDistance;
 
-    if (targetDepthMeters < 0.5f) {
+    // Triage Zone Classification based on genuine physical depth
+    if (targetDepthMeters < 0.8f) {
       survivorZoneColor = "GREEN";
-      spatialPosition = "SURFACE / IMMEDIATE ACCESS";
+      spatialPosition = "SURFACE / IMMEDIATE ACCESS (<0.8m)";
     } else if (targetDepthMeters < 2.5f) {
       survivorZoneColor = "RED";
-      spatialPosition = "DOWN / MID-DEBRIS CORE";
+      spatialPosition = "DOWN / MID-DEBRIS CORE (0.8m-2.5m)";
     } else {
       survivorZoneColor = "WHITE";
-      spatialPosition = "VERY DOWN / DEEP SUBTERRANEAN VOID";
+      spatialPosition = "VERY DOWN / DEEP VOID (2.5m-6.0m+)";
     }
-
-    int score = 0;
-    if (seismicActive) score += 35;
-    if (acousticActive) score += 25;
-    if (motionActive) score += 20;
-    if (bioScentActive) score += 20;
-    rescueConfidence = constrain(score, 15, 99);
   }
 }
 
