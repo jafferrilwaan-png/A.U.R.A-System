@@ -34,7 +34,8 @@ import {
   ExternalLink,
   Signal,
   MapPin,
-  Compass
+  Compass,
+  FileText
 } from "lucide-react";
 import AuraVoiceOrb from "./AuraVoiceOrb";
 import SubterraneanTheatreMap from "./SubterraneanTheatreMap";
@@ -69,6 +70,10 @@ export interface TelemetryPayload {
   azimuth_vector?: string;
   victim_2_azimuth_deg?: number;
   victim_2_depth?: number;
+  victim_3_azimuth_deg?: number;
+  victim_3_depth?: number;
+  victim_4_azimuth_deg?: number;
+  victim_4_depth?: number;
   ip?: string;
   // Extended / GPS / Legacy fields
   card?: number | string;
@@ -1400,6 +1405,17 @@ Respond in STRICT JSON ONLY without markdown formatting:
               <Mic className="w-3.5 h-3.5" />
               <span>AI VOICE</span>
             </button>
+
+            <a
+              href="/AURA_Complete_Code_Architecture_and_Analysis.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+              title="Open Complete Code Architecture & 10-Year-Old Explanation PDF in browser"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span>📄 SYSTEM SPEC PDF</span>
+            </a>
           </div>
 
           {/* Right: IP Config & Buzzer Locator Step */}

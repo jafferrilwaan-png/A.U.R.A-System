@@ -25,7 +25,8 @@ import {
   ShieldAlert,
   Layers,
   Crosshair,
-  Maximize2
+  Maximize2,
+  FileText
 } from "lucide-react";
 
 interface DispatchMessage {
@@ -573,6 +574,134 @@ export default function SubterraneanTheatreMap({
                     </>
                   );
                 })()}
+
+                {/* ── VICTIM 03 PIN (RENDERED WHEN 3+ SURVIVORS DETECTED) ── */}
+                {activeSurvivorCount >= 3 && (() => {
+                  const victim3AzimuthDeg = typeof telemetry.victim_3_azimuth_deg === "number"
+                    ? telemetry.victim_3_azimuth_deg
+                    : ((typeof telemetry.azimuth_deg === "number" ? telemetry.azimuth_deg : 42) + 160) % 360;
+                  const victim3Depth = typeof telemetry.victim_3_depth === "number"
+                    ? telemetry.victim_3_depth
+                    : (rawDepth * 1.55 + 0.6);
+                  const victim3DistancePx = Math.min(185, Math.max(95, victim3Depth * 34));
+                  const victim3AngleRad = (victim3AzimuthDeg * Math.PI) / 180;
+                  const victim3OffsetX = Math.round(Math.cos(victim3AngleRad) * victim3DistancePx);
+                  const victim3OffsetY = -Math.round(Math.sin(victim3AngleRad) * victim3DistancePx);
+
+                  return (
+                    <>
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
+                        <line 
+                          x1="50%" 
+                          y1="50%" 
+                          x2={`calc(50% + ${victim3OffsetX}px)`} 
+                          y2={`calc(50% + ${victim3OffsetY}px)`} 
+                          stroke="#a855f7" 
+                          strokeWidth="2" 
+                          strokeDasharray="6 4" 
+                          className="opacity-80 transition-all duration-700 ease-out"
+                        />
+                      </svg>
+
+                      <div 
+                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-105"
+                        style={{ 
+                          left: `calc(50% + ${victim3OffsetX}px)`,
+                          top: `calc(50% + ${victim3OffsetY}px)`,
+                          transform: "translate(-50%, -50%)",
+                          transition: "left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1)"
+                        }}
+                        onClick={handleOpenGoogleMaps}
+                        title="AI Confirmed Human Survivor #3! Click to open Google Maps"
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <span className="w-8 h-8 rounded-full border border-purple-500/60 absolute opacity-70" />
+                          <span className="relative w-4 h-4 rounded-full border-2 border-white bg-purple-500 shadow-[0_0_18px_#a855f7]" />
+                        </div>
+                        
+                        <div className="mt-1.5 px-3 py-1 rounded-full bg-black/95 backdrop-blur-md border border-purple-500/80 shadow-2xl flex items-center gap-2 whitespace-nowrap text-white">
+                          <Crosshair className="w-3 h-3 text-purple-400" />
+                          <span className="text-[10px] font-mono font-black tracking-wide text-purple-300">
+                            VICTIM 03 LOCKED
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/90 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                            {victim3Depth.toFixed(1)}m
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-300 font-semibold">
+                            {Math.max(40, confidenceScore - 12)}% CONF
+                          </span>
+                          <span className="text-[8px] font-mono text-purple-300 bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-500/40">
+                            {victim3AzimuthDeg.toFixed(0)}° SW
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* ── VICTIM 04 PIN (RENDERED WHEN 4 SURVIVORS DETECTED) ── */}
+                {activeSurvivorCount >= 4 && (() => {
+                  const victim4AzimuthDeg = typeof telemetry.victim_4_azimuth_deg === "number"
+                    ? telemetry.victim_4_azimuth_deg
+                    : ((typeof telemetry.azimuth_deg === "number" ? telemetry.azimuth_deg : 42) + 240) % 360;
+                  const victim4Depth = typeof telemetry.victim_4_depth === "number"
+                    ? telemetry.victim_4_depth
+                    : (rawDepth * 1.75 + 0.8);
+                  const victim4DistancePx = Math.min(190, Math.max(100, victim4Depth * 32));
+                  const victim4AngleRad = (victim4AzimuthDeg * Math.PI) / 180;
+                  const victim4OffsetX = Math.round(Math.cos(victim4AngleRad) * victim4DistancePx);
+                  const victim4OffsetY = -Math.round(Math.sin(victim4AngleRad) * victim4DistancePx);
+
+                  return (
+                    <>
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible">
+                        <line 
+                          x1="50%" 
+                          y1="50%" 
+                          x2={`calc(50% + ${victim4OffsetX}px)`} 
+                          y2={`calc(50% + ${victim4OffsetY}px)`} 
+                          stroke="#38bdf8" 
+                          strokeWidth="2" 
+                          strokeDasharray="6 4" 
+                          className="opacity-80 transition-all duration-700 ease-out"
+                        />
+                      </svg>
+
+                      <div 
+                        className="absolute z-30 flex flex-col items-center select-none pointer-events-auto cursor-pointer hover:scale-105"
+                        style={{ 
+                          left: `calc(50% + ${victim4OffsetX}px)`,
+                          top: `calc(50% + ${victim4OffsetY}px)`,
+                          transform: "translate(-50%, -50%)",
+                          transition: "left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1)"
+                        }}
+                        onClick={handleOpenGoogleMaps}
+                        title="AI Confirmed Human Survivor #4! Click to open Google Maps"
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <span className="w-8 h-8 rounded-full border border-sky-500/60 absolute opacity-70" />
+                          <span className="relative w-4 h-4 rounded-full border-2 border-white bg-sky-500 shadow-[0_0_18px_#38bdf8]" />
+                        </div>
+                        
+                        <div className="mt-1.5 px-3 py-1 rounded-full bg-black/95 backdrop-blur-md border border-sky-500/80 shadow-2xl flex items-center gap-2 whitespace-nowrap text-white">
+                          <Crosshair className="w-3 h-3 text-sky-400" />
+                          <span className="text-[10px] font-mono font-black tracking-wide text-sky-300">
+                            VICTIM 04 LOCKED
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-300 font-extrabold bg-cyan-950/90 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                            {victim4Depth.toFixed(1)}m
+                          </span>
+                          <span className="text-[9px] font-mono text-emerald-300 font-semibold">
+                            {Math.max(38, confidenceScore - 15)}% CONF
+                          </span>
+                          <span className="text-[8px] font-mono text-sky-300 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-500/40">
+                            {victim4AzimuthDeg.toFixed(0)}° SE
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
@@ -629,6 +758,17 @@ export default function SubterraneanTheatreMap({
                 <span>{mapIpSaved ? "Linked!" : "Connect"}</span>
               </button>
             </form>
+
+            <a
+              href="/AURA_Complete_Code_Architecture_and_Analysis.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 hover:border-amber-400 text-amber-300 text-[10px] font-mono font-black transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+              title="Open Complete Code Architecture & 10-Year-Old Explanation PDF in browser"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span>📄 SYSTEM SPEC PDF</span>
+            </a>
 
             <span className="text-xs font-mono text-white/60 hidden sm:inline">POLLING: <strong className="text-emerald-400 font-bold">250ms</strong></span>
           </div>

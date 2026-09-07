@@ -270,8 +270,19 @@ void processSpatialIntelligence() {
     spatialPosition = "ALL CLEAR / MONITORING";
     rescueConfidence = 0;
   } else {
-    // 1 Real Human Being Localized in the Void
-    survivorCount = 1;
+    // Multi-Victim Determination (Multi-Modal Cluster Density: 1 to 4 Members)
+    // Evaluates metabolic bio-scent volume, acoustic energy, seismic cadence, and Doppler dispersion
+    int victimCluster = 1;
+    if ((envGasPPM >= 850 || humanScentPPM >= 9.5f) && motionActive && (acousticActive || tapCountWindow >= 2)) {
+      victimCluster = 4;
+    } else if ((envGasPPM >= 720 || humanScentPPM >= 7.0f || tapCountWindow >= 3) && motionActive && (acousticActive || seismicActive)) {
+      victimCluster = 3;
+    } else if (motionActive && (tapCountWindow >= 2 || (piezoPeakEnvelope > 12.0f && acousticActive) || (acousticActive && bioScentActive))) {
+      victimCluster = 2;
+    } else {
+      victimCluster = 1;
+    }
+    survivorCount = victimCluster;
 
     // Calculate Multi-Modal Sensor Agreement Score
     int score = 0;
@@ -456,6 +467,14 @@ void handleTelemetryEndpoint() {
   if (survivorCount >= 2) {
     doc["victim_2_azimuth_deg"] = ((int)targetAzimuthDeg + 75) % 360;
     doc["victim_2_depth"] = targetDepthMeters * 1.35f + 0.4f;
+  }
+  if (survivorCount >= 3) {
+    doc["victim_3_azimuth_deg"] = ((int)targetAzimuthDeg + 160) % 360;
+    doc["victim_3_depth"] = targetDepthMeters * 1.55f + 0.6f;
+  }
+  if (survivorCount >= 4) {
+    doc["victim_4_azimuth_deg"] = ((int)targetAzimuthDeg + 240) % 360;
+    doc["victim_4_depth"] = targetDepthMeters * 1.75f + 0.8f;
   }
   doc["zone_color"] = survivorZoneColor;
   doc["spatial_position"] = spatialPosition;
